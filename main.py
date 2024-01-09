@@ -20,7 +20,7 @@ class Persona:
         self.habilidad_negociacion = random.uniform(0.75,1.25)
         self.cartera_acciones = []
         self.cartera_bienes = []
-        self.preferencias = {bien.nombre: random.randint(1, 100) for bien in mercado.bienes}
+        self.preferencias = {bien: random.randint(1, 100) for bien in mercado.bienes.keys()}
 
     def actualizar_ingresos(self):
         self.dinero += random.randint(100, 1000)
@@ -71,20 +71,20 @@ class Empresa(Persona):
         self.nombre = nombre
         self.bienes = bienes if bienes else {}
         self.dinero = random.randint(100000, 1000000)
-        self.costos_unitarios = { bien.nombre: random.randint(1, 100) for bien in self.bienes}
-        self.demanda = { bien.nombre: random.randint(1, 100) for bien in mercado.bienes}
-        self.oferta = { bien.nombre: random.randint(1, 100) for bien in self.bienes}
+        self.costos_unitarios = { bien: random.randint(1, 100) for bien in self.bienes.keys()}
+        self.demanda = { bien: random.randint(1, 100) for bien in mercado.bienes.keys()}
+        self.oferta = { bien: random.randint(1, 100) for bien in self.bienes.keys()}
         self.acciones_emitidas = []
         self.valor_accion = self.dinero / len(self.acciones_emitidas) if len(self.acciones_emitidas) > 0 else 10  # Un valor inicial arbitrario
 
     def actualizar_oferta(self, bienes, precios):
         oferta_total = 0
         for bien in bienes:
-            if bien.nombre not in self.costos_unitarios:
+            if bien not in self.costos_unitarios:
                 continue
-            precio = precios[bien.nombre]
-            oferta_bien = max(0, precio - self.costos_unitarios[bien.nombre])
-            self.oferta[bien.nombre] = oferta_bien
+            precio = precios[bien]
+            oferta_bien = max(0, precio - self.costos_unitarios[bien])
+            self.oferta[bien] = oferta_bien
             oferta_total += oferta_bien
         return oferta_total
     
@@ -138,7 +138,7 @@ class Mercado:
     def __init__(self, bienes) -> None:
         self.bienes = bienes if bienes else {}
         self.personas = []
-        self.precios = { bien.nombre: random.randint(1, 100) for bien in bienes}
+        self.precios = {bien: random.randint(1, 100) for bien in self.bienes.keys()}
         self.mercado_financiero = MercadoFinanciero()
         self.transacciones = []
 
@@ -153,26 +153,26 @@ class Mercado:
         exceso_oferta = {}
 
         for bien in self.bienes:
-            precios_teoricos[bien.nombre] = (precio_min + precio_max) / 2
-            demanda_teorica_total[bien.nombre] = 0
-            oferta_teorica_total[bien.nombre] = 0
+            precios_teoricos[bien] = (precio_min + precio_max) / 2
+            demanda_teorica_total[bien] = 0
+            oferta_teorica_total[bien] = 0
 
             # Calcula demanda teórica y oferta teórica
             for consumidor in self.getConsumidores():
-                preferencia = consumidor.preferencias[bien.nombre]
-                precio_teorico = precios_teoricos[bien.nombre]
+                preferencia = consumidor.preferencias[bien]
+                precio_teorico = precios_teoricos[bien]
                 dinero_disponible = consumidor.dinero
                 cantidad_demandada = preferencia * dinero_disponible / max(precio_teorico, 1)  # Evita división por cero
-                demanda_teorica_total[bien.nombre] += cantidad_demandada
+                demanda_teorica_total[bien] += cantidad_demandada
 
             # Calcula oferta teórica
             for empresa in self.getEmpresas():
-                if bien.nombre in empresa.oferta:
-                    oferta_teorica_total[bien.nombre] += empresa.oferta[bien.nombre]
+                if bien in empresa.oferta:
+                    oferta_teorica_total[bien] += empresa.oferta[bien]
 
             # Calcula el exceso de demanda
-            exceso_demanda[bien.nombre] = demanda_teorica_total[bien.nombre] - oferta_teorica_total[bien.nombre]
-            exceso_oferta[bien.nombre] = oferta_teorica_total[bien.nombre] - demanda_teorica_total[bien.nombre]
+            exceso_demanda[bien] = demanda_teorica_total[bien] - oferta_teorica_total[bien]
+            exceso_oferta[bien] = oferta_teorica_total[bien] - demanda_teorica_total[bien]
 
         return precios_teoricos, demanda_teorica_total, oferta_teorica_total, exceso_demanda, exceso_oferta
         
@@ -184,23 +184,21 @@ class Mercado:
             consumidor.actualizar_ingresos()
             consumidor.ajustar_preferencias()
             for bien in mercado.bienes:
-                cantidad_compra = consumidor.preferencias[bien.nombre] * consumidor.dinero / self.precios[bien.nombre]
-                consumidor.comprar_bien(mercado, bien.nombre, cantidad_compra)
+                cantidad_compra = consumidor.preferencias[bien] * consumidor.dinero / self.precios[bien]
+                consumidor.comprar_bien(mercado, bien, cantidad_compra)
 
-        for empresa in self.personas:
+        for _, empresa in enumerate(self.personas):
+
             if isinstance(empresa, Consumidor):
                 continue
             empresa.emitir_acciones(10, self.mercado_financiero)
             empresa.actualizar_costos()
             empresa.actualizar_oferta(self.bienes, self.precios)
+            if _%len(self.personas) == 0:
+                print(f"Empresa {_} actualizando precios")
             print(f"La empresa {empresa.nombre} tiene los siguientes bienes:")
             for bien in empresa.bienes:
-                print(f"{bien.nombre}: {empresa.bienes[bien.nombre]}")
-
-        # Encuentra el nuevo equilibrio con los precios actualizados
-        # precios, demanda_total, oferta_total = self.encontrar_equilibrio(precio_min=0, precio_max=1000, tolerancia=0.01)
-
-        # return precios, demanda_total, oferta_total
+                print(f"{bien}: {empresa.bienes[bien]}")
 
     def getDineroConsumidores(self):
         return [c.dinero for c in self.personas if isinstance(c, Consumidor)]
@@ -214,6 +212,9 @@ class Mercado:
     def getEmpresas(self):
         return [e for e in self.personas if isinstance(e, Empresa)]
     
+    def getPersonas(self):
+        return self.personas
+    
     def registrar_transaccion(self, consumidor, nombre_bien, cantidad, costo_total):
         self.transacciones.append({
             'consumidor': consumidor.nombre,
@@ -224,32 +225,31 @@ class Mercado:
     
 
 if __name__ == "__main__":
-    bienes = [
-        Bien("Arroz", 0.5, 0.5),
-        Bien("Carne", 0.5, 0.5),
-        Bien("Papa", 0.5, 0.5),
-        Bien("Leche", 0.5, 0.5),
-        Bien("Huevos", 0.5, 0.5),
-        Bien("Pan", 0.5, 0.5),
-        Bien("Cerveza", 0.5, 0.5),
-        Bien("Cigarrillos", 0.5, 0.5),
-        Bien("Computador", 0.5, 0.5),
-        Bien("Celular", 0.5, 0.5),
-        Bien("Carro", 0.5, 0.5),
-        Bien("Moto", 0.5, 0.5),
-        Bien("Viaje", 0.5, 0.5),
-        Bien("Hotel", 0.5, 0.5),
-        Bien("Gimnasio", 0.5, 0.5)]
+    bienes = {
+        'Arroz': Bien('Arroz', 0.5, 0.5),
+        'Carne': Bien('Carne', 0.5, 0.5),
+        'Papa': Bien('Papa', 0.5, 0.5),
+        'Leche': Bien('Leche', 0.5, 0.5),
+        'Pan': Bien('Pan', 0.5, 0.5),
+        'Huevos': Bien('Huevos', 0.5, 0.5),
+        'Pollo': Bien('Pollo', 0.5, 0.5),
+        'Azucar': Bien('Azucar', 0.5, 0.5),
+        'Sal': Bien('Sal', 0.5, 0.5),
+        'Aceite': Bien('Aceite', 0.5, 0.5),
+        'Cafe': Bien('Cafe', 0.5, 0.5),
+    }
     
     mercado = Mercado(bienes)
     for _ in range(1000):
         nombre_consumidor = "Consumidor" + str(_)
-        mercado.agregar_persona(Consumidor(nombre_consumidor, bienes, mercado))
+        bienescons = {bien: random.randint(1, 100) for bien in mercado.bienes.keys()}
+        mercado.agregar_persona(Consumidor(nombre_consumidor, bienescons, mercado))
         print("Agregado consumidor nº ", _)
 
     for _ in range(100):
         nombre_empresa = "Empresa" + str(_)
-        empresa = Empresa.crear_con_acciones(nombre_empresa, bienes, mercado, 10)
+        bienesempres = {bien: random.randint(1, 100) for bien in mercado.bienes.keys()}
+        empresa = Empresa.crear_con_acciones(nombre_empresa, bienesempres, mercado, 10)
         mercado.agregar_persona(empresa)
         print("Agregada empresa nº ", _)
 
@@ -262,6 +262,9 @@ if __name__ == "__main__":
     oferta_total_por_ciclo = []
     exceso_demanda_total_por_ciclo = []
     exceso_oferta_total_por_ciclo = []
+    dinero_consumidores_por_ciclo = {}
+    dinero_empresas_por_ciclo = {}
+
 
     for ciclo in range(num_ciclos):
         print(f"Ciclo {ciclo+1}")
@@ -280,6 +283,16 @@ if __name__ == "__main__":
         oferta_total_por_ciclo.append(oferta_total_ciclo)
         exceso_demanda_total_por_ciclo.append(exceso_demanda_total_ciclo)
         exceso_oferta_total_por_ciclo.append(exceso_oferta_total_ciclo)
+        
+        for persona in mercado.getPersonas():
+            if isinstance(persona, Consumidor):
+                if persona.nombre not in dinero_consumidores_por_ciclo:
+                    dinero_consumidores_por_ciclo[persona.nombre] = []
+                dinero_consumidores_por_ciclo[persona.nombre].append(persona.dinero)
+            else:
+                if persona.nombre not in dinero_empresas_por_ciclo:
+                    dinero_empresas_por_ciclo[persona.nombre] = []
+                dinero_empresas_por_ciclo[persona.nombre].append(persona.dinero)
 
     tiempo_ejecucion = time.time() - init
 
@@ -289,6 +302,16 @@ if __name__ == "__main__":
     plt.plot(oferta_total_por_ciclo, label='Oferta Total')
     plt.plot(exceso_demanda_total_por_ciclo, label='Exceso de Demanda Total')
     plt.plot(exceso_oferta_total_por_ciclo, label='Exceso de Oferta Total')
+    plt.legend()
+    plt.show()
+    
+    #Dinero personas
+    print(dinero_consumidores_por_ciclo)
+    plt.figure()
+    for _,persona in enumerate(dinero_consumidores_por_ciclo):
+        # if _==0 or _ % len(dinero_consumidores_por_ciclo) == 0:
+            print("pasa")
+            plt.plot(dinero_consumidores_por_ciclo[persona], label=persona)
     plt.legend()
     plt.show()
 
