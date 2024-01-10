@@ -1,228 +1,11 @@
 import random
 import time
 import matplotlib.pyplot as plt
+from Mercado import Mercado
+from Bien import Bien
+from Consumidor import Consumidor
+from Empresa import Empresa
 
-
-class Bien:
-    def __init__(self, nombre, elasticidad_precio, elasticidad_ingreso):
-        self.nombre = nombre
-        self.elasticidad_precio = elasticidad_precio
-        self.elasticidad_ingreso = elasticidad_ingreso
-    
-    def __str__(self):
-        return f"Nombre: {self.nombre} - Elasticidad precio: {self.elasticidad_precio} - Elasticidad ingreso: {self.elasticidad_ingreso}"
-
-class Persona:
-    def __init__(self, mercado) -> None:
-        self.dinero = 0
-        self.bienes = {}
-        self.demanda = []
-        self.habilidad_negociacion = random.uniform(0.75,1.25)
-        self.cartera_acciones = []
-        self.cartera_bienes = []
-        self.preferencias = {bien: random.randint(1, 100) for bien in mercado.bienes.keys()}
-
-    def actualizar_ingresos(self):
-        self.dinero += random.randint(100, 1000)
-
-    def comprar_bien(self, mercado, bien, cantidad) -> bool:
-        precio = mercado.precios[bien]
-        if self.dinero < precio * cantidad:
-            return False
-        self.dinero -= precio * cantidad
-        self.bienes[bien.nombre] += cantidad
-        mercado.registrar_transaccion(self, bien.nombre, cantidad, precio * cantidad)
-        self.preferencias[bien.nombre] *= max(0.1, (1-0.1*cantidad))
-        return True
-   
-class Consumidor(Persona):
-    def __init__(self, nombre, bienes, mercado) -> None:
-        super().__init__(mercado)
-        self.nombre = nombre
-        self.bienes = bienes if bienes else {}
-        self.dinero = random.randint(100, 1000)
-
-    def ajustar_preferencias(self):
-        for bien in self.preferencias:
-            if bien not in self.bienes:
-                self.preferencias[bien] *= 1.1
-            else:
-                self.preferencias[bien] /= max(0.1, 1-self.bienes[bien])
-
-    def __str__(self):
-        return f"Nombre: {self.nombre} - Dinero: {self.dinero} - Bienes: {self.bienes}"
-
-class Accion(Bien):
-    def __init__(self, nombre, elasticidad_precio, elasticidad_ingreso, empresa, nombreAccion):
-        super().__init__(nombre, elasticidad_precio, elasticidad_ingreso)
-        self.id = nombreAccion
-        self.empresa = empresa
-
-    def __str__(self):
-        return f"Accion de {self.empresa.nombre}"
-
-class Empresa(Persona):
-    umbral_alto = 100  # Ejemplo de umbral
-    umbral_bajo = 50   # Ejemplo de umbral
-    factor_incremento = 0.05  # 5% de incremento
-    factor_decremento = 0.05  # 5% de decremento
-    def __init__(self, nombre, bienes, mercado) -> None:
-        super().__init__(mercado)
-        self.nombre = nombre
-        self.bienes = bienes if bienes else {}
-        self.dinero = random.randint(100000, 1000000)
-        self.costos_unitarios = { bien: random.randint(1, 100) for bien in self.bienes.keys()}
-        self.demanda = { bien: random.randint(1, 100) for bien in mercado.bienes.keys()}
-        self.oferta = { bien: random.randint(1, 100) for bien in self.bienes.keys()}
-        self.acciones_emitidas = []
-        self.valor_accion = self.dinero / len(self.acciones_emitidas) if len(self.acciones_emitidas) > 0 else 10  # Un valor inicial arbitrario
-
-    def actualizar_oferta(self, bienes, precios):
-        oferta_total = 0
-        for bien in bienes:
-            if bien not in self.costos_unitarios:
-                continue
-            precio = precios[bien]
-            oferta_bien = max(0, precio - self.costos_unitarios[bien])
-            self.oferta[bien] = oferta_bien
-            oferta_total += oferta_bien
-        return oferta_total
-    
-    def ajustar_precio_bien(self, mercado, nombre_bien):
-        ventas = mercado.ventas_bien(nombre_bien)
-        costo_unitario = self.costos_unitarios[nombre_bien]
-
-        if ventas > Empresa.umbral_alto and mercado.precios[nombre_bien] > costo_unitario:
-            mercado.precios[nombre_bien] *= (1 + Empresa.factor_incremento)
-        elif ventas < Empresa.umbral_bajo and mercado.precios[nombre_bien] > costo_unitario:
-            mercado.precios[nombre_bien] *= (1 - Empresa.factor_decremento)
-    
-    def emitir_acciones(self, cantidad, mercado_financiero):
-        # Determinar el precio por acción basado en el capital y las acciones emitidas
-        if len(self.acciones_emitidas) > 0:
-            self.valor_accion = self.dinero / max(len(self.acciones_emitidas), 1) 
-        else:
-            self.valor_accion = 10
-
-        for _ in range(cantidad):
-            accion = Accion(self.nombre, 1, 1, self.nombre, len(mercado_financiero.acciones)+1)
-            self.acciones_emitidas.append(accion)
-            mercado_financiero.acciones[accion.id] = accion
-    
-    def actualizar_costos(self):
-        # Las empresas ajustan sus costos, por ejemplo, debido a la tecnología o la eficiencia
-        for bien in self.costos_unitarios:
-            self.costos_unitarios[bien] *= 1 + random.uniform(-0.01, 0.01)  # Ajuste de costos aleatorio
-
-    @classmethod
-    def crear_con_acciones(cls, nombre, bienes, mercado, cantidad_acciones):
-        empresa = cls(nombre, bienes, mercado)
-        empresa.actualizar_costos()
-        empresa.emitir_acciones(cantidad_acciones, mercado.mercado_financiero)
-        return empresa
-
-    def __str__(self):
-        return f"Nombre: {self.nombre} - Dinero: {self.dinero} - Bienes: {self.bienes} - Costos unitarios: {self.costos_unitarios}"
-    
-class MercadoFinanciero:
-    def __init__(self) -> None:
-        self.acciones = {}
-
-    def comprar_acciones(self, accion):
-        if accion.id in self.acciones:
-            del self.acciones[accion.id]
-            return True
-        return False
-
-class Mercado:
-    def __init__(self, bienes) -> None:
-        self.bienes = bienes if bienes else {}
-        self.personas = []
-        self.precios = {bien: random.randint(1, 100) for bien in self.bienes.keys()}
-        self.mercado_financiero = MercadoFinanciero()
-        self.transacciones = []
-
-    def agregar_persona(self, persona):
-        self.personas.append(persona)
-
-    def encontrar_equilibrio(self, precio_min, precio_max, tolerancia):
-        precios_teoricos = {}
-        demanda_teorica_total = {}
-        oferta_teorica_total = {}
-        exceso_demanda = {}
-        exceso_oferta = {}
-
-        for bien in self.bienes:
-            precios_teoricos[bien] = (precio_min + precio_max) / 2
-            demanda_teorica_total[bien] = 0
-            oferta_teorica_total[bien] = 0
-
-            # Calcula demanda teórica y oferta teórica
-            for consumidor in self.getConsumidores():
-                preferencia = consumidor.preferencias[bien]
-                precio_teorico = precios_teoricos[bien]
-                dinero_disponible = consumidor.dinero
-                cantidad_demandada = preferencia * dinero_disponible / max(precio_teorico, 1)  # Evita división por cero
-                demanda_teorica_total[bien] += cantidad_demandada
-
-            # Calcula oferta teórica
-            for empresa in self.getEmpresas():
-                if bien in empresa.oferta:
-                    oferta_teorica_total[bien] += empresa.oferta[bien]
-
-            # Calcula el exceso de demanda
-            exceso_demanda[bien] = demanda_teorica_total[bien] - oferta_teorica_total[bien]
-            exceso_oferta[bien] = oferta_teorica_total[bien] - demanda_teorica_total[bien]
-
-        return precios_teoricos, demanda_teorica_total, oferta_teorica_total, exceso_demanda, exceso_oferta
-        
-    def ejecutar_ciclo(self):
-        # Actualiza ingresos y preferencias de consumidores
-        for consumidor in self.personas:
-            if isinstance(consumidor, Empresa):
-                continue
-            consumidor.actualizar_ingresos()
-            consumidor.ajustar_preferencias()
-            for bien in mercado.bienes:
-                cantidad_compra = consumidor.preferencias[bien] * consumidor.dinero / self.precios[bien]
-                consumidor.comprar_bien(mercado, bien, cantidad_compra)
-
-        for _, empresa in enumerate(self.personas):
-
-            if isinstance(empresa, Consumidor):
-                continue
-            empresa.emitir_acciones(10, self.mercado_financiero)
-            empresa.actualizar_costos()
-            empresa.actualizar_oferta(self.bienes, self.precios)
-            if _%len(self.personas) == 0:
-                print(f"Empresa {_} actualizando precios")
-            print(f"La empresa {empresa.nombre} tiene los siguientes bienes:")
-            for bien in empresa.bienes:
-                print(f"{bien}: {empresa.bienes[bien]}")
-
-    def getDineroConsumidores(self):
-        return [c.dinero for c in self.personas if isinstance(c, Consumidor)]
-    
-    def getDineroEmpresas(self):
-        return [e.dinero for e in self.personas if isinstance(e, Empresa)]
-    
-    def getConsumidores(self):
-        return [c for c in self.personas if isinstance(c, Consumidor)]
-    
-    def getEmpresas(self):
-        return [e for e in self.personas if isinstance(e, Empresa)]
-    
-    def getPersonas(self):
-        return self.personas
-    
-    def registrar_transaccion(self, consumidor, nombre_bien, cantidad, costo_total):
-        self.transacciones.append({
-            'consumidor': consumidor.nombre,
-            'bien': nombre_bien,
-            'cantidad': cantidad,
-            'costo_total': costo_total
-        })
-    
 
 if __name__ == "__main__":
     bienes = {
@@ -242,13 +25,13 @@ if __name__ == "__main__":
     mercado = Mercado(bienes)
     for _ in range(1000):
         nombre_consumidor = "Consumidor" + str(_)
-        bienescons = {bien: random.randint(1, 100) for bien in mercado.bienes.keys()}
+        bienescons = {bien: random.randint(1, 100) for bien in bienes.keys()}
         mercado.agregar_persona(Consumidor(nombre_consumidor, bienescons, mercado))
         print("Agregado consumidor nº ", _)
 
     for _ in range(100):
         nombre_empresa = "Empresa" + str(_)
-        bienesempres = {bien: random.randint(1, 100) for bien in mercado.bienes.keys()}
+        bienesempres = {bien: random.randint(1, 100) for bien in bienes.keys()}
         empresa = Empresa.crear_con_acciones(nombre_empresa, bienesempres, mercado, 10)
         mercado.agregar_persona(empresa)
         print("Agregada empresa nº ", _)
@@ -264,7 +47,7 @@ if __name__ == "__main__":
     exceso_oferta_total_por_ciclo = []
     dinero_consumidores_por_ciclo = {}
     dinero_empresas_por_ciclo = {}
-
+    precios_por_ciclo = {}
 
     for ciclo in range(num_ciclos):
         print(f"Ciclo {ciclo+1}")
@@ -306,14 +89,29 @@ if __name__ == "__main__":
     plt.show()
     
     #Dinero personas
-    print(dinero_consumidores_por_ciclo)
     plt.figure()
     for _,persona in enumerate(dinero_consumidores_por_ciclo):
-        # if _==0 or _ % len(dinero_consumidores_por_ciclo) == 0:
-            print("pasa")
+        # if _==2 or _ % len(dinero_consumidores_por_ciclo) == 0:
+        if _%5 == 0:
             plt.plot(dinero_consumidores_por_ciclo[persona], label=persona)
     plt.legend()
     plt.show()
+
+    #Dinero empresas
+    plt.figure()
+    for _,persona in enumerate(dinero_empresas_por_ciclo):
+        # if _==2 or _ % len(dinero_empresas_por_ciclo) == 0:
+        if _%5 == 0:
+            plt.plot(dinero_empresas_por_ciclo[persona], label=persona)
+    plt.legend()
+    plt.show()
+
+    # Transacciones
+    transacciones = mercado.getRegistroTransacciones()
+    print("Transacciones:")
+    # print(transacciones)
+    for transaccion in transacciones:
+        print(transaccion)
 
     print(f"Tiempo de ejecución: {tiempo_ejecucion} segundos")
     print("Fin del programa")
