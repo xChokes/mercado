@@ -11,19 +11,6 @@ class Persona:
 
     def actualizar_ingresos(self):
         self.dinero += random.randint(100, 1000)
-
-    def comprar_bien(self, empresa, bien, cantidad, mercado) -> bool:
-        precio = empresa.precios[bien]
-        if self.dinero < precio * cantidad:
-            return False
-        self.dinero -= precio * cantidad
-        if bien not in self.bienes:
-            self.bienes[bien] = 0
-        
-        self.bienes[bien.nombre] += cantidad
-        mercado.registrar_transaccion(self, bien.nombre, cantidad, precio * cantidad)
-        self.preferencias[bien.nombre] *= max(0.1, (1-0.1*cantidad))
-        return True
     
     def getPreferencias(self):
         return self.preferencias

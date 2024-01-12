@@ -3,30 +3,44 @@ import random
 from Accion import Accion
 
 class Empresa(Persona):
-    umbral_alto = 100  # Ejemplo de umbral
-    umbral_bajo = 50   # Ejemplo de umbral
-    factor_incremento = 0.05  # 5% de incremento
-    factor_decremento = 0.05  # 5% de decremento
     def __init__(self, nombre, bienes, mercado) -> None:
         super().__init__(mercado)
         self.nombre = nombre
         self.bienes = bienes if bienes else {}
-        self.dinero = random.randint(100000, 1000000)
+        self.dinero = random.randint(1000, 10000)
         self.costos_unitarios = { bien: random.randint(1, 100) for bien in self.bienes.keys()}
         self.demanda = { bien: random.randint(1, 100) for bien in mercado.bienes.keys()}
-        self.oferta = { bien: random.randint(1, 100) for bien in self.bienes.keys()}
         self.acciones_emitidas = []
         self.valor_accion = self.dinero / len(self.acciones_emitidas) if len(self.acciones_emitidas) > 0 else 10  # Un valor inicial arbitrario
+        self.umbral_alto = random.randint(80, 120)  # Umbral alto dinámico
+        self.umbral_bajo = random.randint(30, 70)   # Umbral bajo dinámico
+        self.factor_incremento = random.uniform(0.1, 0.25)  # Factor de incremento aleatorio
+        self.factor_decremento = random.uniform(0.1, 0.25)  # Factor de decremento aleatorio
+        self.precios = {bien: random.randint(1, 100) for bien in self.bienes.keys()}
     
     def ajustar_precio_bien(self, mercado, nombre_bien):
         ventas = mercado.getRegistroTransacciones()
-        ventas = sum([venta for venta in ventas if venta[0] == self.nombre and venta[1] == nombre_bien])
-        costo_unitario = self.costos_unitarios[nombre_bien]
+        if len(ventas) == 0:
+            self.precios[nombre_bien] *= (1 + random.uniform(-0.01, 0.01))  # Ajuste de precios aleatorio
+            return
+        ventas = sum([venta['cantidad'] for venta in ventas if venta['bien'] == nombre_bien])
 
-        if ventas > Empresa.umbral_alto and mercado.precios[nombre_bien] > costo_unitario:
-            mercado.precios[nombre_bien] *= (1 + Empresa.factor_incremento)
-        elif ventas < Empresa.umbral_bajo and mercado.precios[nombre_bien] > costo_unitario:
-            mercado.precios[nombre_bien] *= (1 - Empresa.factor_decremento)
+        stock_actual = self.bienes[nombre_bien]  # Asumiendo que 'bienes' representa el stock disponible
+
+        costo_unitario = self.costos_unitarios[nombre_bien]
+        antiguoprecio = self.precios[nombre_bien]
+        # Ajusta el precio sobre el coste unitario
+        self.precios[nombre_bien] = costo_unitario * (1 + random.uniform(0.05, 0.15))
+
+        # Reemplaza Empresa.umbral_alto/bajo y Empresa.factor_incremento/decremento por los atributos de la instancia
+        if ventas > self.umbral_alto and stock_actual > 0:
+            self.precios[nombre_bien] *= (1 + self.factor_incremento)
+        elif ventas < self.umbral_bajo:
+            self.precios[nombre_bien] *= (1 - self.factor_decremento)
+        else:
+            self.precios[nombre_bien] *= (1 + random.uniform(-0.01, 0.01))  # Ajuste de precios aleatorio
+
+        print(f"Empresa {self.nombre} ajustando precio de {nombre_bien} de {antiguoprecio} a {self.precios[nombre_bien]}, diferencia: {self.precios[nombre_bien] - antiguoprecio}")
     
     def emitir_acciones(self, cantidad, mercado_financiero):
         # Determinar el precio por acción basado en el capital y las acciones emitidas
@@ -52,5 +66,5 @@ class Empresa(Persona):
         empresa.emitir_acciones(cantidad_acciones, mercado.mercado_financiero)
         return empresa
 
-    def __str__(self):
-        return f"Nombre: {self.nombre} - Dinero: {self.dinero} - Bienes: {self.bienes} - Costos unitarios: {self.costos_unitarios}"
+    def __str__(self) -> str:
+        return f"Empresa {self.nombre} con bienes {self.bienes}, dinero {self.dinero}, costos unitarios {self.costos_unitarios}, demanda {self.demanda}, acciones emitidas {len(self.acciones_emitidas)}, valor accion {self.valor_accion}, umbral alto {self.umbral_alto}, umbral bajo {self.umbral_bajo}, factor incremento {self.factor_incremento}, factor decremento {self.factor_decremento}"
