@@ -6,7 +6,6 @@ from Bien import Bien
 from Consumidor import Consumidor
 from Empresa import Empresa
 
-
 if __name__ == "__main__":
     bienes = {
         'Arroz': Bien('Arroz', 0.5, 0.5),
@@ -23,34 +22,40 @@ if __name__ == "__main__":
     }
     
     mercado = Mercado(bienes)
-    for _ in range(10):
+    for _ in range(100):
         nombre_consumidor = "Consumidor" + str(_)
-        # bienescons = {bien: random.randint(1, 100) for bien in bienes.keys()}
         mercado.agregar_persona(Consumidor(nombre_consumidor, mercado))
         print("Agregado consumidor nº ", _)
 
     for _ in range(5):
         nombre_empresa = "Empresa" + str(_)
-        bienesempres = {bien: random.randint(1, 100) for bien in bienes.keys()}
+        bienesempres = {bien: random.randint(1, 200) for bien in bienes.keys()}
         empresa = Empresa.crear_con_acciones(nombre_empresa, bienesempres, mercado, 10)
         mercado.agregar_persona(empresa)
         for bien in bienesempres:
             mercado.setEmpresaBienes(empresa.nombre, bienesempres[bien], bien)
         print("Agregada empresa nº ", _)
 
-    num_ciclos = 100
+    num_ciclos = 20
     init = time.time()
-    
+
     dinero_consumidores_por_ciclo = {}
     dinero_empresas_por_ciclo = {}
     precios_por_ciclo = {}
 
+    empresaAleatoria = random.choice(mercado.getEmpresas())
+    print(f"Dinero de {empresaAleatoria.nombre} aleatoria: {empresaAleatoria.dinero}")
     for ciclo in range(num_ciclos):
         print(f"Ciclo {ciclo+1}")
-        mercado.ejecutar_ciclo()
+        mercado.ejecutar_ciclo(ciclo)
+        empresaAleatoria2 = None
+        for empresa in mercado.getEmpresas():
+            if empresa.nombre == empresaAleatoria.nombre:
+                empresaAleatoria2 = empresa
+                break
 
-        precios_teoricos, demanda_teorica_total, oferta_teorica_total, exceso_demanda, exceso_oferta = mercado.encontrar_equilibrio(precio_min=0, precio_max=1000, tolerancia=0.01)
-        
+        print(f"Dinero de {empresaAleatoria2.nombre} aleatoria en el ciclo {ciclo+1}: {empresaAleatoria2.dinero}")
+
         for persona in mercado.getPersonas():
             if isinstance(persona, Consumidor):
                 if persona.nombre not in dinero_consumidores_por_ciclo:
@@ -71,17 +76,12 @@ if __name__ == "__main__":
     plt.show()
 
     #Dinero empresas
+    print(dinero_empresas_por_ciclo)
     plt.figure()
     for _,persona in enumerate(dinero_empresas_por_ciclo):
         plt.plot(dinero_empresas_por_ciclo[persona], label=persona)
     plt.legend()
     plt.show()
-
-    # Transacciones
-    transacciones = mercado.getRegistroTransacciones()
-    print("Transacciones:")
-    for transaccion in transacciones:
-        print(transaccion)
 
     print("Información de empresa aleatoria:")
     empresa = random.choice(mercado.getEmpresas())
