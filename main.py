@@ -5,6 +5,7 @@ from Mercado import Mercado
 from Bien import Bien
 from Consumidor import Consumidor
 from Empresa import Empresa
+from EmpresaProductora import EmpresaProductora
 
 if __name__ == "__main__":
     bienes = {
@@ -22,6 +23,13 @@ if __name__ == "__main__":
     }
     
     mercado = Mercado(bienes)
+
+    for _ in range(3):
+        nombre_empresa_productora = "EmpresaProductora" + str(_)
+        empresa = EmpresaProductora(nombre_empresa_productora, mercado=mercado)
+        mercado.agregar_persona(empresa)
+        print("Agregada empresa productora nº ", _)
+
     for _ in range(100):
         nombre_consumidor = "Consumidor" + str(_)
         mercado.agregar_persona(Consumidor(nombre_consumidor, mercado))
@@ -29,11 +37,8 @@ if __name__ == "__main__":
 
     for _ in range(5):
         nombre_empresa = "Empresa" + str(_)
-        bienesempres = {bien: random.randint(1, 200) for bien in bienes.keys()}
-        empresa = Empresa.crear_con_acciones(nombre_empresa, bienesempres, mercado, 10)
+        empresa = Empresa.crear_con_acciones(nombre=nombre_empresa, mercado=mercado, cantidad_acciones=100, bienes={})
         mercado.agregar_persona(empresa)
-        for bien in bienesempres:
-            mercado.setEmpresaBienes(empresa.nombre, bienesempres[bien], bien)
         print("Agregada empresa nº ", _)
 
     num_ciclos = 20
@@ -68,6 +73,10 @@ if __name__ == "__main__":
 
     tiempo_ejecucion = time.time() - init
     
+    print("Transacciones:")
+    for transaccion in mercado.getRegistroTransacciones():
+        print(transaccion)
+
     #Dinero personas
     plt.figure()
     for _,persona in enumerate(dinero_consumidores_por_ciclo):
