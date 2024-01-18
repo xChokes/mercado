@@ -14,6 +14,7 @@ class Empresa(Persona):
         self.factor_incremento = random.uniform(0.1, 0.25)  # Factor de incremento aleatorio
         self.factor_decremento = random.uniform(0.1, 0.25)  # Factor de decremento aleatorio
         self.precios = {bien: random.randint(1, 100) for bien in self.bienes.keys()}
+        self.ventasPorBienPorCiclo = {bien: [] for bien in self.bienes.keys()} # Ejemplo: {'Sal': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
 
     def ajustar_precio_bien(self, mercado, nombre_bien):
         ventas = sum([venta['cantidad'] for venta in mercado.getRegistroTransacciones() if venta['bien'] == nombre_bien])
@@ -43,6 +44,11 @@ class Empresa(Persona):
         self.acciones_emitidas += cantidad
         print(f"Empresa {self.nombre} emitió {cantidad} acciones a un valor de {self.valor_accion} cada una")
 
+    def ajustar_preferencias(self):
+        # Se ajustan las preferencias en base al stock que hay de cada bien
+        for bien in self.bienes:
+            self.preferencias[bien] = self.bienes[bien] / max(sum(self.bienes.values()), 1) # Evita división por cero en caso de que no haya stock
+
     def distribuir_dividendos(self, mercado_financiero):
         if self.nombre in mercado_financiero.acciones:
             total_acciones, _ = mercado_financiero.acciones[self.nombre]
@@ -57,8 +63,14 @@ class Empresa(Persona):
     def calcular_dividendo(self):
         # Calcula el dividendo por acción
         return 0.1 * self.dinero / self.acciones_emitidas if self.acciones_emitidas > 0 else 0
-            
     
+    def ciclo_persona(self, ciclo, mercado):
+        self.decidir_compra(mercado=mercado, ciclo=ciclo)
+        self.emitir_acciones(10, mercado.mercado_financiero)
+        self.distribuir_dividendos(mercado.mercado_financiero)
+        for bien in self.bienes:
+            self.ajustar_precio_bien(mercado, bien)
+            
     @classmethod
     def crear_con_acciones(cls, nombre, mercado, cantidad_acciones, bienes = {}):
         empresa = cls(nombre, mercado, bienes=bienes )

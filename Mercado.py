@@ -1,3 +1,4 @@
+import random
 from EmpresaProductora import EmpresaProductora
 from MercadoFinanciero import MercadoFinanciero
 from Consumidor import Consumidor
@@ -16,35 +17,7 @@ class Mercado:
 
     def ejecutar_ciclo(self, ciclo):
         for persona in self.getPersonas():
-            if isinstance(persona, Consumidor):
-                persona.actualizar_ingresos()
-                persona.ajustar_preferencias()
-                persona.decidir_acciones(self.mercado_financiero, self.registrar_transaccion, ciclo)
-                # Logica de compra
-                preferencias = persona.getPreferencias()
-                sortedprefdict = {k: v for k, v in sorted(preferencias.items(), key=lambda item: item[1])}
-                for bien in sortedprefdict:
-                    if preferencias[bien] > 0:
-                        empresas = [empresa for empresa in self.getEmpresas() if bien in empresa.bienes]
-                        empresas.sort(key=lambda empresa: empresa.precios[bien])
-                        for empresa in empresas:
-                            cantidad = persona.preferencias[bien] * persona.dinero / (2 * empresa.precios[bien])
-                            if cantidad > 0:
-                                if empresa.bienes[bien] > 0:
-                                    dineroAntes = persona.dinero
-                                    dineroAntes2 = empresa.dinero
-                                    if persona.comprar_bien(empresa, bien, 1, self, ciclo):
-                                        dineroDespues = persona.dinero
-                                        dineroDespues2 = empresa.dinero
-                                        print(f"La empresa {empresa.nombre} ha pasado de tener {dineroAntes2} a {dineroDespues2} y el consumidor {persona.nombre} ha pasado de tener {dineroAntes} a {dineroDespues}")
-                                        break
-            else:
-                persona.emitir_acciones(10, self.mercado_financiero)
-                if isinstance(persona, EmpresaProductora):
-                    persona.actualizar_costos()
-                persona.distribuir_dividendos(self.mercado_financiero)
-                for bien in persona.bienes:
-                    persona.ajustar_precio_bien(self, bien)
+            persona.ciclo_persona(ciclo, self)
 
     def getDineroConsumidores(self):
         return [c.dinero for c in self.personas if isinstance(c, Consumidor)]
@@ -56,7 +29,7 @@ class Mercado:
         return [c for c in self.personas if isinstance(c, Consumidor)]
     
     def getEmpresas(self):
-        return [e for e in self.personas if isinstance(e, Empresa)]
+        return [e for e in self.personas if isinstance(e, Empresa) or isinstance(e, EmpresaProductora)]
     
     def getPersonas(self):
         return self.personas

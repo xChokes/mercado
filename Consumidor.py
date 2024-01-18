@@ -7,15 +7,7 @@ class Consumidor(Persona):
         self.nombre = nombre # Nuevo: nombre del consumidor
         self.bienes = bienes if bienes else {} # Nuevo: bienes en posesión
         self.dinero = random.randint(1000, 10000) # Nuevo: dinero inicial
-        self.max_precio = {bien: random.uniform(0.5, 1.5) * self.dinero / 100 for bien in mercado.bienes.keys()}  # Nuevo: precio máximo que el consumidor está dispuesto a pagar
         self.historial_compras = {} # Nuevo: historial de precios de compra de acciones
-
-    def ajustar_preferencias(self):
-        for bien in self.preferencias:
-            if bien in self.bienes:
-                self.preferencias[bien] *= max(0.1, (1 - 0.1 * self.bienes[bien]))  # Ajustado para disminuir con la cantidad comprada
-            elif bien not in self.bienes:
-                self.preferencias[bien] *= 1.1
     
     def comprar_acciones(self, mercado_financiero, nombre_empresa, cantidad):
         if nombre_empresa in mercado_financiero.acciones:
@@ -34,6 +26,13 @@ class Consumidor(Persona):
         else:
             print(f"Acciones de {nombre_empresa} no disponibles en el mercado")
             return False
+
+    def ajustar_preferencias(self):
+        for bien in self.preferencias:
+            if bien in self.bienes:
+                self.preferencias[bien] *= max(0.1, (1 - 0.1 * len(self.bienes[bien])))  # Ajustado para disminuir con la cantidad comprada
+            elif bien not in self.bienes:
+                self.preferencias[bien] *= random.uniform(1.1, 1.25)  # Ajuste aleatorio
 
     def vender_acciones(self, mercado_financiero, nombre_empresa, cantidad):
         if nombre_empresa in self.cartera_acciones:
@@ -95,3 +94,9 @@ class Consumidor(Persona):
         porcentaje_venta = random.uniform(0.2, 0.5)  # Ejemplo: vender entre el 20% y el 50% de las acciones
         cantidad_a_vender = max(1, int(cantidad_acciones * porcentaje_venta))  # Asegura vender al menos 1 acción
         return cantidad_a_vender
+    
+    def ciclo_persona(self, ciclo, mercado):
+        self.actualizar_ingresos()
+        self.ajustar_preferencias()
+        self.decidir_acciones(mercado.mercado_financiero, mercado.registrar_transaccion, ciclo)
+        self.decidir_compra(mercado=mercado, ciclo=ciclo)
