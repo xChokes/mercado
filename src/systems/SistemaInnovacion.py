@@ -142,7 +142,7 @@ class SistemaInnovacion:
         self.productos_innovadores.append(producto)
 
         # Agregar producto al mercado
-        from Bien import Bien
+        from ..models.Bien import Bien
         nuevo_bien = Bien(nombre_nuevo, categoria)
         self.mercado.bienes[nombre_nuevo] = nuevo_bien
 

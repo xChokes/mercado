@@ -4,7 +4,7 @@ Implementa intermediación financiera, crédito y política monetaria
 """
 import random
 import math
-from ConfigEconomica import ConfigEconomica
+from ..config.ConfigEconomica import ConfigEconomica
 
 
 class Banco:
@@ -25,8 +25,8 @@ class Banco:
 
     def evaluar_riesgo_crediticio(self, solicitante):
         """Evalúa el riesgo crediticio de un solicitante"""
-        from Consumidor import Consumidor
-        from Empresa import Empresa
+        from ..models.Consumidor import Consumidor
+        from ..models.Empresa import Empresa
 
         if isinstance(solicitante, Consumidor):
             # Factor ingreso

@@ -1,5 +1,5 @@
 import random
-from InventarioBien import InventarioBien
+from .InventarioBien import InventarioBien
 
 class Persona:
     def __init__(self, mercado):

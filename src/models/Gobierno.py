@@ -2,7 +2,7 @@
 Sistema de Gobierno que implementa políticas económicas, regulación y servicios públicos
 """
 import random
-from ConfigEconomica import ConfigEconomica
+from ..config.ConfigEconomica import ConfigEconomica
 
 class Gobierno:
     def __init__(self, mercado):

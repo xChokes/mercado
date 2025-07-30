@@ -1,15 +1,16 @@
 import random
 import math
-from EmpresaProductora import EmpresaProductora
-from MercadoFinanciero import MercadoFinanciero
-from Consumidor import Consumidor
-from Empresa import Empresa
-from Gobierno import Gobierno
-from ConfigEconomica import ConfigEconomica
-from SistemaBancario import SistemaBancario
-from SectoresEconomicos import EconomiaMultisectorial
-from PsicologiaEconomica import inicializar_perfiles_psicologicos
-from SistemaInnovacion import SistemaInnovacion
+from .EmpresaProductora import EmpresaProductora
+from .MercadoFinanciero import MercadoFinanciero
+from .Consumidor import Consumidor
+from .Empresa import Empresa
+from .Gobierno import Gobierno
+from ..config.ConfigEconomica import ConfigEconomica
+from ..systems.SistemaBancario import SistemaBancario
+from ..systems.SectoresEconomicos import EconomiaMultisectorial
+from ..systems.PsicologiaEconomica import inicializar_perfiles_psicologicos
+from ..systems.SistemaInnovacion import SistemaInnovacion
+from ..systems.AnalyticsML import SistemaAnalyticsML
 
 
 class Mercado:
@@ -25,6 +26,7 @@ class Mercado:
         self.economia_sectorial = EconomiaMultisectorial(self)
         self.sistema_innovacion = SistemaInnovacion(self)
         self.sistema_psicologia = None  # Se inicializa después
+        self.sistema_analytics = SistemaAnalyticsML(self)
 
         # Indicadores económicos
         self.ciclo_actual = 0
@@ -271,6 +273,7 @@ class Mercado:
         self.sistema_bancario.ciclo_bancario()
         self.economia_sectorial.ciclo_economico_sectorial()
         self.sistema_innovacion.ciclo_innovacion()
+        self.sistema_analytics.ciclo_analytics()
         if self.sistema_psicologia:
             self.sistema_psicologia.ciclo_psicologia_economica()
 
@@ -333,6 +336,7 @@ class Mercado:
         stats_base['sectores_economicos'] = self.economia_sectorial.obtener_estadisticas_sectoriales()
         stats_base['estructura_economica'] = self.economia_sectorial.obtener_resumen_estructural()
         stats_base['innovacion'] = self.sistema_innovacion.obtener_estadisticas_innovacion()
+        stats_base['analytics_ml'] = self.sistema_analytics.obtener_estadisticas_analytics()
 
         if self.sistema_psicologia:
             stats_base['psicologia_economica'] = self.sistema_psicologia.obtener_estadisticas_psicologicas()

@@ -1,6 +1,6 @@
-from Empresa import Empresa
-from ConfigEconomica import ConfigEconomica
-from InventarioBien import InventarioBien
+from .Empresa import Empresa
+from ..config.ConfigEconomica import ConfigEconomica
+from .InventarioBien import InventarioBien
 import random
 import math
 

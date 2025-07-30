@@ -4,7 +4,7 @@ Implementa sectores primario, secundario y terciario con cadenas productivas
 """
 import random
 from enum import Enum
-from ConfigEconomica import ConfigEconomica
+from ..config.ConfigEconomica import ConfigEconomica
 
 
 class TipoSector(Enum):
@@ -95,12 +95,24 @@ class Sector:
         empleo = 0
 
         for empresa in self.empresas:
-            # PIB como valor agregado
-            if hasattr(empresa, 'ventas_ultimas'):
-                ventas = empresa.ventas_ultimas
-                costos_inputs = ventas * sum(self.inputs_requeridos.values())
-                valor_agregado = ventas - costos_inputs
-                pib += valor_agregado
+            # PIB como valor agregado basado en dinero de la empresa
+            # Usamos una estimación del valor agregado basada en el capital
+            if hasattr(empresa, 'dinero'):
+                # Estimación: el valor agregado es proporcional al capital de la empresa
+                valor_base = empresa.dinero * 0.1  # 10% del capital como valor agregado mensual
+                
+                # Si tiene ventas por bien, sumarlas
+                if hasattr(empresa, 'ventasPorBienPorCiclo'):
+                    ventas_totales = 0
+                    for bien_ventas in empresa.ventasPorBienPorCiclo.values():
+                        if isinstance(bien_ventas, dict):
+                            ventas_totales += sum(bien_ventas.values())
+                    
+                    # Si hay ventas, usar eso como base
+                    if ventas_totales > 0:
+                        valor_base = ventas_totales * 0.3  # 30% como valor agregado
+                
+                pib += valor_base
 
             # Empleo
             if hasattr(empresa, 'empleados'):
@@ -184,22 +196,24 @@ class EconomiaMultisectorial:
 
     def _determinar_sector_empresa(self, empresa):
         """Determina a qué sector pertenece una empresa"""
-        if hasattr(empresa, 'bienes'):
-            bienes_empresa = list(empresa.bienes.keys())
-
-            # Heurística simple basada en tipos de bienes
-            if any(bien in ['Arroz', 'Papa', 'Cafe'] for bien in bienes_empresa):
+        # Primero verificar si es EmpresaProductora
+        if empresa.__class__.__name__ == 'EmpresaProductora':
+            # Las empresas productoras van principalmente a agricultura o manufactura
+            if any(word in empresa.nombre.lower() for word in ['agro', 'agri', 'alimento']):
                 return 'agricultura'
-            elif any(bien in ['Carne', 'Pollo', 'Leche'] for bien in bienes_empresa):
-                return 'agricultura'  # Ganadería dentro de agricultura
+            elif any(word in empresa.nombre.lower() for word in ['manufactura', 'industria', 'prod']):
+                return 'manufactura'
             else:
-                # Por defecto, manufactura para empresas productoras
-                if hasattr(empresa, 'capacidad_produccion'):
-                    return 'manufactura'
-                else:
-                    return 'servicios'  # Empresas de servicios
-
-        return 'servicios'  # Por defecto
+                # Por defecto las productoras van a agricultura
+                return 'agricultura'
+        else:
+            # Empresas normales van a servicios o comercio
+            if any(word in empresa.nombre.lower() for word in ['comercio', 'retail', 'market', 'trading']):
+                return 'comercio'
+            elif any(word in empresa.nombre.lower() for word in ['servicio', 'service', 'hub']):
+                return 'servicios'
+            else:
+                return 'servicios'  # Por defecto
 
     def calcular_efectos_intersectoriales(self):
         """Calcula efectos de propagación entre sectores"""

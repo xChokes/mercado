@@ -1,5 +1,5 @@
-from Persona import Persona
-from ConfigEconomica import ConfigEconomica
+from .Persona import Persona
+from ..config.ConfigEconomica import ConfigEconomica
 import random
 
 class Empresa(Persona):

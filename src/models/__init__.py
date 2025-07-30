@@ -1,0 +1,3 @@
+"""
+Modelos económicos del simulador
+"""

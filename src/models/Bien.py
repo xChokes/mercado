@@ -1,5 +1,5 @@
 import random
-from ConfigEconomica import ConfigEconomica
+from ..config.ConfigEconomica import ConfigEconomica
 
 class Bien:
     def __init__(self, nombre, categoria=None):

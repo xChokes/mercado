@@ -1,0 +1,3 @@
+"""
+Configuración económica del simulador
+"""

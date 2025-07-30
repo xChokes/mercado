@@ -11,6 +11,7 @@ from Consumidor import Consumidor
 from Empresa import Empresa
 from EmpresaProductora import EmpresaProductora
 from ConfigEconomica import ConfigEconomica
+from PsicologiaEconomica import inicializar_perfiles_psicologicos
 
 def crear_bienes_realistas():
     """Crea bienes con características económicas realistas"""
@@ -88,7 +89,11 @@ def ejecutar_simulacion(mercado, num_ciclos=50):
         'dinero_consumidores': [],
         'dinero_empresas': [],
         'precios_promedio': [],
-        'transacciones_totales': []
+        'transacciones_totales': [],
+        'sistema_bancario': [],
+        'sectores_economicos': [],
+        'innovacion': [],
+        'psicologia': []
     }
     
     for ciclo in range(num_ciclos):
@@ -118,6 +123,33 @@ def ejecutar_simulacion(mercado, num_ciclos=50):
             # Transacciones
             trans_ciclo = len([t for t in mercado.transacciones if t.get('ciclo') == ciclo])
             metricas['transacciones_totales'].append(trans_ciclo)
+            
+            # Sistemas avanzados
+            try:
+                stats_bancario = mercado.sistema_bancario.obtener_estadisticas_sistema()
+                metricas['sistema_bancario'].append(stats_bancario)
+                
+                stats_sectores = mercado.economia_sectorial.obtener_estadisticas_sectoriales()
+                metricas['sectores_economicos'].append(stats_sectores)
+                
+                stats_innovacion = mercado.sistema_innovacion.obtener_estadisticas_innovacion()
+                metricas['innovacion'].append(stats_innovacion)
+                
+                stats_analytics = mercado.sistema_analytics.obtener_estadisticas_analytics()
+                metricas['analytics'] = metricas.get('analytics', [])
+                metricas['analytics'].append(stats_analytics)
+                
+                if hasattr(mercado, 'sistema_psicologia') and mercado.sistema_psicologia:
+                    stats_psicologia = mercado.sistema_psicologia.obtener_estadisticas_psicologicas()
+                    metricas['psicologia'].append(stats_psicologia)
+            except Exception as e:
+                print(f"   ⚠️  Error recopilando métricas avanzadas: {e}")
+                metricas['sistema_bancario'].append({})
+                metricas['sectores_economicos'].append({})
+                metricas['innovacion'].append({})
+                metricas['psicologia'].append({})
+                metricas['analytics'] = metricas.get('analytics', [])
+                metricas['analytics'].append({})
             
             # Progreso cada 10 ciclos
             if (ciclo + 1) % 10 == 0:
@@ -169,6 +201,52 @@ def generar_analisis_economico(mercado, metricas):
     print(f"\n🔄 FASE ECONÓMICA ACTUAL: {mercado.fase_ciclo_economico.upper()}")
     if mercado.shock_economico_activo:
         print("⚠️  SHOCK ECONÓMICO EN CURSO")
+    
+    # Análisis del sistema bancario
+    if metricas['sistema_bancario']:
+        stats_bancario = metricas['sistema_bancario'][-1]
+        print(f"\n🏦 SISTEMA BANCARIO:")
+        print(f"   Capital Total: ${stats_bancario.get('capital_total', 0):,.2f}")
+        print(f"   Préstamos Totales: ${stats_bancario.get('prestamos_totales', 0):,.2f}")
+        print(f"   Depósitos Totales: ${stats_bancario.get('depositos_totales', 0):,.2f}")
+        print(f"   Tasa de Referencia: {stats_bancario.get('tasa_referencia', 0):.2%}")
+    
+    # Análisis sectorial
+    if metricas['sectores_economicos']:
+        stats_sectores = metricas['sectores_economicos'][-1]
+        print(f"\n🏭 ANÁLISIS SECTORIAL:")
+        for sector, datos in stats_sectores.items():
+            if isinstance(datos, dict) and 'pib' in datos:
+                print(f"   {sector.capitalize()}: PIB ${datos['pib']:,.0f} - {datos['empresas']} empresas - {datos['empleo']} empleos")
+    
+    # Análisis de innovación
+    if metricas['innovacion']:
+        stats_innovacion = metricas['innovacion'][-1]
+        print(f"\n🔬 SISTEMA DE INNOVACIÓN:")
+        print(f"   Inversión I+D Total: ${stats_innovacion.get('inversion_id_total', 0):,.2f}")
+        print(f"   Tecnologías Disponibles: {stats_innovacion.get('tecnologias_disponibles', 0)}")
+        print(f"   Productos Innovadores: {stats_innovacion.get('productos_innovadores', 0)}")
+    
+    # Análisis de Analytics y ML
+    if metricas.get('analytics') and metricas['analytics']:
+        stats_analytics = metricas['analytics'][-1]
+        print(f"\n🤖 SISTEMA DE ANALYTICS Y ML:")
+        print(f"   Modelos Entrenados: {stats_analytics.get('modelos_entrenados', 0)}")
+        print(f"   Predictores Disponibles: {stats_analytics.get('predictores_disponibles', 0)}")
+        if 'clusters_identificados' in stats_analytics:
+            print(f"   Clusters de Consumidores: {stats_analytics.get('clusters_identificados', 0)}")
+            if 'perfiles_consumidor' in stats_analytics:
+                print("   Perfiles Identificados:")
+                for cluster, perfil in stats_analytics['perfiles_consumidor'].items():
+                    print(f"     • {cluster}: {perfil}")
+    
+    # Análisis psicológico
+    if metricas['psicologia'] and metricas['psicologia']:
+        stats_psicologia = metricas['psicologia'][-1]
+        print(f"\n🧠 PERFIL PSICOLÓGICO ECONÓMICO:")
+        print(f"   Confianza del Consumidor: {stats_psicologia.get('confianza_promedio', 0.5):.1%}")
+        print(f"   Aversión al Riesgo Promedio: {stats_psicologia.get('aversion_riesgo_promedio', 0.5):.1%}")
+        print(f"   Optimismo General: {stats_psicologia.get('optimismo_promedio', 0.5):.1%}")
     
     # Top empresas por capital
     empresas_ordenadas = sorted(mercado.getEmpresas(), 
@@ -264,8 +342,16 @@ def main():
     mercado = Mercado(bienes)
     print("✅ Mercado inicializado con gobierno y políticas económicas")
     
-    # 3. Configurar economía inicial
+    # 2.1. Inicializar sistemas avanzados
     configurar_economia_inicial(mercado)
+    
+    # 2.2. Activar sistemas de psicología económica
+    inicializar_perfiles_psicologicos(mercado)
+    print("✅ Sistema de psicología económica activado")
+    
+    # 2.3. Asignar empresas a sectores económicos
+    mercado.economia_sectorial.asignar_empresas_a_sectores()
+    print("✅ Sistema sectorial configurado")
     
     # 4. Ejecutar simulación
     num_ciclos = 40  # Simulación más larga para ver efectos
