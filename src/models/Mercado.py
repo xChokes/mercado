@@ -12,12 +12,19 @@ from ..systems.PsicologiaEconomica import inicializar_perfiles_psicologicos
 from ..systems.SistemaInnovacion import SistemaInnovacion
 from ..systems.AnalyticsML import SistemaAnalyticsML
 from ..systems.ComercioInternacional import Pais, TipoCambio
+from ..systems.CrisisFinanciera import (
+    detectar_burbuja_precios,
+    evaluar_riesgo_sistemico,
+    simular_corrida_bancaria,
+)
+from ..systems.MercadoLaboral import MercadoLaboral
 
 
 class Mercado:
     def __init__(self, bienes):
         self.bienes = bienes if bienes else {}
         self.personas = []
+        self.contador_consumidores = 0
         self.mercado_financiero = MercadoFinanciero()
         self.transacciones = []
         self.gobierno = Gobierno(self)
@@ -26,6 +33,7 @@ class Mercado:
         self.sistema_bancario = SistemaBancario(self)
         self.economia_sectorial = EconomiaMultisectorial(self)
         self.sistema_innovacion = SistemaInnovacion(self)
+        self.mercado_laboral = MercadoLaboral(self)
         self.sistema_psicologia = None  # Se inicializa después
         self.sistema_analytics = SistemaAnalyticsML(self)
 
@@ -54,12 +62,17 @@ class Mercado:
         self.empresas_activas = []
         self.nivel_competencia = {}
 
+        # Estado de crisis financiera
+        self.crisis_financiera_activa = False
+
         # Inicializar precios históricos
         for bien in self.bienes:
             self.precios_historicos[bien] = []
 
     def agregar_persona(self, persona):
         self.personas.append(persona)
+        if isinstance(persona, Consumidor):
+            self.contador_consumidores += 1
 
     def agregar_pais(self, pais, mercado_nacional=None):
         """Registra un país y opcionalmente su mercado nacional"""
@@ -273,6 +286,37 @@ class Mercado:
 
             self.nivel_competencia[bien] = competencia
 
+    def generar_nuevos_consumidores(self):
+        """Genera nuevos consumidores según la tasa de crecimiento poblacional"""
+        tasa_mensual = ConfigEconomica.CRECIMIENTO_POBLACION_ANUAL / 12
+        cantidad = int(len(self.getConsumidores()) * tasa_mensual)
+        for _ in range(cantidad):
+            self.contador_consumidores += 1
+            nombre = f"Consumidor{self.contador_consumidores:03d}"
+            nuevo = Consumidor(nombre, self)
+            self.agregar_persona(nuevo)
+
+    def retirar_consumidores(self):
+        """Retira consumidores mayores o inactivos"""
+        tasa_mensual = ConfigEconomica.CRECIMIENTO_POBLACION_ANUAL / 12
+        cantidad = int(len(self.getConsumidores()) * tasa_mensual * 0.5)
+        if cantidad <= 0:
+            return
+        candidatos = [c for c in self.getConsumidores()
+                       if c.estado_demografico == 'jubilado']
+        candidatos.sort(key=lambda c: c.edad, reverse=True)
+        for consumidor in candidatos[:cantidad]:
+            if consumidor.empleado:
+                consumidor.perder_empleo()
+            self.personas.remove(consumidor)
+
+    def actualizar_demografia(self):
+        """Actualiza la demografía del mercado"""
+        for consumidor in self.getConsumidores():
+            consumidor.envejecer()
+        self.generar_nuevos_consumidores()
+        self.retirar_consumidores()
+
     def registrar_estadisticas(self):
         """Registra estadísticas del ciclo actual"""
         # PIB
@@ -334,6 +378,16 @@ class Mercado:
         # 4. Ciclo del gobierno (políticas, impuestos, regulación)
         indicadores_gobierno = self.gobierno.ciclo_gobierno(ciclo)
 
+        # 4.5 Evaluar posible crisis financiera e intervenir
+        riesgo = evaluar_riesgo_sistemico(self.sistema_bancario)
+        burbuja = detectar_burbuja_precios(self)
+        if (riesgo > 0.6 or indicadores_gobierno['desempleo'] > 0.2 or burbuja):
+            self.crisis_financiera_activa = True
+            self.sistema_bancario.banco_central.intervenir_en_crisis(self.sistema_bancario)
+            simular_corrida_bancaria(self.sistema_bancario, intensidad=0.1)
+        else:
+            self.crisis_financiera_activa = False
+
         # 5. Actualizar competencia
         self.actualizar_nivel_competencia()
 
@@ -370,6 +424,8 @@ class Mercado:
         print(f"Consumidores: {len(self.getConsumidores())}")
         if self.shock_economico_activo:
             print("⚠️  SHOCK ECONÓMICO ACTIVO")
+        if self.crisis_financiera_activa:
+            print("⚠️  CRISIS FINANCIERA ACTIVA")
         print("-" * 50)
 
     def obtener_estadisticas_completas(self):
@@ -382,7 +438,8 @@ class Mercado:
             'volumen_transacciones': self.volumen_transacciones[:],
             'fase_ciclo_actual': self.fase_ciclo_economico,
             'nivel_competencia': self.nivel_competencia.copy(),
-            'shock_activo': self.shock_economico_activo
+            'shock_activo': self.shock_economico_activo,
+            'crisis_financiera': self.crisis_financiera_activa
         }
 
         # Agregar estadísticas de sistemas avanzados

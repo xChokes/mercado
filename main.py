@@ -140,8 +140,9 @@ def ejecutar_simulacion(mercado, num_ciclos=50):
     
     for ciclo in range(num_ciclos):
         print(f"\n📅 Ejecutando ciclo {ciclo + 1}/{num_ciclos}")
-        
+
         try:
+            mercado.actualizar_demografia()
             mercado.ejecutar_ciclo(ciclo)
             
             # Recopilar métricas básicas

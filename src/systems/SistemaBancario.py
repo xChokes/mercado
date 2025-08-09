@@ -19,6 +19,10 @@ class Banco:
         self.ratio_capital = 0.08  # Ratio de capital mínimo
         self.morosidad_historica = []
 
+        # Gestión de riesgo sistémico
+        self.exposiciones_interbancarias = {}  # {nombre_banco: monto}
+        self.estado = 'activo'
+
         # Políticas de riesgo
         self.limite_credito_individual = capital_inicial * 0.1
         self.ratio_prestamos_depositos_max = 0.9
@@ -211,9 +215,17 @@ class Banco:
             'reservas': self.reservas,
             'morosidad': morosidad_actual,
             'ratio_capital': self.capital / max(1, prestamos_totales),
+            'ratio_solvencia': self.calcular_ratio_solvencia(),
             'numero_prestamos': len(self.prestamos),
             'numero_depositantes': len(self.depositos)
         }
+
+    def calcular_ratio_solvencia(self):
+        """Calcula un ratio de solvencia simple"""
+        pasivos = sum(self.depositos.values())
+        if pasivos == 0:
+            return 1.0
+        return (self.capital + self.reservas) / pasivos
 
 
 class SistemaBancario:
@@ -230,6 +242,13 @@ class SistemaBancario:
             capital = random.randint(2000000, 5000000)
             banco = Banco(nombre, capital)
             self.bancos.append(banco)
+
+        # Establecer exposiciones interbancarias iniciales
+        for banco in self.bancos:
+            for otro in self.bancos:
+                if banco is not otro and random.random() < 0.3:
+                    monto = banco.capital * 0.05
+                    banco.exposiciones_interbancarias[otro.nombre] = monto
 
     def ciclo_bancario(self):
         """Ejecuta el ciclo de todos los bancos"""
@@ -253,10 +272,25 @@ class SistemaBancario:
             # Pagar intereses a depositantes
             banco.pagar_intereses_depositos()
 
+        # Evaluar solvencia y eventos de default
+        bancos_en_default = []
+        for banco in list(self.bancos):
+            if banco.calcular_ratio_solvencia() < banco.ratio_capital or banco.capital < 0:
+                bancos_en_default.append(banco)
+                self.bancos.remove(banco)
+                banco.estado = 'default'
+
+                # Propagar pérdidas por exposiciones interbancarias
+                for otro in self.bancos:
+                    perdida = otro.exposiciones_interbancarias.pop(banco.nombre, 0)
+                    if perdida > 0:
+                        otro.capital -= perdida
+
         return {
             'morosos_totales': total_morosos,
             'pagos_totales': total_pagos,
-            'bancos_activos': len(self.bancos)
+            'bancos_activos': len(self.bancos),
+            'bancos_en_default': [b.nombre for b in bancos_en_default]
         }
 
     def obtener_banco_optimal(self, persona, tipo_operacion='prestamo'):
@@ -277,7 +311,8 @@ class SistemaBancario:
             'prestamos_totales': sum([sum([p['monto'] for p in b.prestamos.values()]) for b in self.bancos]),
             'depositos_totales': sum([sum(b.depositos.values()) for b in self.bancos]),
             'tasa_referencia': self.banco_central.tasa_referencia,
-            'bancos_operando': len(self.bancos)
+            'bancos_operando': len(self.bancos),
+            'exposiciones_interbancarias': sum([sum(b.exposiciones_interbancarias.values()) for b in self.bancos])
         }
         return stats
 
@@ -308,3 +343,18 @@ class BancoCentral:
 
             # Límites de tasa
             self.tasa_referencia = max(0.001, min(0.15, nueva_tasa))
+
+    def intervenir_en_crisis(self, sistema_bancario, monto_total: float = 1000000):
+        """Inyecta liquidez a los bancos durante una crisis"""
+        if self.reservas_internacionales <= 0 or not sistema_bancario.bancos:
+            return 0
+
+        apoyo_por_banco = monto_total / len(sistema_bancario.bancos)
+        apoyo_por_banco = min(apoyo_por_banco, self.reservas_internacionales / len(sistema_bancario.bancos))
+
+        for banco in sistema_bancario.bancos:
+            banco.reservas += apoyo_por_banco
+            banco.capital += apoyo_por_banco * 0.1
+
+        self.reservas_internacionales -= apoyo_por_banco * len(sistema_bancario.bancos)
+        return apoyo_por_banco * len(sistema_bancario.bancos)

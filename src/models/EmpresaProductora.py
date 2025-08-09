@@ -16,6 +16,9 @@ class EmpresaProductora(Empresa):
         self.capacidad_produccion = {}
         self.produccion_actual = {}
         self.eficiencia_produccion = random.uniform(0.7, 1.0)
+
+        # Tecnología limpia
+        self.factor_emisiones = 1.0  # 1.0 sin mejoras
         
         # Costos de producción más realistas
         self.costos_unitarios = {}
@@ -75,12 +78,34 @@ class EmpresaProductora(Empresa):
             self.precios[bien] = round(costo * (1 + margen), 2)
             
     def contratar(self, consumidor):
-        """Contrata a un consumidor como empleado"""
-        if len(self.empleados) < self.capacidad_empleo:
-            self.empleados.append(consumidor)
-            self.costo_salarios += consumidor.ingreso_mensual
-            return True
-        return False
+        """Contrata evaluando habilidades sectoriales y negociando salario"""
+        if len(self.empleados) >= self.capacidad_empleo:
+            return 0
+
+        # Compatibilidad de habilidades según el sector de la empresa
+        sector_nombre = getattr(getattr(self, 'sector', None), 'nombre', None)
+        nivel = consumidor.habilidades_sectoriales.get(sector_nombre, 0.0)
+        if nivel < 0.2:  # Habilidad mínima requerida
+            return 0
+
+        # Negociación salarial basada en curva de Phillips
+        desempleo = self.mercado.gobierno.tasa_desempleo if hasattr(self.mercado, 'gobierno') else ConfigEconomica.TASA_DESEMPLEO_OBJETIVO
+        if ConfigEconomica.TASA_DESEMPLEO_OBJETIVO > 0:
+            factor_phillips = 1 + 0.5 * (1 - desempleo / ConfigEconomica.TASA_DESEMPLEO_OBJETIVO)
+        else:
+            factor_phillips = 1.0
+
+        salario_base = ConfigEconomica.SALARIO_BASE_MIN * (0.5 + nivel)
+        salario = int(salario_base * factor_phillips)
+
+        # Ajuste por poder sindical
+        if consumidor.sindicato and sector_nombre in consumidor.sindicato.sectores:
+            salario = int(salario * (1 + consumidor.sindicato.poder_negociacion))
+
+        consumidor.ingreso_mensual = salario
+        self.empleados.append(consumidor)
+        self.costo_salarios += salario
+        return salario
         
     def despedir(self, consumidor):
         """Despide a un empleado"""
@@ -144,29 +169,42 @@ class EmpresaProductora(Empresa):
         """Versión mejorada del método de producción"""
         if cantidad <= 0:
             return 0
-            
-        costo_total = cantidad * self.costos_unitarios[bien]
-        
-        if self.dinero >= costo_total:
-            self.dinero -= costo_total
-            
-            # Considerar eficiencia y economías de escala
-            cantidad_efectiva = int(cantidad * self.eficiencia_produccion)
-            if cantidad_efectiva > 50:  # Economías de escala
-                cantidad_efectiva = int(cantidad_efectiva * ConfigEconomica.FACTOR_ECONOMIA_ESCALA)
-                
-            # Añadir al inventario
-            if bien not in self.bienes:
-                self.bienes[bien] = []
-                
-            for _ in range(cantidad_efectiva):
-                costo_unitario_efectivo = self.costos_unitarios[bien] * random.uniform(0.95, 1.05)
-                self.bienes[bien].append(InventarioBien(bien, costo_unitario_efectivo, mercado.bienes))
-                
-            self.produccion_actual[bien] = self.produccion_actual.get(bien, 0) + cantidad_efectiva
-            return cantidad_efectiva
-            
-        return 0
+
+        costo_unitario = self.costos_unitarios[bien]
+
+        # Considerar eficiencia y economías de escala
+        cantidad_efectiva = int(cantidad * self.eficiencia_produccion)
+        if cantidad_efectiva > 50:  # Economías de escala
+            cantidad_efectiva = int(cantidad_efectiva * ConfigEconomica.FACTOR_ECONOMIA_ESCALA)
+
+        # Limitar por disponibilidad de dinero
+        max_por_dinero = int(self.dinero / costo_unitario)
+        cantidad_efectiva = max(0, min(cantidad_efectiva, max_por_dinero))
+        if cantidad_efectiva <= 0:
+            return 0
+
+        # Registrar uso de recursos y emisiones
+        sistema_ambiental = getattr(mercado.gobierno, 'sostenibilidad', None)
+        if sistema_ambiental:
+            cantidad_efectiva, _ = sistema_ambiental.registrar_produccion(
+                self.nombre, bien, cantidad_efectiva, self.factor_emisiones
+            )
+        if cantidad_efectiva <= 0:
+            return 0
+
+        costo_total = cantidad_efectiva * costo_unitario
+        self.dinero -= costo_total
+
+        # Añadir al inventario
+        if bien not in self.bienes:
+            self.bienes[bien] = []
+
+        for _ in range(cantidad_efectiva):
+            costo_unitario_efectivo = costo_unitario * random.uniform(0.95, 1.05)
+            self.bienes[bien].append(InventarioBien(bien, costo_unitario_efectivo, mercado.bienes))
+
+        self.produccion_actual[bien] = self.produccion_actual.get(bien, 0) + cantidad_efectiva
+        return cantidad_efectiva
         
     def ajustar_precios_dinamico(self, mercado, bien):
         """Ajusta precios basado en múltiples factores económicos"""
@@ -249,6 +287,15 @@ class EmpresaProductora(Empresa):
                 ventas_totales += transaccion.get('cantidad', 0)
                 
         return ventas_totales
+
+    def invertir_tecnologia_limpia(self, monto):
+        """Invierte en mejoras para reducir emisiones"""
+        if monto <= 0 or self.dinero < monto:
+            return False
+        self.dinero -= monto
+        reduccion = monto / 100000  # Escala de mejora
+        self.factor_emisiones = max(0.1, self.factor_emisiones * (1 - reduccion))
+        return True
         
     def gestionar_expansion(self):
         """Decide si expandir capacidad basado en rentabilidad"""

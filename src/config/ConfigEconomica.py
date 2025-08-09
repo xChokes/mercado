@@ -92,7 +92,6 @@ class ConfigEconomica:
     TASA_IMPUESTOS = 0.25        # 25% de impuestos sobre ganancias
     GASTO_PUBLICO_PIB = 0.20     # Gasto público como % del PIB
     POLITICA_MONETARIA_AGRESIVA = False
-
     # Comercio internacional
     ARANCEL_BASE = 0.05  # Arancel general del 5%
     TIPOS_CAMBIO_INICIALES = {
@@ -100,3 +99,21 @@ class ConfigEconomica:
         ('EUR', 'USD'): 1.10
     }
     COSTO_TRANSPORTE_BASE = 0.02  # 2% del valor comerciado
+    # Sostenibilidad ambiental
+    RECURSOS_NATURALES_INICIALES = 1000000
+    FACTORES_AGOTAMIENTO_RECURSOS = {
+        'alimentos_basicos': 1.0,
+        'alimentos_lujo': 1.5,
+        'servicios': 0.5,
+        'bienes_duraderos': 2.0,
+        'combustibles': 2.5
+    }
+    COEFICIENTES_CONTAMINACION = {
+        'alimentos_basicos': 0.3,
+        'alimentos_lujo': 0.7,
+        'servicios': 0.2,
+        'bienes_duraderos': 1.0,
+        'combustibles': 1.8
+    }
+    IMPUESTO_CARBONO = 5  # Unidad monetaria por unidad de emisión
+    LIMITE_EXTRACCION_RECURSOS = 0.1  # 10% de recursos restantes como umbral crítico

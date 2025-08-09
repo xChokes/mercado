@@ -3,6 +3,7 @@ Sistema de Gobierno que implementa políticas económicas, regulación y servici
 """
 import random
 from ..config.ConfigEconomica import ConfigEconomica
+from ..systems.SostenibilidadAmbiental import SostenibilidadAmbiental
 
 class Gobierno:
     def __init__(self, mercado):
@@ -14,13 +15,17 @@ class Gobierno:
         self.gasto_publico_objetivo = 0
         self.politicas_activas = []
         self.reservas_monetarias = 1000000  # Capacidad de intervención
-        
+        # Sistema ambiental
+        self.sostenibilidad = SostenibilidadAmbiental()
+        self.tasa_impuesto_carbono = ConfigEconomica.IMPUESTO_CARBONO
         # Indicadores macroeconómicos
         self.inflacion_mensual = 0
         self.tasa_desempleo = 0
         self.pib_real = 0
         self.pib_nominal = 0
         self.deficit_fiscal = 0
+        self.poblacion = len(mercado.getConsumidores()) if mercado else 0
+        self.desempleo_sectorial = {}
         
     def calcular_indicadores_macroeconomicos(self):
         """Calcula indicadores económicos principales"""
@@ -28,10 +33,24 @@ class Gobierno:
         transacciones_ciclo = [t for t in self.mercado.transacciones if t['ciclo'] == len(self.mercado.transacciones)]
         self.pib_nominal = sum([t['costo_total'] for t in transacciones_ciclo])
         
-        # Tasa de desempleo
-        personas_activas = len(self.mercado.getConsumidores())
+        # Población y tasa de desempleo
+        self.poblacion = len(self.mercado.getConsumidores())
         desempleados = len([c for c in self.mercado.getConsumidores() if not c.empleado])
-        self.tasa_desempleo = desempleados / personas_activas if personas_activas > 0 else 0
+        self.tasa_desempleo = desempleados / self.poblacion if self.poblacion > 0 else 0
+
+        # Desempleo por sector
+        self.desempleo_sectorial = {}
+        if hasattr(self.mercado, 'economia_sectorial'):
+            sectores = self.mercado.economia_sectorial.sectores
+            consumidores = self.mercado.getConsumidores()
+            for nombre in sectores.keys():
+                potenciales = [c for c in consumidores if c.habilidades_sectoriales.get(nombre, 0) > 0]
+                empleados_sector = [c for c in potenciales if c.empleado and getattr(c.empleador, 'sector', None) and c.empleador.sector.nombre == nombre]
+                total = len(potenciales)
+                if total > 0:
+                    self.desempleo_sectorial[nombre] = 1 - len(empleados_sector) / total
+                else:
+                    self.desempleo_sectorial[nombre] = 0
         
         # Inflación basada en cambios de precios
         precios_actuales = []
@@ -70,16 +89,30 @@ class Gobierno:
         """Ejecuta gasto público para estimular la economía"""
         self.gasto_publico_objetivo = self.pib_nominal * ConfigEconomica.GASTO_PUBLICO_PIB
         gasto_efectivo = min(self.presupuesto, self.gasto_publico_objetivo)
-        
-        if gasto_efectivo > 0:
+
+        if gasto_efectivo > 0 and self.poblacion > 0:
             # Distribuir gasto público
-            # 60% a subsidios de desempleo
+            # 60% a subsidios de desempleo diferenciados por sector
             subsidios = gasto_efectivo * 0.6
             desempleados = [c for c in self.mercado.getConsumidores() if not c.empleado]
             if desempleados:
-                subsidio_individual = subsidios / len(desempleados)
-                for desempleado in desempleados:
-                    desempleado.dinero += subsidio_individual
+                agrupados = {}
+                for d in desempleados:
+                    if d.habilidades_sectoriales:
+                        sector_principal = max(d.habilidades_sectoriales, key=d.habilidades_sectoriales.get)
+                    else:
+                        sector_principal = 'general'
+                    agrupados.setdefault(sector_principal, []).append(d)
+
+                total_ratio = sum(self.desempleo_sectorial.get(s, 0) for s in agrupados)
+                for sector, lista in agrupados.items():
+                    if total_ratio > 0:
+                        fondo_sector = subsidios * (self.desempleo_sectorial.get(sector, 0) / total_ratio)
+                    else:
+                        fondo_sector = subsidios / len(agrupados)
+                    subsidio_individual = fondo_sector / len(lista)
+                    for desempleado in lista:
+                        desempleado.dinero += subsidio_individual
                     
             # 40% a compras gubernamentales (estimula demanda)
             compras_gobierno = gasto_efectivo * 0.4
@@ -90,7 +123,7 @@ class Gobierno:
                     empresa.dinero += compra_por_empresa
                     
             self.presupuesto -= gasto_efectivo
-            
+
         self.deficit_fiscal = self.gasto_publico_objetivo - self.presupuesto
         if self.deficit_fiscal > 0:
             self.deuda_publica += self.deficit_fiscal
@@ -134,6 +167,54 @@ class Gobierno:
                         if precio > precio_maximo:
                             empresa.precios[bien] = precio_maximo
                             self.politicas_activas.append(f"Regulación precio {bien}")
+
+    def rescatar_banco(self, banco, monto):
+        """Inyecta capital a un banco en dificultades"""
+        if self.reservas_monetarias >= monto:
+            banco.capital += monto
+            banco.reservas += monto * 0.5
+            self.reservas_monetarias -= monto
+            self.politicas_activas.append(f"Rescate a {banco.nombre}")
+            return True
+        return False
+
+    def regulacion_prudencial(self):
+        """Aplica regulación prudencial al sistema bancario"""
+        sistema = self.mercado.sistema_bancario
+        for banco in sistema.bancos:
+            ratio = banco.calcular_ratio_solvencia()
+            if ratio < banco.ratio_capital:
+                deficit = banco.ratio_capital * sum(banco.depositos.values()) - (banco.capital + banco.reservas)
+                if deficit > 0:
+                    self.rescatar_banco(banco, min(deficit, self.reservas_monetarias))
+
+    def aplicar_politicas_ambientales(self):
+        """Aplica impuestos al carbono y límites de extracción"""
+        impuestos_carbono = 0
+
+        for empresa in self.mercado.getEmpresas():
+            emisiones = self.sostenibilidad.emisiones_empresas.get(empresa.nombre, 0)
+            if emisiones > 0:
+                impuesto = emisiones * self.tasa_impuesto_carbono
+                empresa.dinero -= impuesto
+                impuestos_carbono += impuesto
+
+        self.presupuesto += impuestos_carbono
+
+        # Limitar extracción si recursos bajos
+        limite = ConfigEconomica.RECURSOS_NATURALES_INICIALES * ConfigEconomica.LIMITE_EXTRACCION_RECURSOS
+        if self.sostenibilidad.recursos_disponibles < limite:
+            for empresa in self.mercado.getEmpresas():
+                if hasattr(empresa, 'capacidad_produccion'):
+                    for bien in empresa.capacidad_produccion:
+                        empresa.capacidad_produccion[bien] = int(empresa.capacidad_produccion[bien] * 0.9)
+            self.politicas_activas.append("Límite de extracción de recursos")
+
+        return impuestos_carbono
+
+    def calcular_indicadores_ecologicos(self):
+        """Calcula indicadores ambientales agregados"""
+        return self.sostenibilidad.obtener_indicadores()
                             
     def ciclo_gobierno(self, ciclo):
         """Ejecuta un ciclo completo de políticas gubernamentales"""
@@ -147,17 +228,23 @@ class Gobierno:
         
         # Ejecutar gasto público
         self.ejecutar_gasto_publico()
-        
+
         # Implementar políticas
         self.politica_monetaria()
         self.regular_precios()
-        
+        self.regulacion_prudencial()
+        impuestos_carbono = self.aplicar_politicas_ambientales()
+        indicadores_ecologicos = self.calcular_indicadores_ecologicos()
+
         return {
             'pib_nominal': self.pib_nominal,
             'inflacion': self.inflacion_mensual,
             'desempleo': self.tasa_desempleo,
+            'desempleo_sectorial': self.desempleo_sectorial,
             'recaudacion': recaudacion,
             'deficit': self.deficit_fiscal,
             'tasa_interes': self.tasa_interes_referencia,
-            'politicas': self.politicas_activas[:]
+            'politicas': self.politicas_activas[:],
+            'impuestos_carbono': impuestos_carbono,
+            'indicadores_ecologicos': indicadores_ecologicos
         }
