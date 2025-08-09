@@ -134,6 +134,26 @@ class Gobierno:
                         if precio > precio_maximo:
                             empresa.precios[bien] = precio_maximo
                             self.politicas_activas.append(f"Regulación precio {bien}")
+
+    def rescatar_banco(self, banco, monto):
+        """Inyecta capital a un banco en dificultades"""
+        if self.reservas_monetarias >= monto:
+            banco.capital += monto
+            banco.reservas += monto * 0.5
+            self.reservas_monetarias -= monto
+            self.politicas_activas.append(f"Rescate a {banco.nombre}")
+            return True
+        return False
+
+    def regulacion_prudencial(self):
+        """Aplica regulación prudencial al sistema bancario"""
+        sistema = self.mercado.sistema_bancario
+        for banco in sistema.bancos:
+            ratio = banco.calcular_ratio_solvencia()
+            if ratio < banco.ratio_capital:
+                deficit = banco.ratio_capital * sum(banco.depositos.values()) - (banco.capital + banco.reservas)
+                if deficit > 0:
+                    self.rescatar_banco(banco, min(deficit, self.reservas_monetarias))
                             
     def ciclo_gobierno(self, ciclo):
         """Ejecuta un ciclo completo de políticas gubernamentales"""
@@ -147,11 +167,12 @@ class Gobierno:
         
         # Ejecutar gasto público
         self.ejecutar_gasto_publico()
-        
+
         # Implementar políticas
         self.politica_monetaria()
         self.regular_precios()
-        
+        self.regulacion_prudencial()
+
         return {
             'pib_nominal': self.pib_nominal,
             'inflacion': self.inflacion_mensual,
