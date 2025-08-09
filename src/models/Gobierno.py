@@ -3,6 +3,7 @@ Sistema de Gobierno que implementa políticas económicas, regulación y servici
 """
 import random
 from ..config.ConfigEconomica import ConfigEconomica
+from ..systems.SostenibilidadAmbiental import SostenibilidadAmbiental
 
 class Gobierno:
     def __init__(self, mercado):
@@ -14,6 +15,10 @@ class Gobierno:
         self.gasto_publico_objetivo = 0
         self.politicas_activas = []
         self.reservas_monetarias = 1000000  # Capacidad de intervención
+
+        # Sistema ambiental
+        self.sostenibilidad = SostenibilidadAmbiental()
+        self.tasa_impuesto_carbono = ConfigEconomica.IMPUESTO_CARBONO
         
         # Indicadores macroeconómicos
         self.inflacion_mensual = 0
@@ -134,6 +139,34 @@ class Gobierno:
                         if precio > precio_maximo:
                             empresa.precios[bien] = precio_maximo
                             self.politicas_activas.append(f"Regulación precio {bien}")
+
+    def aplicar_politicas_ambientales(self):
+        """Aplica impuestos al carbono y límites de extracción"""
+        impuestos_carbono = 0
+
+        for empresa in self.mercado.getEmpresas():
+            emisiones = self.sostenibilidad.emisiones_empresas.get(empresa.nombre, 0)
+            if emisiones > 0:
+                impuesto = emisiones * self.tasa_impuesto_carbono
+                empresa.dinero -= impuesto
+                impuestos_carbono += impuesto
+
+        self.presupuesto += impuestos_carbono
+
+        # Limitar extracción si recursos bajos
+        limite = ConfigEconomica.RECURSOS_NATURALES_INICIALES * ConfigEconomica.LIMITE_EXTRACCION_RECURSOS
+        if self.sostenibilidad.recursos_disponibles < limite:
+            for empresa in self.mercado.getEmpresas():
+                if hasattr(empresa, 'capacidad_produccion'):
+                    for bien in empresa.capacidad_produccion:
+                        empresa.capacidad_produccion[bien] = int(empresa.capacidad_produccion[bien] * 0.9)
+            self.politicas_activas.append("Límite de extracción de recursos")
+
+        return impuestos_carbono
+
+    def calcular_indicadores_ecologicos(self):
+        """Calcula indicadores ambientales agregados"""
+        return self.sostenibilidad.obtener_indicadores()
                             
     def ciclo_gobierno(self, ciclo):
         """Ejecuta un ciclo completo de políticas gubernamentales"""
@@ -147,11 +180,13 @@ class Gobierno:
         
         # Ejecutar gasto público
         self.ejecutar_gasto_publico()
-        
+
         # Implementar políticas
         self.politica_monetaria()
         self.regular_precios()
-        
+        impuestos_carbono = self.aplicar_politicas_ambientales()
+        indicadores_ecologicos = self.calcular_indicadores_ecologicos()
+
         return {
             'pib_nominal': self.pib_nominal,
             'inflacion': self.inflacion_mensual,
@@ -159,5 +194,7 @@ class Gobierno:
             'recaudacion': recaudacion,
             'deficit': self.deficit_fiscal,
             'tasa_interes': self.tasa_interes_referencia,
-            'politicas': self.politicas_activas[:]
+            'politicas': self.politicas_activas[:],
+            'impuestos_carbono': impuestos_carbono,
+            'indicadores_ecologicos': indicadores_ecologicos
         }
