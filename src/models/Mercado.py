@@ -11,6 +11,11 @@ from ..systems.SectoresEconomicos import EconomiaMultisectorial
 from ..systems.PsicologiaEconomica import inicializar_perfiles_psicologicos
 from ..systems.SistemaInnovacion import SistemaInnovacion
 from ..systems.AnalyticsML import SistemaAnalyticsML
+from ..systems.CrisisFinanciera import (
+    detectar_burbuja_precios,
+    evaluar_riesgo_sistemico,
+    simular_corrida_bancaria,
+)
 from ..systems.MercadoLaboral import MercadoLaboral
 
 
@@ -48,6 +53,9 @@ class Mercado:
         self.volumen_transacciones = []
         self.empresas_activas = []
         self.nivel_competencia = {}
+
+        # Estado de crisis financiera
+        self.crisis_financiera_activa = False
 
         # Inicializar precios históricos
         for bien in self.bienes:
@@ -282,6 +290,16 @@ class Mercado:
         # 4. Ciclo del gobierno (políticas, impuestos, regulación)
         indicadores_gobierno = self.gobierno.ciclo_gobierno(ciclo)
 
+        # 4.5 Evaluar posible crisis financiera e intervenir
+        riesgo = evaluar_riesgo_sistemico(self.sistema_bancario)
+        burbuja = detectar_burbuja_precios(self)
+        if (riesgo > 0.6 or indicadores_gobierno['desempleo'] > 0.2 or burbuja):
+            self.crisis_financiera_activa = True
+            self.sistema_bancario.banco_central.intervenir_en_crisis(self.sistema_bancario)
+            simular_corrida_bancaria(self.sistema_bancario, intensidad=0.1)
+        else:
+            self.crisis_financiera_activa = False
+
         # 5. Actualizar competencia
         self.actualizar_nivel_competencia()
 
@@ -318,6 +336,8 @@ class Mercado:
         print(f"Consumidores: {len(self.getConsumidores())}")
         if self.shock_economico_activo:
             print("⚠️  SHOCK ECONÓMICO ACTIVO")
+        if self.crisis_financiera_activa:
+            print("⚠️  CRISIS FINANCIERA ACTIVA")
         print("-" * 50)
 
     def obtener_estadisticas_completas(self):
@@ -330,7 +350,8 @@ class Mercado:
             'volumen_transacciones': self.volumen_transacciones[:],
             'fase_ciclo_actual': self.fase_ciclo_economico,
             'nivel_competencia': self.nivel_competencia.copy(),
-            'shock_activo': self.shock_economico_activo
+            'shock_activo': self.shock_economico_activo,
+            'crisis_financiera': self.crisis_financiera_activa
         }
 
         # Agregar estadísticas de sistemas avanzados
