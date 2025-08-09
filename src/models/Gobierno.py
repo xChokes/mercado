@@ -21,6 +21,7 @@ class Gobierno:
         self.pib_real = 0
         self.pib_nominal = 0
         self.deficit_fiscal = 0
+        self.desempleo_sectorial = {}
         
     def calcular_indicadores_macroeconomicos(self):
         """Calcula indicadores económicos principales"""
@@ -32,6 +33,20 @@ class Gobierno:
         personas_activas = len(self.mercado.getConsumidores())
         desempleados = len([c for c in self.mercado.getConsumidores() if not c.empleado])
         self.tasa_desempleo = desempleados / personas_activas if personas_activas > 0 else 0
+
+        # Desempleo por sector
+        self.desempleo_sectorial = {}
+        if hasattr(self.mercado, 'economia_sectorial'):
+            sectores = self.mercado.economia_sectorial.sectores
+            consumidores = self.mercado.getConsumidores()
+            for nombre in sectores.keys():
+                potenciales = [c for c in consumidores if c.habilidades_sectoriales.get(nombre, 0) > 0]
+                empleados_sector = [c for c in potenciales if c.empleado and getattr(c.empleador, 'sector', None) and c.empleador.sector.nombre == nombre]
+                total = len(potenciales)
+                if total > 0:
+                    self.desempleo_sectorial[nombre] = 1 - len(empleados_sector) / total
+                else:
+                    self.desempleo_sectorial[nombre] = 0
         
         # Inflación basada en cambios de precios
         precios_actuales = []
@@ -73,13 +88,27 @@ class Gobierno:
         
         if gasto_efectivo > 0:
             # Distribuir gasto público
-            # 60% a subsidios de desempleo
+            # 60% a subsidios de desempleo diferenciados por sector
             subsidios = gasto_efectivo * 0.6
             desempleados = [c for c in self.mercado.getConsumidores() if not c.empleado]
             if desempleados:
-                subsidio_individual = subsidios / len(desempleados)
-                for desempleado in desempleados:
-                    desempleado.dinero += subsidio_individual
+                agrupados = {}
+                for d in desempleados:
+                    if d.habilidades_sectoriales:
+                        sector_principal = max(d.habilidades_sectoriales, key=d.habilidades_sectoriales.get)
+                    else:
+                        sector_principal = 'general'
+                    agrupados.setdefault(sector_principal, []).append(d)
+
+                total_ratio = sum(self.desempleo_sectorial.get(s, 0) for s in agrupados)
+                for sector, lista in agrupados.items():
+                    if total_ratio > 0:
+                        fondo_sector = subsidios * (self.desempleo_sectorial.get(sector, 0) / total_ratio)
+                    else:
+                        fondo_sector = subsidios / len(agrupados)
+                    subsidio_individual = fondo_sector / len(lista)
+                    for desempleado in lista:
+                        desempleado.dinero += subsidio_individual
                     
             # 40% a compras gubernamentales (estimula demanda)
             compras_gobierno = gasto_efectivo * 0.4
@@ -156,6 +185,7 @@ class Gobierno:
             'pib_nominal': self.pib_nominal,
             'inflacion': self.inflacion_mensual,
             'desempleo': self.tasa_desempleo,
+            'desempleo_sectorial': self.desempleo_sectorial,
             'recaudacion': recaudacion,
             'deficit': self.deficit_fiscal,
             'tasa_interes': self.tasa_interes_referencia,
