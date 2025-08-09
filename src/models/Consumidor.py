@@ -9,11 +9,16 @@ class Consumidor(Persona):
     def __init__(self, nombre, mercado, bienes={}):
         super().__init__(mercado)
         self.nombre = nombre
-        self.mercado = mercado  # Agregar esta línea que faltaba
+        self.mercado = mercado  # Referencia al mercado
         self.bienes = bienes if bienes else {}
-        self.dinero = random.randint(ConfigEconomica.DINERO_INICIAL_CONSUMIDOR_MIN,
-                                     ConfigEconomica.DINERO_INICIAL_CONSUMIDOR_MAX)
+        self.dinero = random.randint(
+            ConfigEconomica.DINERO_INICIAL_CONSUMIDOR_MIN,
+            ConfigEconomica.DINERO_INICIAL_CONSUMIDOR_MAX)
         self.historial_compras = {}
+
+        # Características demográficas
+        self.edad = random.randint(18, 80)
+        self.estado_demografico = self._determinar_estado_demografico()
 
         # Características laborales
         # 90% empleados inicialmente
@@ -21,11 +26,14 @@ class Consumidor(Persona):
         if random.random() > 0.1:
             self.empleado = True
 
-        self.ingreso_mensual = random.randint(ConfigEconomica.SALARIO_BASE_MIN,
-                                              ConfigEconomica.SALARIO_BASE_MAX) if self.empleado else 0
+        self.ingreso_mensual = random.randint(
+            ConfigEconomica.SALARIO_BASE_MIN,
+            ConfigEconomica.SALARIO_BASE_MAX) if self.empleado else 0
         self.empleador = None
+
         # Multiplicador de productividad
-        self.habilidades = random.uniform(0.5, 1.5)
+        self.habilidades_base = random.uniform(0.5, 1.5)
+        self.habilidades = self.habilidades_base
 
         # Perfil de habilidades por sector y afiliación sindical
         self.habilidades_sectoriales = {}
@@ -37,12 +45,14 @@ class Consumidor(Persona):
             self.sindicato = self.mercado.mercado_laboral.asignar_sindicato(self)
 
         # Características económicas
-        self.propension_consumo = random.uniform(0.70, 0.95)  # Entre 70% y 95%
+        self.propension_consumo_base = random.uniform(0.70, 0.95)
+        self.propension_consumo = self.propension_consumo_base  # Entre 70% y 95%
         self.propension_ahorro = 1 - self.propension_consumo
-        self.ahorros = self.dinero * \
-            random.uniform(0.1, 0.3)  # 10-30% en ahorros
-        self.deuda = random.uniform(
-            0, self.ingreso_mensual * 2) if self.empleado else 0
+        self.ahorros = self.dinero * random.uniform(0.1, 0.3)  # 10-30% en ahorros
+        self.deuda = random.uniform(0, self.ingreso_mensual * 2) if self.empleado else 0
+
+        # Ajustes por demografía
+        self.ajustar_por_demografia()
 
         # Preferencias de consumo más realistas
         self.utilidad_marginal = {}
@@ -62,6 +72,36 @@ class Consumidor(Persona):
         self.aversion_riesgo = random.uniform(0.3, 0.9)
         self.factor_imitacion = random.uniform(0.1, 0.4)  # Influencia social
         self.fidelidad_marca = random.uniform(0.2, 0.8)
+
+    def _determinar_estado_demografico(self):
+        if self.edad < 25:
+            return 'joven'
+        elif self.edad < 65:
+            return 'adulto'
+        else:
+            return 'jubilado'
+
+    def ajustar_por_demografia(self):
+        if self.estado_demografico == 'joven':
+            self.habilidades = self.habilidades_base * 0.8
+            self.propension_consumo = min(
+                0.95, self.propension_consumo_base * 1.1)
+        elif self.estado_demografico == 'adulto':
+            self.habilidades = self.habilidades_base
+            self.propension_consumo = self.propension_consumo_base
+        else:  # jubilado
+            self.habilidades = self.habilidades_base * 0.6
+            self.propension_consumo = self.propension_consumo_base * 0.8
+            self.empleado = False
+            self.ingreso_mensual = 0
+        self.propension_ahorro = 1 - self.propension_consumo
+
+    def envejecer(self, anos=1/12):
+        self.edad += anos
+        nuevo_estado = self._determinar_estado_demografico()
+        if nuevo_estado != self.estado_demografico:
+            self.estado_demografico = nuevo_estado
+            self.ajustar_por_demografia()
 
     def buscar_empleo(self):
         """Busca empleo considerando habilidades sectoriales y sindicatos"""
