@@ -92,3 +92,11 @@ class ConfigEconomica:
     TASA_IMPUESTOS = 0.25        # 25% de impuestos sobre ganancias
     GASTO_PUBLICO_PIB = 0.20     # Gasto público como % del PIB
     POLITICA_MONETARIA_AGRESIVA = False
+
+    # Comercio internacional
+    ARANCEL_BASE = 0.05  # Arancel general del 5%
+    TIPOS_CAMBIO_INICIALES = {
+        ('USD', 'EUR'): 0.90,
+        ('EUR', 'USD'): 1.10
+    }
+    COSTO_TRANSPORTE_BASE = 0.02  # 2% del valor comerciado

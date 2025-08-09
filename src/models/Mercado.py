@@ -11,6 +11,7 @@ from ..systems.SectoresEconomicos import EconomiaMultisectorial
 from ..systems.PsicologiaEconomica import inicializar_perfiles_psicologicos
 from ..systems.SistemaInnovacion import SistemaInnovacion
 from ..systems.AnalyticsML import SistemaAnalyticsML
+from ..systems.ComercioInternacional import Pais, TipoCambio
 
 
 class Mercado:
@@ -27,6 +28,12 @@ class Mercado:
         self.sistema_innovacion = SistemaInnovacion(self)
         self.sistema_psicologia = None  # Se inicializa después
         self.sistema_analytics = SistemaAnalyticsML(self)
+
+        # Comercio internacional
+        self.paises = {}
+        self.mercados_nacionales = {}
+        self.flujos_comerciales = []
+        self.tipo_cambio = None
 
         # Indicadores económicos
         self.ciclo_actual = 0
@@ -53,6 +60,53 @@ class Mercado:
 
     def agregar_persona(self, persona):
         self.personas.append(persona)
+
+    def agregar_pais(self, pais, mercado_nacional=None):
+        """Registra un país y opcionalmente su mercado nacional"""
+        self.paises[pais.nombre] = pais
+        if mercado_nacional:
+            self.mercados_nacionales[pais.nombre] = mercado_nacional
+            pais.mercado = mercado_nacional
+
+    def registrar_flujo_comercial(self, pais_origen, pais_destino, bien,
+                                  cantidad, valor):
+        """Registra un flujo de comercio internacional"""
+        registro = {
+            'origen': pais_origen.nombre,
+            'destino': pais_destino.nombre,
+            'bien': bien,
+            'cantidad': cantidad,
+            'valor': valor
+        }
+        self.flujos_comerciales.append(registro)
+        pais_origen.balanza_comercial += valor
+        pais_destino.balanza_comercial -= valor
+        return registro
+
+    def realizar_transaccion_internacional(self, exportador, importador,
+                                           bien, cantidad, precio,
+                                           pais_origen, pais_destino):
+        """Procesa una transacción internacional entre agentes"""
+        if not self.tipo_cambio:
+            raise ValueError("Sistema de tipo de cambio no inicializado")
+
+        valor_origen = precio * cantidad
+        valor_destino = self.tipo_cambio.convertir(
+            valor_origen, pais_origen.moneda, pais_destino.moneda)
+
+        costo_transporte = valor_destino * ConfigEconomica.COSTO_TRANSPORTE_BASE
+        arancel = valor_destino * pais_destino.obtener_arancel(
+            pais_origen.nombre)
+        total_costo = valor_destino + costo_transporte + arancel
+
+        if importador.dinero < total_costo:
+            return False
+
+        importador.dinero -= total_costo
+        exportador.dinero += valor_origen
+        self.registrar_flujo_comercial(
+            pais_origen, pais_destino, bien, cantidad, valor_origen)
+        return True
 
     def calcular_indice_precios(self):
         """Calcula un índice de precios ponderado"""
