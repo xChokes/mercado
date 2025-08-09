@@ -30,6 +30,7 @@ from src.models.Empresa import Empresa
 from src.models.EmpresaProductora import EmpresaProductora
 from src.config.ConfigEconomica import ConfigEconomica
 from src.systems.PsicologiaEconomica import inicializar_perfiles_psicologicos
+from src.systems.ComercioInternacional import Pais, TipoCambio
 
 
 def crear_bienes_realistas():
@@ -482,29 +483,48 @@ def main():
     # 2. Inicializar mercado con sistemas avanzados
     mercado = Mercado(bienes)
     print("✅ Mercado inicializado con sistemas avanzados integrados")
-    
-    # 3. Configurar economía inicial
+
+    # 3. Configurar comercio internacional
+    tipo_cambio = TipoCambio(ConfigEconomica.TIPOS_CAMBIO_INICIALES)
+    pais_a = Pais("PaisA", "USD")
+    pais_b = Pais("PaisB", "EUR")
+    pais_a.establecer_arancel(pais_b.nombre, ConfigEconomica.ARANCEL_BASE)
+    pais_b.establecer_arancel(pais_a.nombre, ConfigEconomica.ARANCEL_BASE)
+    mercado.tipo_cambio = tipo_cambio
+    mercado.agregar_pais(pais_a)
+    mercado.agregar_pais(pais_b)
+    print("✅ Sistema de comercio internacional inicializado")
+
+    # 4. Configurar economía inicial
     empresas_productoras, consumidores = configurar_economia_inicial(mercado)
     
-    # 4. Activar sistemas de psicología económica
+    # 5. Activar sistemas de psicología económica
     inicializar_perfiles_psicologicos(mercado)
     print("✅ Sistema de psicología económica activado con perfiles individualizados")
-    
-    # 5. Asignar empresas a sectores económicos
+
+    # 6. Asignar empresas a sectores económicos
     mercado.economia_sectorial.asignar_empresas_a_sectores()
     print("✅ Sistema sectorial configurado con especialización productiva")
-    
-    # 6. Ejecutar simulación principal
+
+    # 7. Ejemplo de transacción internacional
+    exportador = random.choice(mercado.getEmpresas())
+    importador = random.choice([e for e in mercado.getEmpresas() if e != exportador])
+    mercado.realizar_transaccion_internacional(exportador, importador,
+                                               'Arroz', 10, 5,
+                                               pais_a, pais_b)
+    print("✅ Transacción internacional de ejemplo registrada")
+
+    # 8. Ejecutar simulación principal
     num_ciclos = 50  # Simulación extendida para mejores resultados
     metricas = ejecutar_simulacion(mercado, num_ciclos)
-    
-    # 7. Análisis económico integral
+
+    # 9. Análisis económico integral
     generar_analisis_economico(mercado, metricas)
-    
-    # 8. Crear visualizaciones avanzadas
+
+    # 10. Crear visualizaciones avanzadas
     crear_visualizaciones_avanzadas(metricas)
-    
-    # 9. Estadísticas finales comprehensivas
+
+    # 11. Estadísticas finales comprehensivas
     print("\n" + "="*80)
     print("📋 ESTADÍSTICAS FINALES DEL SISTEMA")
     print("="*80)
