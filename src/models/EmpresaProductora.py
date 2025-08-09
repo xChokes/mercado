@@ -78,12 +78,34 @@ class EmpresaProductora(Empresa):
             self.precios[bien] = round(costo * (1 + margen), 2)
             
     def contratar(self, consumidor):
-        """Contrata a un consumidor como empleado"""
-        if len(self.empleados) < self.capacidad_empleo:
-            self.empleados.append(consumidor)
-            self.costo_salarios += consumidor.ingreso_mensual
-            return True
-        return False
+        """Contrata evaluando habilidades sectoriales y negociando salario"""
+        if len(self.empleados) >= self.capacidad_empleo:
+            return 0
+
+        # Compatibilidad de habilidades según el sector de la empresa
+        sector_nombre = getattr(getattr(self, 'sector', None), 'nombre', None)
+        nivel = consumidor.habilidades_sectoriales.get(sector_nombre, 0.0)
+        if nivel < 0.2:  # Habilidad mínima requerida
+            return 0
+
+        # Negociación salarial basada en curva de Phillips
+        desempleo = self.mercado.gobierno.tasa_desempleo if hasattr(self.mercado, 'gobierno') else ConfigEconomica.TASA_DESEMPLEO_OBJETIVO
+        if ConfigEconomica.TASA_DESEMPLEO_OBJETIVO > 0:
+            factor_phillips = 1 + 0.5 * (1 - desempleo / ConfigEconomica.TASA_DESEMPLEO_OBJETIVO)
+        else:
+            factor_phillips = 1.0
+
+        salario_base = ConfigEconomica.SALARIO_BASE_MIN * (0.5 + nivel)
+        salario = int(salario_base * factor_phillips)
+
+        # Ajuste por poder sindical
+        if consumidor.sindicato and sector_nombre in consumidor.sindicato.sectores:
+            salario = int(salario * (1 + consumidor.sindicato.poder_negociacion))
+
+        consumidor.ingreso_mensual = salario
+        self.empleados.append(consumidor)
+        self.costo_salarios += salario
+        return salario
         
     def despedir(self, consumidor):
         """Despide a un empleado"""

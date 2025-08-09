@@ -11,6 +11,7 @@ from ..systems.SectoresEconomicos import EconomiaMultisectorial
 from ..systems.PsicologiaEconomica import inicializar_perfiles_psicologicos
 from ..systems.SistemaInnovacion import SistemaInnovacion
 from ..systems.AnalyticsML import SistemaAnalyticsML
+from ..systems.MercadoLaboral import MercadoLaboral
 
 
 class Mercado:
@@ -25,6 +26,7 @@ class Mercado:
         self.sistema_bancario = SistemaBancario(self)
         self.economia_sectorial = EconomiaMultisectorial(self)
         self.sistema_innovacion = SistemaInnovacion(self)
+        self.mercado_laboral = MercadoLaboral(self)
         self.sistema_psicologia = None  # Se inicializa después
         self.sistema_analytics = SistemaAnalyticsML(self)
 
