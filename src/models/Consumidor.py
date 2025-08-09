@@ -27,6 +27,15 @@ class Consumidor(Persona):
         # Multiplicador de productividad
         self.habilidades = random.uniform(0.5, 1.5)
 
+        # Perfil de habilidades por sector y afiliación sindical
+        self.habilidades_sectoriales = {}
+        self.sindicato = None
+        if hasattr(self.mercado, 'mercado_laboral'):
+            perfil = self.mercado.mercado_laboral.crear_perfil()
+            self.habilidades_sectoriales = perfil.habilidades
+            # Asignar sindicato de forma probabilística
+            self.sindicato = self.mercado.mercado_laboral.asignar_sindicato(self)
+
         # Características económicas
         self.propension_consumo = random.uniform(0.70, 0.95)  # Entre 70% y 95%
         self.propension_ahorro = 1 - self.propension_consumo
@@ -55,23 +64,36 @@ class Consumidor(Persona):
         self.fidelidad_marca = random.uniform(0.2, 0.8)
 
     def buscar_empleo(self):
-        """Busca empleo si está desempleado"""
+        """Busca empleo considerando habilidades sectoriales y sindicatos"""
         if not self.empleado:
             empresas_disponibles = [e for e in self.mercado.getEmpresas()
                                     if hasattr(e, 'empleados') and len(e.empleados) < e.capacidad_empleo]
 
             if empresas_disponibles:
-                empresa = random.choice(empresas_disponibles)
-                probabilidad_contratacion = self.habilidades * \
-                    0.6  # Base 60% si tiene habilidades máximas
+                # Seleccionar empresa con mayor compatibilidad de habilidades
+                def _compat(e):
+                    sector = getattr(e, 'sector', None)
+                    nombre_sector = sector.nombre if sector else None
+                    return self.habilidades_sectoriales.get(nombre_sector, 0.0)
+
+                empresa = max(empresas_disponibles, key=_compat)
+                sector_nombre = getattr(empresa.sector, 'nombre', None) if hasattr(empresa, 'sector') else None
+                nivel = self.habilidades_sectoriales.get(sector_nombre, 0.0)
+
+                probabilidad_contratacion = 0.3 + 0.5 * nivel
+                if self.sindicato and sector_nombre in self.sindicato.sectores:
+                    probabilidad_contratacion += self.sindicato.poder_negociacion
 
                 if random.random() < probabilidad_contratacion:
-                    self.empleado = True
-                    self.empleador = empresa
-                    self.ingreso_mensual = int(
-                        ConfigEconomica.SALARIO_BASE_MIN * self.habilidades)
-                    empresa.contratar(self)
-                    return True
+                    resultado = empresa.contratar(self)
+                    if resultado:
+                        self.empleado = True
+                        self.empleador = empresa
+                        if isinstance(resultado, (int, float)):
+                            self.ingreso_mensual = resultado
+                        else:
+                            self.ingreso_mensual = int(ConfigEconomica.SALARIO_BASE_MIN * (0.5 + nivel))
+                        return True
         return False
 
     def perder_empleo(self):
@@ -332,6 +354,10 @@ class Consumidor(Persona):
             # Salario con pequeña variación
             salario_efectivo = self.ingreso_mensual * \
                 random.uniform(0.95, 1.05)
+            # Aporte sindical si corresponde
+            if self.sindicato:
+                salario_efectivo -= self.sindicato.calcular_aporte(salario_efectivo)
+
             self.dinero += salario_efectivo
             return salario_efectivo
         return 0
