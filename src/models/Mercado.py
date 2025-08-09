@@ -17,6 +17,7 @@ class Mercado:
     def __init__(self, bienes):
         self.bienes = bienes if bienes else {}
         self.personas = []
+        self.contador_consumidores = 0
         self.mercado_financiero = MercadoFinanciero()
         self.transacciones = []
         self.gobierno = Gobierno(self)
@@ -53,6 +54,8 @@ class Mercado:
 
     def agregar_persona(self, persona):
         self.personas.append(persona)
+        if isinstance(persona, Consumidor):
+            self.contador_consumidores += 1
 
     def calcular_indice_precios(self):
         """Calcula un índice de precios ponderado"""
@@ -218,6 +221,37 @@ class Mercado:
                 competencia = 0  # Monopolio o no hay empresas
 
             self.nivel_competencia[bien] = competencia
+
+    def generar_nuevos_consumidores(self):
+        """Genera nuevos consumidores según la tasa de crecimiento poblacional"""
+        tasa_mensual = ConfigEconomica.CRECIMIENTO_POBLACION_ANUAL / 12
+        cantidad = int(len(self.getConsumidores()) * tasa_mensual)
+        for _ in range(cantidad):
+            self.contador_consumidores += 1
+            nombre = f"Consumidor{self.contador_consumidores:03d}"
+            nuevo = Consumidor(nombre, self)
+            self.agregar_persona(nuevo)
+
+    def retirar_consumidores(self):
+        """Retira consumidores mayores o inactivos"""
+        tasa_mensual = ConfigEconomica.CRECIMIENTO_POBLACION_ANUAL / 12
+        cantidad = int(len(self.getConsumidores()) * tasa_mensual * 0.5)
+        if cantidad <= 0:
+            return
+        candidatos = [c for c in self.getConsumidores()
+                       if c.estado_demografico == 'jubilado']
+        candidatos.sort(key=lambda c: c.edad, reverse=True)
+        for consumidor in candidatos[:cantidad]:
+            if consumidor.empleado:
+                consumidor.perder_empleo()
+            self.personas.remove(consumidor)
+
+    def actualizar_demografia(self):
+        """Actualiza la demografía del mercado"""
+        for consumidor in self.getConsumidores():
+            consumidor.envejecer()
+        self.generar_nuevos_consumidores()
+        self.retirar_consumidores()
 
     def registrar_estadisticas(self):
         """Registra estadísticas del ciclo actual"""

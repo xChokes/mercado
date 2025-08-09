@@ -14,13 +14,14 @@ class Gobierno:
         self.gasto_publico_objetivo = 0
         self.politicas_activas = []
         self.reservas_monetarias = 1000000  # Capacidad de intervención
-        
+
         # Indicadores macroeconómicos
         self.inflacion_mensual = 0
         self.tasa_desempleo = 0
         self.pib_real = 0
         self.pib_nominal = 0
         self.deficit_fiscal = 0
+        self.poblacion = len(mercado.getConsumidores()) if mercado else 0
         
     def calcular_indicadores_macroeconomicos(self):
         """Calcula indicadores económicos principales"""
@@ -28,10 +29,10 @@ class Gobierno:
         transacciones_ciclo = [t for t in self.mercado.transacciones if t['ciclo'] == len(self.mercado.transacciones)]
         self.pib_nominal = sum([t['costo_total'] for t in transacciones_ciclo])
         
-        # Tasa de desempleo
-        personas_activas = len(self.mercado.getConsumidores())
+        # Población y tasa de desempleo
+        self.poblacion = len(self.mercado.getConsumidores())
         desempleados = len([c for c in self.mercado.getConsumidores() if not c.empleado])
-        self.tasa_desempleo = desempleados / personas_activas if personas_activas > 0 else 0
+        self.tasa_desempleo = desempleados / self.poblacion if self.poblacion > 0 else 0
         
         # Inflación basada en cambios de precios
         precios_actuales = []
@@ -70,8 +71,8 @@ class Gobierno:
         """Ejecuta gasto público para estimular la economía"""
         self.gasto_publico_objetivo = self.pib_nominal * ConfigEconomica.GASTO_PUBLICO_PIB
         gasto_efectivo = min(self.presupuesto, self.gasto_publico_objetivo)
-        
-        if gasto_efectivo > 0:
+
+        if gasto_efectivo > 0 and self.poblacion > 0:
             # Distribuir gasto público
             # 60% a subsidios de desempleo
             subsidios = gasto_efectivo * 0.6
@@ -90,7 +91,7 @@ class Gobierno:
                     empresa.dinero += compra_por_empresa
                     
             self.presupuesto -= gasto_efectivo
-            
+
         self.deficit_fiscal = self.gasto_publico_objetivo - self.presupuesto
         if self.deficit_fiscal > 0:
             self.deuda_publica += self.deficit_fiscal
