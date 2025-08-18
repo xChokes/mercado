@@ -2,7 +2,6 @@ from .Empresa import Empresa
 from .Persona import Persona
 from ..config.ConfigEconomica import ConfigEconomica
 import random
-import math
 
 
 class Consumidor(Persona):
@@ -42,14 +41,17 @@ class Consumidor(Persona):
             perfil = self.mercado.mercado_laboral.crear_perfil()
             self.habilidades_sectoriales = perfil.habilidades
             # Asignar sindicato de forma probabilística
-            self.sindicato = self.mercado.mercado_laboral.asignar_sindicato(self)
+            self.sindicato = self.mercado.mercado_laboral.asignar_sindicato(
+                self)
 
         # Características económicas
         self.propension_consumo_base = random.uniform(0.70, 0.95)
         self.propension_consumo = self.propension_consumo_base  # Entre 70% y 95%
         self.propension_ahorro = 1 - self.propension_consumo
-        self.ahorros = self.dinero * random.uniform(0.1, 0.3)  # 10-30% en ahorros
-        self.deuda = random.uniform(0, self.ingreso_mensual * 2) if self.empleado else 0
+        self.ahorros = self.dinero * \
+            random.uniform(0.1, 0.3)  # 10-30% en ahorros
+        self.deuda = random.uniform(
+            0, self.ingreso_mensual * 2) if self.empleado else 0
 
         # Ajustes por demografía
         self.ajustar_por_demografia()
@@ -118,20 +120,23 @@ class Consumidor(Persona):
                     return self.habilidades_sectoriales.get(nombre_sector, 0.0)
 
                 # Intentar con múltiples empresas, no solo la mejor
-                empresas_candidatas = sorted(empresas_disponibles, key=_compat, reverse=True)[:5]
-                
+                empresas_candidatas = sorted(
+                    empresas_disponibles, key=_compat, reverse=True)[:5]
+
                 for empresa in empresas_candidatas:
-                    sector_nombre = getattr(empresa.sector, 'nombre', None) if hasattr(empresa, 'sector') else None
-                    nivel = self.habilidades_sectoriales.get(sector_nombre, 0.0)
+                    sector_nombre = getattr(empresa.sector, 'nombre', None) if hasattr(
+                        empresa, 'sector') else None
+                    nivel = self.habilidades_sectoriales.get(
+                        sector_nombre, 0.0)
 
                     # Aumentar probabilidad base de contratación
                     probabilidad_base = 0.5  # Aumentado de 0.3
                     probabilidad_contratacion = probabilidad_base + 0.4 * nivel
-                    
+
                     # Bonificación por crisis (programas de empleo)
                     if hasattr(self.mercado, 'crisis_financiera_activa') and self.mercado.crisis_financiera_activa:
                         probabilidad_contratacion += 0.2
-                    
+
                     if self.sindicato and sector_nombre in self.sindicato.sectores:
                         probabilidad_contratacion += self.sindicato.poder_negociacion
 
@@ -143,7 +148,8 @@ class Consumidor(Persona):
                             if isinstance(resultado, (int, float)):
                                 self.ingreso_mensual = resultado
                             else:
-                                self.ingreso_mensual = int(ConfigEconomica.SALARIO_BASE_MIN * (0.5 + nivel))
+                                self.ingreso_mensual = int(
+                                    ConfigEconomica.SALARIO_BASE_MIN * (0.5 + nivel))
                             return True
         return False
 
@@ -384,31 +390,40 @@ class Consumidor(Persona):
         # Gestión de ahorros mejorada con sistema bancario
         if self.dinero > self.ingreso_mensual * 2 and hasattr(self.mercado, 'sistema_bancario'):
             # Depositar exceso de dinero en banco
-            banco_elegido = self.mercado.sistema_bancario.bancos[0] if self.mercado.sistema_bancario.bancos else None
+            banco_elegido = self.mercado.sistema_bancario.bancos[
+                0] if self.mercado.sistema_bancario.bancos else None
             if banco_elegido:
                 monto_deposito = self.dinero * 0.3  # Depositar 30% del exceso
-                if banco_elegido.recibir_deposito(self.nombre, monto_deposito):
+                if banco_elegido.recibir_deposito(self, monto_deposito):
                     self.dinero -= monto_deposito
                     self.ahorros += monto_deposito
-        
+
         # Solicitar préstamo si necesita liquidez
         if self.dinero < self.ingreso_mensual * 0.5 and self.empleado and hasattr(self.mercado, 'sistema_bancario'):
-            banco_elegido = self.mercado.sistema_bancario.bancos[0] if self.mercado.sistema_bancario.bancos else None
+            banco_elegido = self.mercado.sistema_bancario.bancos[
+                0] if self.mercado.sistema_bancario.bancos else None
             if banco_elegido:
                 monto_prestamo = self.ingreso_mensual * 2  # Solicitar 2 meses de salario
-                resultado_prestamo = banco_elegido.otorgar_prestamo(self.nombre, monto_prestamo, self.ingreso_mensual)
-                if resultado_prestamo:
-                    self.dinero += monto_prestamo
+                resultado_prestamo = banco_elegido.otorgar_prestamo(
+                    self, monto_prestamo, self.ingreso_mensual)
+
+                # Corregir manejo del resultado (es una tupla)
+                if isinstance(resultado_prestamo, tuple) and resultado_prestamo[0]:
+                    # Préstamo aprobado - el dinero ya se agregó en el método bancario
                     self.deuda += monto_prestamo * 1.1  # Incluir intereses
-        
+                elif resultado_prestamo is True:  # Por compatibilidad
+                    self.dinero += monto_prestamo
+                    self.deuda += monto_prestamo * 1.1
+
         # Gestión de deudas
         if self.deuda > 0:
-            pago_deuda = min(self.dinero * 0.2, self.deuda * 0.1)  # Pagar 20% dinero o 10% deuda
+            # Pagar 20% dinero o 10% deuda
+            pago_deuda = min(self.dinero * 0.2, self.deuda * 0.1)
             if pago_deuda > 0:
                 self.dinero -= pago_deuda
                 self.deuda -= pago_deuda
                 self.deuda = max(0, self.deuda)
-        
+
         # Ahorros automáticos para empleados
         if self.empleado and self.dinero > self.ingreso_mensual:
             ahorro_mensual = self.dinero * 0.1
@@ -423,7 +438,8 @@ class Consumidor(Persona):
                 random.uniform(0.95, 1.05)
             # Aporte sindical si corresponde
             if self.sindicato:
-                salario_efectivo -= self.sindicato.calcular_aporte(salario_efectivo)
+                salario_efectivo -= self.sindicato.calcular_aporte(
+                    salario_efectivo)
 
             self.dinero += salario_efectivo
             return salario_efectivo

@@ -2,13 +2,14 @@ from .Persona import Persona
 from ..config.ConfigEconomica import ConfigEconomica
 import random
 
+
 class Empresa(Persona):
     def __init__(self, nombre, mercado, bienes={}):
         super().__init__(mercado=mercado)
         self.nombre = nombre
         self.bienes = bienes if bienes else {}
-        self.dinero = random.randint(ConfigEconomica.DINERO_INICIAL_EMPRESA_MIN, 
-                                   ConfigEconomica.DINERO_INICIAL_EMPRESA_MAX)
+        self.dinero = random.randint(ConfigEconomica.DINERO_INICIAL_EMPRESA_MIN,
+                                     ConfigEconomica.DINERO_INICIAL_EMPRESA_MAX)
         self.acciones_emitidas = 0
         self.valor_accion = 0
         self.umbral_alto = random.randint(80, 120)
@@ -18,59 +19,86 @@ class Empresa(Persona):
         self.precios = {}
         self.costos_unitarios = {}
         self.ventasPorBienPorCiclo = {}
-        
+
         # Nuevos atributos para manejo de empleados
         self.empleados = []
         self.capacidad_empleo = random.randint(5, 30)
-        
+
         # Inicializar precios y costos básicos
         for bien in mercado.bienes.keys():
             if bien not in self.precios:
                 self.precios[bien] = random.randint(10, 50)
             if bien not in self.costos_unitarios:
-                self.costos_unitarios[bien] = self.precios[bien] * random.uniform(0.6, 0.8)
+                self.costos_unitarios[bien] = self.precios[bien] * \
+                    random.uniform(0.6, 0.8)
             self.ventasPorBienPorCiclo[bien] = {}
-            
+
     def contratar(self, consumidor):
         """Contrata a un consumidor como empleado"""
         if len(self.empleados) < self.capacidad_empleo:
             self.empleados.append(consumidor)
             return True
         return False
-        
+
     def despedir(self, consumidor):
         """Despide a un empleado"""
         if consumidor in self.empleados:
             self.empleados.remove(consumidor)
-            
+
     def ajustar_precio_bien(self, mercado, nombre_bien):
         if nombre_bien not in self.precios:
             self.precios[nombre_bien] = random.randint(10, 50)
-            
-        ventas = sum([t['cantidad'] for t in mercado.getRegistroTransacciones() 
+
+        # Asegurar que el precio nunca sea cero
+        if self.precios[nombre_bien] <= 0:
+            self.precios[nombre_bien] = random.randint(10, 50)
+
+        ventas = sum([t['cantidad'] for t in mercado.getRegistroTransacciones()
                      if t['bien'] == nombre_bien])
         stock_actual = len(self.bienes.get(nombre_bien, []))
-        elasticidad_demanda = mercado.bienes[nombre_bien].elasticidad_precio
+
+        # Verificar que elasticidad existe y es válida
+        if hasattr(mercado.bienes[nombre_bien], 'elasticidad_precio'):
+            elasticidad_demanda = mercado.bienes[nombre_bien].elasticidad_precio
+        else:
+            elasticidad_demanda = 1.0  # Valor por defecto
 
         precio_actual = self.precios[nombre_bien]
-        costo_unitario = self.costos_unitarios.get(nombre_bien, precio_actual * 0.7)
+
+        # Asegurar que costos_unitarios esté inicializado
+        if not hasattr(self, 'costos_unitarios'):
+            self.costos_unitarios = {}
+        if nombre_bien not in self.costos_unitarios or self.costos_unitarios[nombre_bien] <= 0:
+            self.costos_unitarios[nombre_bien] = precio_actual * 0.7
+
+        costo_unitario = self.costos_unitarios.get(
+            nombre_bien, precio_actual * 0.7)
 
         # Calcula el nuevo precio basado en elasticidad de la demanda
-        if elasticidad_demanda != 0:
+        # Evitar divisiones por números muy pequeños
+        if elasticidad_demanda != 0 and abs(elasticidad_demanda) > 0.001:
             factor_cambio = 1 - ventas / max(stock_actual, 1)
-            cambio_precio = factor_cambio / abs(elasticidad_demanda)
-            nuevo_precio = max(precio_actual * (1 + cambio_precio * 0.1), costo_unitario * 1.1)
+            cambio_precio = factor_cambio / \
+                max(abs(elasticidad_demanda), 0.001)  # Protección adicional
+            nuevo_precio = max(
+                precio_actual * (1 + cambio_precio * 0.1), costo_unitario * 1.1)
         else:
             nuevo_precio = precio_actual * (1 + random.uniform(-0.02, 0.02))
 
-        self.precios[nombre_bien] = round(nuevo_precio, 2)
-    
+        # Asegurar que el nuevo precio nunca sea cero o negativo
+        self.precios[nombre_bien] = round(max(nuevo_precio, 1.0), 2)
+
     def emitir_acciones(self, cantidad, mercado_financiero):
         if self.acciones_emitidas == 0:
             self.valor_accion = max(10, int(self.dinero / 1000))
         else:
-            self.valor_accion = max(1, int(self.dinero / self.acciones_emitidas))
-            
+            # Protección contra división por cero en acciones emitidas
+            if self.acciones_emitidas > 0:
+                self.valor_accion = max(
+                    1, int(self.dinero / self.acciones_emitidas))
+            else:
+                self.valor_accion = max(10, int(self.dinero / 1000))
+
         mercado_financiero.emitir_acciones(self.nombre, cantidad)
         self.acciones_emitidas += cantidad
 
@@ -85,23 +113,25 @@ class Empresa(Persona):
 
     def calcular_dividendo(self):
         if self.acciones_emitidas > 0:
-            return max(0, self.dinero * 0.02 / self.acciones_emitidas)  # 2% del capital
+            # 2% del capital
+            return max(0, self.dinero * 0.02 / self.acciones_emitidas)
         return 0
-    
+
     def ciclo_persona(self, ciclo, mercado):
         """Ciclo básico de empresa (las empresas productoras sobrescriben esto)"""
         # Emitir algunas acciones
         if random.random() < 0.3:  # 30% probabilidad
-            self.emitir_acciones(random.randint(1, 10), mercado.mercado_financiero)
-        
+            self.emitir_acciones(random.randint(
+                1, 10), mercado.mercado_financiero)
+
         # Distribuir dividendos
         self.distribuir_dividendos(mercado.mercado_financiero)
-        
+
         # Ajustar precios si tiene bienes
         for bien in self.bienes:
             if bien in mercado.bienes:
                 self.ajustar_precio_bien(mercado, bien)
-            
+
     @classmethod
     def crear_con_acciones(cls, nombre, mercado, cantidad_acciones, bienes={}):
         empresa = cls(nombre, mercado, bienes=bienes)

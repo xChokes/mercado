@@ -20,6 +20,7 @@ from ..systems.CrisisFinanciera import (
     aplicar_medidas_recuperacion,
 )
 from ..systems.MercadoLaboral import MercadoLaboral
+from ..systems.EstimuloEconomico import ciclo_estimulo_economico
 
 
 class Mercado:
@@ -306,7 +307,7 @@ class Mercado:
         if cantidad <= 0:
             return
         candidatos = [c for c in self.getConsumidores()
-                       if c.estado_demografico == 'jubilado']
+                      if c.estado_demografico == 'jubilado']
         candidatos.sort(key=lambda c: c.edad, reverse=True)
         for consumidor in candidatos[:cantidad]:
             if consumidor.empleado:
@@ -322,9 +323,23 @@ class Mercado:
 
     def registrar_estadisticas(self):
         """Registra estadísticas del ciclo actual"""
-        # PIB
-        pib_ciclo = sum([t['costo_total'] for t in self.transacciones
-                        if t.get('ciclo') == self.ciclo_actual])
+        # PIB - Mejorado para capturar todas las transacciones del ciclo
+        if hasattr(self, 'transacciones_ciclo_actual'):
+            # Usar transacciones temporales del ciclo actual
+            pib_ciclo = sum([t.get('costo_total', 0)
+                            for t in self.transacciones_ciclo_actual])
+            self.transacciones_ciclo_actual = []  # Resetear para próximo ciclo
+        else:
+            # Método alternativo: últimas transacciones
+            transacciones_ciclo = [t for t in self.transacciones
+                                   if t.get('ciclo') == self.ciclo_actual]
+            pib_ciclo = sum([t.get('costo_total', 0)
+                            for t in transacciones_ciclo])
+
+        # Si aún es 0, usar volumen total del mercado
+        if pib_ciclo == 0 and hasattr(self, 'volumen_ciclo_actual'):
+            pib_ciclo = self.volumen_ciclo_actual
+
         self.pib_historico.append(pib_ciclo)
 
         # Inflación
@@ -360,6 +375,13 @@ class Mercado:
         self.mes_simulacion += 1
         self.ciclos_en_fase += 1
 
+        # Inicializar contadores del ciclo actual
+        self.volumen_ciclo_actual = 0
+        if not hasattr(self, 'transacciones_ciclo_actual'):
+            self.transacciones_ciclo_actual = []
+        else:
+            self.transacciones_ciclo_actual = []
+
         # 1. Efectos macroeconómicos tradicionales
         self.detectar_fase_ciclo_economico()
         self.aplicar_efectos_ciclo_economico()
@@ -384,20 +406,21 @@ class Mercado:
         # 4.5 Gestionar crisis financiera con mecanismos de recuperación
         riesgo = evaluar_riesgo_sistemico(self.sistema_bancario)
         burbuja = detectar_burbuja_precios(self)
-        
+
         # Determinar si activar crisis
         if (riesgo > 0.6 or indicadores_gobierno['desempleo'] > 0.2 or burbuja):
             if not self.crisis_financiera_activa:
                 self.crisis_financiera_activa = True
                 self.ciclos_en_crisis = 0
             self.ciclos_en_crisis += 1
-            self.sistema_bancario.banco_central.intervenir_en_crisis(self.sistema_bancario)
+            self.sistema_bancario.banco_central.intervenir_en_crisis(
+                self.sistema_bancario)
             simular_corrida_bancaria(self.sistema_bancario, intensidad=0.1)
-            
+
             # Aplicar medidas de recuperación cada 3 ciclos en crisis
             if self.ciclos_en_crisis % 3 == 0:
                 aplicar_medidas_recuperacion(self)
-        
+
         # Evaluar si terminar crisis
         if self.crisis_financiera_activa and evaluar_recuperacion_crisis(self):
             self.crisis_financiera_activa = False
@@ -407,13 +430,30 @@ class Mercado:
         # 5. Actualizar competencia
         self.actualizar_nivel_competencia()
 
-        # 6. Ciclos individuales de cada persona
+        # 6. Ejecutar ciclo del mercado laboral mejorado
+        self.mercado_laboral.ciclo_mercado_laboral()
+
+        # 6.5. Ejecutar sistema de estímulo económico
+        ciclo_estimulo_economico(self)
+
+        # 7. Ciclos individuales de cada persona
         personas_ordenadas = self.personas[:]
         random.shuffle(personas_ordenadas)  # Orden aleatorio para fairness
 
         for persona in personas_ordenadas:
             try:
                 persona.ciclo_persona(ciclo, self)
+            except ZeroDivisionError as e:
+                print(
+                    f"Error en ciclo de {getattr(persona, 'nombre', 'Persona desconocida')}: float division by zero - {e}")
+                # Intentar corregir automáticamente algunos errores comunes
+                if hasattr(persona, 'precios'):
+                    for bien, precio in persona.precios.items():
+                        if precio <= 0:
+                            # Precio mínimo de seguridad
+                            persona.precios[bien] = 1
+                if hasattr(persona, 'acciones_emitidas') and persona.acciones_emitidas <= 0:
+                    persona.acciones_emitidas = 1  # Evitar división por cero en acciones
             except Exception as e:
                 print(
                     f"Error en ciclo de {getattr(persona, 'nombre', 'Persona desconocida')}: {e}")
@@ -486,13 +526,24 @@ class Mercado:
         return self.personas
 
     def registrar_transaccion(self, consumidor, nombre_bien, cantidad, costo_total, ciclo):
-        self.transacciones.append({
+        transaccion = {
             'consumidor': consumidor.nombre,
             'bien': nombre_bien,
             'cantidad': cantidad,
             'costo_total': costo_total,
             'ciclo': ciclo
-        })
+        }
+        self.transacciones.append(transaccion)
+
+        # Registrar para PIB del ciclo actual
+        if not hasattr(self, 'transacciones_ciclo_actual'):
+            self.transacciones_ciclo_actual = []
+        if not hasattr(self, 'volumen_ciclo_actual'):
+            self.volumen_ciclo_actual = 0
+
+        if ciclo == self.ciclo_actual:
+            self.transacciones_ciclo_actual.append(transaccion)
+            self.volumen_ciclo_actual += costo_total
 
     def getRegistroTransacciones(self):
         return self.transacciones

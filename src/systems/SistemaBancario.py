@@ -227,6 +227,18 @@ class Banco:
             return 1.0
         return (self.capital + self.reservas) / pasivos
 
+    def otorgar_prestamo(self, solicitante, monto, plazo_meses=12):
+        """Alias para solicitar_prestamo - mantiene compatibilidad"""
+        return self.solicitar_prestamo(solicitante, monto, plazo_meses)
+
+    def recibir_deposito(self, persona, monto):
+        """Alias para depositar - mantiene compatibilidad"""
+        try:
+            self.depositar(persona, monto)
+            return True
+        except Exception:
+            return False
+
 
 class SistemaBancario:
     """Coordinador del sistema bancario nacional"""
@@ -282,7 +294,8 @@ class SistemaBancario:
 
                 # Propagar pérdidas por exposiciones interbancarias
                 for otro in self.bancos:
-                    perdida = otro.exposiciones_interbancarias.pop(banco.nombre, 0)
+                    perdida = otro.exposiciones_interbancarias.pop(
+                        banco.nombre, 0)
                     if perdida > 0:
                         otro.capital -= perdida
 
@@ -350,11 +363,13 @@ class BancoCentral:
             return 0
 
         apoyo_por_banco = monto_total / len(sistema_bancario.bancos)
-        apoyo_por_banco = min(apoyo_por_banco, self.reservas_internacionales / len(sistema_bancario.bancos))
+        apoyo_por_banco = min(
+            apoyo_por_banco, self.reservas_internacionales / len(sistema_bancario.bancos))
 
         for banco in sistema_bancario.bancos:
             banco.reservas += apoyo_por_banco
             banco.capital += apoyo_por_banco * 0.1
 
-        self.reservas_internacionales -= apoyo_por_banco * len(sistema_bancario.bancos)
+        self.reservas_internacionales -= apoyo_por_banco * \
+            len(sistema_bancario.bancos)
         return apoyo_por_banco * len(sistema_bancario.bancos)
