@@ -78,25 +78,37 @@ class EmpresaProductora(Empresa):
             self.precios[bien] = round(costo * (1 + margen), 2)
             
     def contratar(self, consumidor):
-        """Contrata evaluando habilidades sectoriales y negociando salario"""
-        if len(self.empleados) >= self.capacidad_empleo:
+        """Contrata evaluando habilidades sectoriales y negociando salario mejorado"""
+        # Aumentar capacidad de empleo dinámicamente
+        capacidad_dinamica = max(self.capacidad_empleo, len(self.empleados) + 5)
+        
+        if len(self.empleados) >= capacidad_dinamica:
             return 0
 
-        # Compatibilidad de habilidades según el sector de la empresa
+        # Flexibilizar requisitos de habilidades durante alta desempleo
         sector_nombre = getattr(getattr(self, 'sector', None), 'nombre', None)
         nivel = consumidor.habilidades_sectoriales.get(sector_nombre, 0.0)
-        if nivel < 0.2:  # Habilidad mínima requerida
+        
+        # Ajustar requisitos según desempleo
+        desempleo = self.mercado.gobierno.tasa_desempleo if hasattr(self.mercado, 'gobierno') else 0.1
+        habilidad_minima = max(0.1, 0.3 - desempleo)  # Menor requisito con alto desempleo
+        
+        if nivel < habilidad_minima:
             return 0
 
-        # Negociación salarial basada en curva de Phillips
-        desempleo = self.mercado.gobierno.tasa_desempleo if hasattr(self.mercado, 'gobierno') else ConfigEconomica.TASA_DESEMPLEO_OBJETIVO
+        # Negociación salarial mejorada
         if ConfigEconomica.TASA_DESEMPLEO_OBJETIVO > 0:
             factor_phillips = 1 + 0.5 * (1 - desempleo / ConfigEconomica.TASA_DESEMPLEO_OBJETIVO)
         else:
             factor_phillips = 1.0
 
+        # Incentivos gubernamentales para contratación
+        subsidio_contratacion = 1.0
+        if hasattr(self.mercado, 'crisis_financiera_activa') and self.mercado.crisis_financiera_activa:
+            subsidio_contratacion = 1.2  # 20% de incentivo durante crisis
+
         salario_base = ConfigEconomica.SALARIO_BASE_MIN * (0.5 + nivel)
-        salario = int(salario_base * factor_phillips)
+        salario = int(salario_base * factor_phillips * subsidio_contratacion)
 
         # Ajuste por poder sindical
         if consumidor.sindicato and sector_nombre in consumidor.sindicato.sectores:
@@ -207,7 +219,7 @@ class EmpresaProductora(Empresa):
         return cantidad_efectiva
         
     def ajustar_precios_dinamico(self, mercado, bien):
-        """Ajusta precios basado en múltiples factores económicos"""
+        """Ajusta precios basado en múltiples factores económicos mejorados"""
         if bien not in self.precios:
             return
             
@@ -223,56 +235,60 @@ class EmpresaProductora(Empresa):
         else:
             ratio_demanda = 0.5
             
-        # Factor 2: Nivel de inventario
+        # Factor 2: Nivel de inventario (más sensible)
         stock_actual = len(self.bienes.get(bien, []))
-        stock_optimo = demanda_estimada * 1.5
+        stock_optimo = max(5, demanda_estimada * 1.5)
         
-        if stock_optimo > 0:
-            ratio_stock = stock_actual / stock_optimo
-        else:
-            ratio_stock = 1.0
+        ratio_stock = stock_actual / stock_optimo
             
-        # Factor 3: Competencia
+        # Factor 3: Competencia (más agresiva)
         competidores = [e for e in mercado.getEmpresas() if e != self and bien in e.precios]
+        factor_competencia = 1.0
         if competidores:
             precio_promedio_competencia = sum([e.precios[bien] for e in competidores]) / len(competidores)
-            factor_competencia = precio_promedio_competencia / precio_actual if precio_actual > 0 else 1.0
-        else:
-            factor_competencia = 1.0
-            
-        # Calcular ajuste de precio
-        ajuste = 0
+            if precio_actual > precio_promedio_competencia * 1.1:
+                factor_competencia = 0.95  # Reducir precio para competir
+            elif precio_actual < precio_promedio_competencia * 0.9:
+                factor_competencia = 1.05  # Aumentar precio si somos muy baratos
         
-        # Si demanda > oferta, subir precios
-        if ratio_demanda > 1.2:
-            ajuste += 0.05
-        elif ratio_demanda < 0.8:
-            ajuste -= 0.03
-            
-        # Si hay exceso de inventario, bajar precios
-        if ratio_stock > 2.0:
-            ajuste -= 0.04
-        elif ratio_stock < 0.5:
-            ajuste += 0.03
-            
-        # Ajuste por competencia
-        if factor_competencia > 1.1:  # Competencia más cara
-            ajuste += 0.02
-        elif factor_competencia < 0.9:  # Competencia más barata
-            ajuste -= 0.02
-            
-        # Limitar el ajuste máximo por ciclo
-        ajuste = max(-ConfigEconomica.FACTOR_AJUSTE_PRECIO_MAX, 
-                    min(ConfigEconomica.FACTOR_AJUSTE_PRECIO_MAX, ajuste))
+        # Factor 4: Condiciones macroeconómicas
+        factor_macro = 1.0
+        if hasattr(mercado, 'inflacion_historica') and mercado.inflacion_historica:
+            inflacion_actual = mercado.inflacion_historica[-1]
+            factor_macro += inflacion_actual * 0.5  # Ajustar por inflación
         
-        # Aplicar ajuste
-        nuevo_precio = precio_actual * (1 + ajuste)
+        if hasattr(mercado, 'crisis_financiera_activa') and mercado.crisis_financiera_activa:
+            factor_macro *= 0.95  # Reducir precios durante crisis
         
-        # Asegurar margen mínimo
-        precio_minimo = costo_unitario * (1 + ConfigEconomica.MARGEN_GANANCIA_MIN)
-        nuevo_precio = max(nuevo_precio, precio_minimo)
+        # Factor 5: Estacionalidad (nuevo)
+        factor_estacional = 1.0
+        if hasattr(mercado.bienes[bien], 'obtener_factor_estacional'):
+            mes_actual = mercado.ciclo_actual % 12
+            factor_estacional = mercado.bienes[bien].obtener_factor_estacional(mes_actual)
         
-        self.precios[bien] = round(nuevo_precio, 2)
+        # Calcular ajuste de precio combinado
+        ajuste_demanda = -0.1 if ratio_demanda < 0.7 else (0.1 if ratio_demanda > 1.3 else 0)
+        ajuste_stock = 0.15 if ratio_stock < 0.5 else (-0.1 if ratio_stock > 2.0 else 0)
+        ajuste_aleatorio = random.uniform(-0.02, 0.02)  # Variabilidad natural
+        
+        factor_total = (1 + ajuste_demanda + ajuste_stock + ajuste_aleatorio) * factor_competencia * factor_macro * factor_estacional
+        
+        # Aplicar ajuste con límites
+        precio_nuevo = precio_actual * factor_total
+        precio_minimo = costo_unitario * 1.05  # Mínimo 5% margen
+        precio_maximo = costo_unitario * 4.0   # Máximo 300% margen
+        
+        precio_nuevo = max(precio_minimo, min(precio_maximo, precio_nuevo))
+        
+        # Limitar cambios drásticos (máximo ±15% por ciclo)
+        cambio_maximo = precio_actual * 0.15
+        if abs(precio_nuevo - precio_actual) > cambio_maximo:
+            if precio_nuevo > precio_actual:
+                precio_nuevo = precio_actual + cambio_maximo
+            else:
+                precio_nuevo = precio_actual - cambio_maximo
+        
+        self.precios[bien] = round(precio_nuevo, 2)
         
     def obtener_ventas_recientes(self, bien, mercado, num_ciclos):
         """Obtiene las ventas de los últimos N ciclos"""
@@ -319,14 +335,29 @@ class EmpresaProductora(Empresa):
                         self.dinero -= costo_expansion
                         
     def pagar_costos_operativos(self):
-        """Paga costos fijos y salarios"""
+        """Paga costos fijos y salarios con opción de financiamiento bancario"""
         costo_total = self.costos_fijos_mensuales + self.costo_salarios
         
         if self.dinero >= costo_total:
             self.dinero -= costo_total
             return True
         else:
-            # Crisis financiera - despedir empleados
+            # Intentar obtener préstamo bancario antes de despedir
+            deficit = costo_total - self.dinero
+            if hasattr(self.mercado, 'sistema_bancario') and self.mercado.sistema_bancario.bancos:
+                banco = self.mercado.sistema_bancario.bancos[0]
+                ingreso_estimado = len(self.empleados) * 3000  # Estimación de ingresos
+                prestamo_resultado = banco.otorgar_prestamo(self.nombre, deficit * 2, ingreso_estimado)
+                
+                if prestamo_resultado:
+                    self.dinero += deficit * 2
+                    # Registrar deuda (simplificado)
+                    if not hasattr(self, 'deuda_bancaria'):
+                        self.deuda_bancaria = 0
+                    self.deuda_bancaria += deficit * 2.2  # Con intereses
+                    return True
+            
+            # Crisis financiera - despedir empleados como último recurso
             empleados_a_despedir = min(len(self.empleados), 
                                      int((costo_total - self.dinero) / 3000))  # Asumir salario promedio 3000
             for _ in range(empleados_a_despedir):

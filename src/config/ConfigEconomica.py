@@ -29,16 +29,26 @@ class ConfigEconomica:
         'alimentos_basicos': -0.3,  # Inelástico (necesidades básicas)
         'alimentos_lujo': -1.2,    # Elástico
         'servicios': -0.8,
+        'servicios_lujo': -1.5,
         'bienes_duraderos': -1.5,
-        'combustibles': -0.2
+        'combustibles': -0.2,
+        'tecnologia': -1.8,        # Muy elástico
+        'capital': -0.5,           # Poco elástico
+        'intermedio': -0.4,        # Poco elástico
+        'financiero': -1.0         # Moderadamente elástico
     }
     
     ELASTICIDADES_INGRESO = {
         'alimentos_basicos': 0.5,   # Bien normal inferior
         'alimentos_lujo': 1.5,     # Bien normal superior
         'servicios': 1.2,
+        'servicios_lujo': 2.2,     # Bien de lujo
         'bienes_duraderos': 2.0,   # Bien de lujo
-        'combustibles': 0.8
+        'combustibles': 0.8,
+        'tecnologia': 2.5,         # Bien de lujo alto
+        'capital': 1.5,            # Bien de inversión
+        'intermedio': 1.0,         # Neutral
+        'financiero': 1.8          # Bien superior
     }
     
     # Tipos de bienes por categoría

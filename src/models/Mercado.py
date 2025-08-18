@@ -16,6 +16,8 @@ from ..systems.CrisisFinanciera import (
     detectar_burbuja_precios,
     evaluar_riesgo_sistemico,
     simular_corrida_bancaria,
+    evaluar_recuperacion_crisis,
+    aplicar_medidas_recuperacion,
 )
 from ..systems.MercadoLaboral import MercadoLaboral
 
@@ -64,6 +66,7 @@ class Mercado:
 
         # Estado de crisis financiera
         self.crisis_financiera_activa = False
+        self.ciclos_en_crisis = 0
 
         # Inicializar precios históricos
         for bien in self.bienes:
@@ -378,15 +381,28 @@ class Mercado:
         # 4. Ciclo del gobierno (políticas, impuestos, regulación)
         indicadores_gobierno = self.gobierno.ciclo_gobierno(ciclo)
 
-        # 4.5 Evaluar posible crisis financiera e intervenir
+        # 4.5 Gestionar crisis financiera con mecanismos de recuperación
         riesgo = evaluar_riesgo_sistemico(self.sistema_bancario)
         burbuja = detectar_burbuja_precios(self)
+        
+        # Determinar si activar crisis
         if (riesgo > 0.6 or indicadores_gobierno['desempleo'] > 0.2 or burbuja):
-            self.crisis_financiera_activa = True
+            if not self.crisis_financiera_activa:
+                self.crisis_financiera_activa = True
+                self.ciclos_en_crisis = 0
+            self.ciclos_en_crisis += 1
             self.sistema_bancario.banco_central.intervenir_en_crisis(self.sistema_bancario)
             simular_corrida_bancaria(self.sistema_bancario, intensidad=0.1)
-        else:
+            
+            # Aplicar medidas de recuperación cada 3 ciclos en crisis
+            if self.ciclos_en_crisis % 3 == 0:
+                aplicar_medidas_recuperacion(self)
+        
+        # Evaluar si terminar crisis
+        if self.crisis_financiera_activa and evaluar_recuperacion_crisis(self):
             self.crisis_financiera_activa = False
+            self.ciclos_en_crisis = 0
+            print("🎉 CRISIS FINANCIERA RESUELTA - Economía en recuperación")
 
         # 5. Actualizar competencia
         self.actualizar_nivel_competencia()

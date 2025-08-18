@@ -3,6 +3,7 @@ from .InventarioBien import InventarioBien
 
 class Persona:
     def __init__(self, mercado):
+        self.mercado = mercado  # Guardar referencia al mercado
         self.dinero = 0
         self.bienes = {}  # Bienes en posesión, formato: {'NombreBien': cantidad}
         self.demanda = []  # Bienes que se desean comprar

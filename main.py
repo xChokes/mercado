@@ -29,12 +29,13 @@ from src.models.Consumidor import Consumidor
 from src.models.Empresa import Empresa
 from src.models.EmpresaProductora import EmpresaProductora
 from src.config.ConfigEconomica import ConfigEconomica
+from src.config.ConfiguradorSimulacion import configurador
 from src.systems.PsicologiaEconomica import inicializar_perfiles_psicologicos
 from src.systems.ComercioInternacional import Pais, TipoCambio
 
 
 def crear_bienes_realistas():
-    """Crea bienes con características económicas realistas"""
+    """Crea bienes con características económicas realistas - CATÁLOGO EXPANDIDO"""
     bienes = {}
     
     # Bienes básicos (necesidades)
@@ -45,34 +46,92 @@ def crear_bienes_realistas():
     bienes['Sal'] = Bien('Sal', 'alimentos_basicos')
     bienes['Aceite'] = Bien('Aceite', 'alimentos_basicos')
     bienes['Azucar'] = Bien('Azucar', 'alimentos_basicos')
+    bienes['Agua'] = Bien('Agua', 'alimentos_basicos')
+    bienes['Harina'] = Bien('Harina', 'alimentos_basicos')
+    bienes['Frijoles'] = Bien('Frijoles', 'alimentos_basicos')
     
     # Bienes de lujo alimentarios
     bienes['Carne'] = Bien('Carne', 'alimentos_lujo')
     bienes['Pollo'] = Bien('Pollo', 'alimentos_lujo')
     bienes['Huevos'] = Bien('Huevos', 'alimentos_lujo')
     bienes['Cafe'] = Bien('Cafe', 'alimentos_lujo')
+    bienes['Pescado'] = Bien('Pescado', 'alimentos_lujo')
+    bienes['Queso'] = Bien('Queso', 'alimentos_lujo')
+    bienes['Chocolate'] = Bien('Chocolate', 'alimentos_lujo')
+    bienes['Vino'] = Bien('Vino', 'alimentos_lujo')
+    bienes['Frutas'] = Bien('Frutas', 'alimentos_lujo')
+    bienes['Verduras'] = Bien('Verduras', 'alimentos_lujo')
     
-    # Bienes manufacturados
+    # Bienes manufacturados básicos
     bienes['Ropa'] = Bien('Ropa', 'bienes_duraderos')
     bienes['Calzado'] = Bien('Calzado', 'bienes_duraderos')
+    bienes['Muebles'] = Bien('Muebles', 'bienes_duraderos')
+    bienes['Electrodomesticos'] = Bien('Electrodomesticos', 'bienes_duraderos')
+    bienes['Libros'] = Bien('Libros', 'bienes_duraderos')
+    bienes['Herramientas'] = Bien('Herramientas', 'bienes_duraderos')
     
-    # Servicios
+    # Bienes tecnológicos
+    bienes['Computadora'] = Bien('Computadora', 'tecnologia')
+    bienes['Telefono'] = Bien('Telefono', 'tecnologia')
+    bienes['Television'] = Bien('Television', 'tecnologia')
+    bienes['Internet'] = Bien('Internet', 'tecnologia')
+    bienes['Software'] = Bien('Software', 'tecnologia')
+    
+    # Servicios básicos
     bienes['Transporte'] = Bien('Transporte', 'servicios')
     bienes['Educacion'] = Bien('Educacion', 'servicios')
+    bienes['Salud'] = Bien('Salud', 'servicios')
+    bienes['Vivienda'] = Bien('Vivienda', 'servicios')
+    bienes['Electricidad'] = Bien('Electricidad', 'servicios')
+    bienes['Gas'] = Bien('Gas', 'servicios')
+    bienes['Seguridad'] = Bien('Seguridad', 'servicios')
+    
+    # Servicios de lujo
+    bienes['Entretenimiento'] = Bien('Entretenimiento', 'servicios_lujo')
+    bienes['Turismo'] = Bien('Turismo', 'servicios_lujo')
+    bienes['Restaurante'] = Bien('Restaurante', 'servicios_lujo')
+    bienes['Gimnasio'] = Bien('Gimnasio', 'servicios_lujo')
+    bienes['Spa'] = Bien('Spa', 'servicios_lujo')
+    
+    # Bienes de capital e intermedios
+    bienes['Maquinaria'] = Bien('Maquinaria', 'capital')
+    bienes['Materias_Primas'] = Bien('Materias_Primas', 'intermedio')
+    bienes['Energia'] = Bien('Energia', 'intermedio')
+    bienes['Acero'] = Bien('Acero', 'intermedio')
+    bienes['Cemento'] = Bien('Cemento', 'intermedio')
+    bienes['Plastico'] = Bien('Plastico', 'intermedio')
+    
+    # Bienes financieros
+    bienes['Seguros'] = Bien('Seguros', 'financiero')
+    bienes['Credito'] = Bien('Credito', 'financiero')
+    bienes['Inversion'] = Bien('Inversion', 'financiero')
     
     return bienes
 
 
 def configurar_economia_inicial(mercado):
-    """Configura el estado inicial de la economía"""
+    """Configura el estado inicial de la economía con parámetros configurables"""
     print("🏗️  Configurando economía inicial...")
+    
+    # Obtener configuración
+    config_sim = configurador.obtener_seccion('simulacion')
+    config_econ = configurador.obtener_seccion('economia')
+    
+    num_productoras = config_sim.get('num_empresas_productoras', 5)
+    num_comerciales = config_sim.get('num_empresas_comerciales', 8)
+    num_consumidores = config_sim.get('num_consumidores', 250)
+    
+    # Actualizar configuración económica global
+    configurador.actualizar_configuracion_economica(ConfigEconomica)
     
     # Crear empresas productoras especializadas
     empresas_productoras = []
     nombres_productoras = [
         "AgroIndustrias SA", "AlimentosPro Ltd", "ManufacturaMax Corp",
-        "ProduccionTotal Inc", "IndustriasPrima SA"
+        "ProduccionTotal Inc", "IndustriasPrima SA", "TecnoFabrik SA",
+        "ProcessingCorp Ltd", "MaterialesPro Inc"
     ]
+    
     
     for i, nombre in enumerate(nombres_productoras):
         empresa = EmpresaProductora(nombre, mercado)
@@ -514,8 +573,8 @@ def main():
                                                pais_a, pais_b)
     print("✅ Transacción internacional de ejemplo registrada")
 
-    # 8. Ejecutar simulación principal
-    num_ciclos = 50  # Simulación extendida para mejores resultados
+    # 8. Ejecutar simulación principal con configuración
+    num_ciclos = configurador.obtener('simulacion', 'num_ciclos', 50)
     metricas = ejecutar_simulacion(mercado, num_ciclos)
 
     # 9. Análisis económico integral

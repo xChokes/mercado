@@ -63,26 +63,81 @@ class PredictorDemanda:
         return caracteristicas
         
     def entrenar(self, mercado, bien):
-        """Entrena el modelo con datos históricos"""
-        if len(mercado.transacciones) < 10:  # Necesitamos datos suficientes
-            return False
+        """Entrena el modelo con datos históricos mejorados"""
+        # Usar datos sintéticos si no hay suficientes datos reales
+        if len(mercado.transacciones) < 10:
+            return self._generar_datos_sinteticos_y_entrenar(mercado, bien)
             
         X = []
         y = []
         
         # Recopilar datos de entrenamiento de transacciones pasadas
-        for i in range(5, len(mercado.transacciones)):
+        for i in range(max(0, len(mercado.transacciones) - 50), len(mercado.transacciones)):
             transaccion = mercado.transacciones[i]
             if transaccion.get('bien') == bien:
-                # Simular características en ese punto temporal
-                caracteristicas = self.extraer_caracteristicas(mercado, bien)
+                # Usar características históricas simuladas
+                caracteristicas = self._simular_caracteristicas_historicas(mercado, bien, i)
                 cantidad = transaccion.get('cantidad', 1)
                 
                 X.append(caracteristicas)
                 y.append(cantidad)
                 
-        if len(X) < 5:  # Mínimo para entrenar
+        # Si aún no hay suficientes datos, complementar con sintéticos
+        if len(X) < 10:
+            X_sinteticos, y_sinteticos = self._generar_datos_complementarios(mercado, bien, 15)
+            X.extend(X_sinteticos)
+            y.extend(y_sinteticos)
+                
+        if len(X) < 5:  # Mínimo absoluto
             return False
+            
+        try:
+            # Validar que todas las características sean numéricas
+            X_clean = []
+            y_clean = []
+            for i, caracteristicas in enumerate(X):
+                if all(isinstance(x, (int, float)) and not np.isnan(x) for x in caracteristicas):
+                    X_clean.append(caracteristicas)
+                    y_clean.append(y[i])
+            
+            if len(X_clean) < 5:
+                return False
+                
+            X_scaled = self.scaler.fit_transform(X_clean)
+            self.modelo.fit(X_scaled, y_clean)
+            self.caracteristicas_entrenadas = True
+            return True
+        except Exception as e:
+            print(f"Error entrenando modelo para {bien}: {e}")
+            return False
+    
+    def _generar_datos_sinteticos_y_entrenar(self, mercado, bien, num_puntos=20):
+        """Genera datos sintéticos realistas para entrenar el modelo"""
+        X = []
+        y = []
+        
+        for i in range(num_puntos):
+            # Características sintéticas realistas
+            precio = random.uniform(5, 50)
+            pib_factor = random.uniform(0.8, 1.2)
+            desempleo = random.uniform(0.05, 0.25)
+            inflacion = random.uniform(-0.05, 0.1)
+            fase_economica = random.uniform(0, 1)
+            estacionalidad_sin = random.uniform(-0.5, 0.5)
+            estacionalidad_cos = random.uniform(-0.5, 0.5)
+            tendencia = random.uniform(-2, 2)
+            
+            caracteristicas = [precio, tendencia, pib_factor, desempleo, inflacion, 
+                             fase_economica, estacionalidad_sin, estacionalidad_cos]
+            
+            # Demanda sintética basada en lógica económica
+            elasticidad_precio = -0.8  # Demanda disminuye con precio
+            demanda_base = 20
+            demanda = demanda_base * (precio ** elasticidad_precio) * pib_factor * (1 - desempleo)
+            demanda = max(1, int(demanda + random.uniform(-5, 5)))
+            
+            X.append(caracteristicas)
+            y.append(demanda)
             
         try:
             X_scaled = self.scaler.fit_transform(X)
@@ -91,6 +146,37 @@ class PredictorDemanda:
             return True
         except:
             return False
+    
+    def _generar_datos_complementarios(self, mercado, bien, num_puntos):
+        """Genera datos complementarios para mejorar el entrenamiento"""
+        X = []
+        y = []
+        
+        for _ in range(num_puntos):
+            # Variaciones alrededor de las condiciones actuales
+            caracteristicas_base = self.extraer_caracteristicas(mercado, bien)
+            caracteristicas_variadas = []
+            
+            for caracteristica in caracteristicas_base:
+                variacion = caracteristica * random.uniform(0.7, 1.3)
+                caracteristicas_variadas.append(variacion)
+            
+            # Demanda basada en elasticidad estimada
+            precio = caracteristicas_variadas[0]
+            demanda_estimada = max(1, int(50 * (10 / max(precio, 1))))
+            
+            X.append(caracteristicas_variadas)
+            y.append(demanda_estimada)
+            
+        return X, y
+    
+    def _simular_caracteristicas_historicas(self, mercado, bien, indice_transaccion):
+        """Simula las características que habrían existido en un momento anterior"""
+        # Usar datos actuales con pequeñas variaciones para simular historial
+        caracteristicas_actuales = self.extraer_caracteristicas(mercado, bien)
+        factor_variacion = random.uniform(0.85, 1.15)
+        
+        return [c * factor_variacion for c in caracteristicas_actuales]
             
     def predecir_demanda(self, mercado, bien):
         """Predice la demanda futura para un bien"""
