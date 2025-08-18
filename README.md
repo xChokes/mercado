@@ -1,49 +1,18 @@
-# 🏛️ SIMULADOR ECONÓMICO AVANZADO v2.0
-
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Production-brightgreen.svg)]()
+# 🏛️ SIMULADOR ECONÓMICO AVANZADO
 
 ## 🎯 Descripción
 
-Simulación económica avanzada que modela un ecosistema de mercado completo con múltiples agentes económicos, implementando leyes económicas realistas y dinámicas macroeconómicas sofisticadas.
+Simulación económica completa que modela un ecosistema de mercado realista con múltiples agentes económicos, implementando dinámicas macroeconómicas avanzadas.
 
-## ✨ Sistemas Implementados
+## ✨ Características Principales
 
-### 🏦 Sistema Bancario
-
-- Bancos comerciales con intermediación financiera
-- Sistema de crédito con evaluación de riesgo
-- Banco Central con política monetaria
-- Tasas de interés diferenciadas
-
-### 🏭 Sectores Económicos
-
-- Sectores primario, secundario y terciario
-- Matriz insumo-producto
-- Cadenas de suministro
-- Shocks sectoriales con propagación
-
-### 🔬 Innovación y Tecnología
-
-- I+D empresarial
-- Ciclos de vida de productos
-- Adopción tecnológica
-- Spillovers tecnológicos
-
-### 🧠 Psicología Económica
-
-- Sesgos cognitivos (anclaje, aversión pérdidas, etc.)
-- Decisiones irracionales
-- Influencia social
-- Perfiles psicológicos individualizados
-
-### 🤖 Analytics y Machine Learning
-
-- Predicción de demanda
-- Optimización de precios
-- Clusterización de agentes
-- Análisis predictivo
+- **Sistema Bancario Completo**: Bancos, créditos, política monetaria
+- **Mercado Laboral**: Contrataciones, sindicatos, perfiles de habilidades
+- **Machine Learning**: Predicción de demanda y optimización de precios
+- **Crisis Financieras**: Detección automática y medidas de recuperación
+- **Dashboard Avanzado**: Visualización en tiempo real de múltiples métricas
+- **Precios Dinámicos**: Ajuste automático basado en oferta y demanda
+- **Psicología Económica**: Sesgos cognitivos y decisiones irracionales
 
 ## 📁 Estructura del Proyecto
 
@@ -78,82 +47,140 @@ simulador-economico/
 │   └── test_visualizacion.py
 ├── results/               # 📊 Resultados de simulaciones
 ├── deprecated/            # 🗄️ Archivos antiguos
-└── requirements.txt       # 📋 Dependencias
 ```
 
-## 🚀 Instalación y Uso
+mercado/
+├── main.py # 🚀 Archivo principal - ejecuta toda la simulación
+├── config_simulacion.json # ⚙️ Configuración de parámetros
+├── requirements.txt # � Dependencias
+└── src/ # 📂 Código fuente modular
+├── models/ # 🎭 Modelos de agentes económicos
+├── systems/ # ⚡ Sistemas económicos avanzados
+└── config/ # ⚙️ Configuración y gestión
 
-### Prerrequisitos
+````
+
+## 🚀 Uso Rápido
+
+### 1. Instalación
 
 ```bash
-Python 3.8+
-pip (gestor de paquetes)
-```
-
-### Instalación
-
-```bash
-# Clonar repositorio
-git clone https://github.com/xChokes/mercado.git
-cd mercado
-
-# Crear entorno virtual
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate   # Windows
-
-# Instalar dependencias
 pip install -r requirements.txt
-```
+````
 
-### Ejecución
+### 2. Ejecución
 
 ```bash
-# Ejecutar simulación principal
 python main.py
 ```
 
-## 📊 Salidas del Simulador
+## ⚙️ Configuración
 
-### Análisis Generados
+Edita `config_simulacion.json` para personalizar:
 
-- **Reporte económico completo** con indicadores macroeconómicos
-- **Gráficos multi-panel** con 9 métricas principales
-- **Análisis sectorial** detallado
-- **Estadísticas de sistemas avanzados**
-- **Ranking empresarial** por capital
+- **Número de agentes económicos**
+- **Duración de la simulación**
+- **Parámetros económicos iniciales**
+- **Activación de sistemas específicos**
 
-### Archivos de Salida
+## 📊 Resultados
 
-- `results/simulacion_economica_avanzada_[timestamp].png` - Gráficos de análisis
-- Logs detallados en consola
-- Estadísticas de performance del sistema
+La simulación genera automáticamente:
 
-## 🎮 Personalización
+- **Gráficos interactivos** de métricas económicas
+- **Datos CSV** para análisis posterior
+- **Reportes textuales** con estadísticas detalladas
+- **Archivos JSON** con configuración utilizada
 
-### Parámetros Configurables
+## 🔧 Sistemas Integrados
 
-- **Número de ciclos**: Duración de la simulación
-- **Cantidad de agentes**: Consumidores y empresas
-- **Tipos de bienes**: Productos y servicios
-- **Políticas gubernamentales**: Impuestos, gasto público
-- **Parámetros ML**: Configuración de algoritmos
+### 🏦 Sistema Bancario
 
-### Extensiones Disponibles
+- Múltiples bancos comerciales
+- Evaluación de riesgo crediticio
+- Política monetaria del banco central
 
-- Nuevos tipos de agentes económicos
-- Sistemas sectoriales adicionales
-- Algoritmos de ML más sofisticados
-- Visualizaciones personalizadas
+### 👷 Mercado Laboral
 
-## 📈 Características Técnicas
+- Perfiles de habilidades individualizados
+- Sindicatos y negociación colectiva
+- Facilitación de contrataciones masivas
 
-### Modelado Económico
+### 🤖 Machine Learning
 
-- **Elasticidades realistas** por tipo de bien
-- **Ciclos económicos** dinámicos
-- **Shocks económicos** aleatorios
-- **Políticas contracíclicas** automáticas
+- Predicción automática de demanda
+- Optimización dinámica de precios
+- Análisis de patrones de consumo
+
+### 💰 Precios Dinámicos
+
+- Ajuste automático por oferta/demanda
+- Elasticidad diferenciada por categoría
+- Competencia entre empresas
+
+### 🚨 Crisis y Estímulos
+
+- Detección automática de crisis financieras
+- Medidas de recuperación económica
+- Estímulos gubernamentales de emergencia
+
+## 📈 Métricas Monitoreadas
+
+- **PIB y crecimiento económico**
+- **Inflación y deflación**
+- **Tasa de desempleo**
+- **Volumen de transacciones**
+- **Salud del sistema bancario**
+- **Distribución de la riqueza**
+
+## 💡 Ejemplos de Uso
+
+### Análisis de Crisis Económicas
+
+```json
+{
+  "simulacion": {
+    "activar_crisis": true,
+    "tiempo_maximo_crisis": 15
+  }
+}
+```
+
+### Economía de Alto Empleo
+
+```json
+{
+  "economia": {
+    "tasa_desempleo_inicial": 0.05,
+    "salario_base_minimo": 3000
+  }
+}
+```
+
+## 🔍 Monitoreo en Tiempo Real
+
+El dashboard muestra en tiempo real:
+
+- Evolución del PIB
+- Fluctuaciones de precios
+- Movimientos en el mercado laboral
+- Actividad bancaria
+- Indicadores de crisis
+
+## 🎯 Casos de Uso
+
+- **Investigación Económica**: Análisis de políticas macroeconómicas
+- **Educación**: Enseñanza de principios económicos
+- **Planificación**: Simulación de escenarios económicos
+- **Validación**: Testing de teorías económicas
+
+## 📝 Licencia
+
+MIT License - Libre para uso académico y comercial
+
+---
+
+**¡Ejecuta `python main.py` y observa una economía completa en acción! 🚀**
 
 ### Agentes Inteligentes
 

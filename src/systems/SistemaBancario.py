@@ -4,6 +4,7 @@ Implementa intermediación financiera, crédito y política monetaria
 """
 import random
 import math
+import logging
 from ..config.ConfigEconomica import ConfigEconomica
 
 
@@ -88,26 +89,43 @@ class Banco:
         return max(0.03, min(0.25, tasa_final))  # Entre 3% y 25%
 
     def solicitar_prestamo(self, solicitante, monto, plazo_meses=12):
-        """Procesa una solicitud de préstamo"""
-        # Verificar límites
-        if monto > self.limite_credito_individual:
-            return False, "Monto excede límite individual"
+        """Procesa una solicitud de préstamo con criterios más flexibles y logging"""
+        # Debug: Información de la solicitud
+        nombre_solicitante = getattr(solicitante, 'nombre', 'Desconocido')
+
+        # Verificar límites básicos pero más flexibles
+        limite_flexible = self.limite_credito_individual * 3  # Triplicar límite
+        if monto > limite_flexible:
+            # Solo log a nivel WARNING para rechazos críticos
+            logging.warning(
+                f"Préstamo rechazado para {nombre_solicitante}: Monto ${monto:,.0f} excede límite ${limite_flexible:,.0f}")
+            return False, f"Monto excede límite individual de ${limite_flexible:,.0f}"
 
         prestamos_totales = sum([p['monto'] for p in self.prestamos.values()])
         depositos_totales = sum(self.depositos.values())
 
-        if (prestamos_totales + monto) > (depositos_totales * self.ratio_prestamos_depositos_max):
-            return False, "Insuficiente liquidez bancaria"
+        # Usar reservas si no hay suficientes depósitos
+        fondos_disponibles = depositos_totales + self.reservas * 0.9
+        ratio_maximo = 1.5  # Permitir aún más préstamos
 
-        # Evaluar riesgo
+        if (prestamos_totales + monto) > (fondos_disponibles * ratio_maximo):
+            # Solo log a nivel WARNING para rechazos por liquidez
+            logging.warning(
+                f"Préstamo rechazado para {nombre_solicitante}: Insuficiente liquidez")
+            return False, f"Insuficiente liquidez bancaria (${fondos_disponibles:,.0f} disponibles)"
+
+        # Evaluar riesgo con criterios más flexibles
         riesgo = self.evaluar_riesgo_crediticio(solicitante)
-        if riesgo < 0.3:
-            return False, "Riesgo crediticio muy alto"
+        if riesgo < 0.15:  # Aún más flexible
+            # Solo log a nivel WARNING para rechazos por riesgo
+            logging.warning(
+                f"Préstamo rechazado para {nombre_solicitante}: Riesgo muy alto ({riesgo:.2f})")
+            return False, f"Riesgo crediticio alto ({riesgo:.2f})"
 
         # Aprobar préstamo
         tasa = self.calcular_tasa_prestamo(solicitante, monto)
-
         persona_id = id(solicitante)
+
         self.prestamos[persona_id] = {
             'monto': monto,
             'tasa_anual': tasa,
@@ -118,10 +136,21 @@ class Banco:
             'solicitante': solicitante
         }
 
-        # Entregar dinero
+        # Entregar dinero al solicitante
         solicitante.dinero += monto
-        self.reservas -= monto  # Reducir reservas
 
+        # Reducir reservas/depósitos del banco
+        if self.reservas >= monto:
+            self.reservas -= monto
+        else:
+            diferencia = monto - self.reservas
+            self.reservas = 0
+            # Usar parte de los depósitos si es necesario
+            self.capital -= diferencia * 0.1  # Solo 10% del capital
+
+        # Solo log INFO para aprobaciones exitosas, sin emojis
+        logging.info(
+            f"Préstamo aprobado para {nombre_solicitante}: ${monto:,.0f} al {tasa:.1%}")
         return True, f"Préstamo aprobado: ${monto:,.2f} al {tasa:.2%} anual"
 
     def _calcular_cuota(self, capital, tasa_anual, plazo_meses):

@@ -2,6 +2,7 @@ from .Empresa import Empresa
 from ..config.ConfigEconomica import ConfigEconomica
 from .InventarioBien import InventarioBien
 import random
+import logging
 
 
 class EmpresaProductora(Empresa):
@@ -11,6 +12,11 @@ class EmpresaProductora(Empresa):
         # Características financieras mejoradas
         self.dinero = random.randint(ConfigEconomica.DINERO_INICIAL_EMPRESA_PRODUCTORA_MIN,
                                      ConfigEconomica.DINERO_INICIAL_EMPRESA_PRODUCTORA_MAX)
+
+        # Estado financiero y de quiebra
+        self.en_quiebra = False
+        self.ciclos_sin_actividad = 0
+        self.dinero_minimo_operacion = 5000  # Umbral mínimo para operar
 
         # Capacidades de producción
         self.capacidad_produccion = {}
@@ -141,218 +147,348 @@ class EmpresaProductora(Empresa):
 
     def calcular_demanda_estimada(self, bien, mercado):
         """Estima la demanda del bien basada en el mercado"""
-        # Demanda basada en población de consumidores
-        consumidores = mercado.getConsumidores()
-        ingreso_promedio = sum(
-            [c.ingreso_mensual for c in consumidores if c.empleado]) / max(1, len(consumidores))
+        try:
+            # Protecciones básicas
+            if not mercado or not bien or bien not in mercado.bienes:
+                return 1  # Demanda mínima de seguridad
 
-        # Usar el método del bien para calcular demanda base
-        demanda_base = mercado.bienes[bien].calcular_demanda_base(
-            len(consumidores), ingreso_promedio)
+            # Demanda basada en población de consumidores
+            consumidores = mercado.getConsumidores()
+            if not consumidores:
+                return 1  # Demanda mínima si no hay consumidores
 
-        # Ajustar por competencia
-        competidores = [e for e in mercado.getEmpresas() if e !=
-                        self and bien in e.bienes]
-        factor_competencia = 1.0 / max(1, len(competidores))
+            empleados = [c for c in consumidores if c.empleado]
+            if empleados:
+                ingreso_promedio = sum(
+                    [c.ingreso_mensual for c in empleados]) / len(empleados)
+            else:
+                ingreso_promedio = 5000  # Ingreso promedio de fallback
 
-        # Ajustar por precio relativo
-        if competidores:
-            precio_promedio_competencia = sum(
-                # Evitar división por cero
-                [e.precios.get(bien, 0) for e in competidores]) / max(1, len(competidores))
-            if precio_promedio_competencia > 0:
-                # Obtener precio propio, garantizando que nunca sea cero
-                precio_propio = self.precios.get(bien, 1)
-                if precio_propio <= 0:
-                    precio_propio = 1  # Precio mínimo de seguridad
-                factor_precio = precio_promedio_competencia / precio_propio
-                # Limitar el efecto
-                factor_precio = min(2.0, max(0.5, factor_precio))
+            # Usar el método del bien para calcular demanda base
+            demanda_base = mercado.bienes[bien].calcular_demanda_base(
+                len(consumidores), ingreso_promedio)
+
+            # Asegurar demanda base mínima
+            demanda_base = max(1, demanda_base)
+
+            # Ajustar por competencia
+            competidores = [e for e in mercado.getEmpresas() if e !=
+                            self and bien in e.bienes]
+            factor_competencia = 1.0 / max(1, len(competidores))
+
+            # Ajustar por precio relativo
+            if competidores:
+                precios_competencia = [e.precios.get(
+                    bien, 0) for e in competidores if e.precios.get(bien, 0) > 0]
+                if precios_competencia:
+                    precio_promedio_competencia = sum(
+                        precios_competencia) / len(precios_competencia)
+
+                    # Obtener precio propio, garantizando que nunca sea cero
+                    precio_propio = self.precios.get(bien, 1)
+                    if precio_propio <= 0:
+                        precio_propio = 1  # Precio mínimo de seguridad
+
+                    # Protección adicional contra división por cero
+                    if precio_propio > 0 and precio_promedio_competencia > 0:
+                        factor_precio = precio_promedio_competencia / precio_propio
+                        # Limitar el efecto
+                        factor_precio = min(2.0, max(0.5, factor_precio))
+                    else:
+                        factor_precio = 1.0
+                else:
+                    factor_precio = 1.0
             else:
                 factor_precio = 1.0
-        else:
-            factor_precio = 1.0
 
-        demanda_estimada = int(
-            demanda_base * factor_competencia * factor_precio)
-        return max(1, demanda_estimada)
+            demanda_estimada = int(
+                demanda_base * factor_competencia * factor_precio)
+            return max(1, demanda_estimada)
+
+        except (ZeroDivisionError, ValueError, TypeError, AttributeError) as e:
+            logging.error(
+                f"Error calculando demanda estimada para {bien} en {self.nombre}: {e}")
+            return 1  # Demanda mínima de seguridad
+        except Exception as e:
+            logging.error(
+                f"Error inesperado calculando demanda para {bien} en {self.nombre}: {e}")
+            return 1
 
     def planificar_produccion(self, mercado):
         """Planifica la producción basada en demanda estimada y capacidad"""
         plan_produccion = {}
 
-        for bien in self.capacidad_produccion:
-            demanda_estimada = self.calcular_demanda_estimada(bien, mercado)
-            stock_actual = len(self.bienes.get(bien, []))
+        try:
+            for bien in self.capacidad_produccion:
+                try:
+                    demanda_estimada = self.calcular_demanda_estimada(
+                        bien, mercado)
+                    stock_actual = len(self.bienes.get(bien, []))
 
-            # Nivel de stock objetivo (1.5x la demanda estimada)
-            stock_objetivo = int(demanda_estimada * 1.5)
-            necesidad_produccion = max(0, stock_objetivo - stock_actual)
+                    # Nivel de stock objetivo (1.5x la demanda estimada)
+                    stock_objetivo = int(max(1, demanda_estimada) * 1.5)
+                    necesidad_produccion = max(
+                        0, stock_objetivo - stock_actual)
 
-            # Limitar por capacidad de producción
-            capacidad_disponible = self.capacidad_produccion[bien] - \
-                self.produccion_actual.get(bien, 0)
-            produccion_planificada = min(
-                necesidad_produccion, capacidad_disponible)
+                    # Limitar por capacidad de producción
+                    capacidad_disponible = max(0, self.capacidad_produccion.get(bien, 0) -
+                                               self.produccion_actual.get(bien, 0))
+                    produccion_planificada = min(
+                        necesidad_produccion, capacidad_disponible)
 
-            # Considerar restricciones financieras
-            costo_produccion = produccion_planificada * \
-                self.costos_unitarios[bien]
-            if costo_produccion > self.dinero * 0.7:  # No usar más del 70% del capital
-                produccion_planificada = int(
-                    # Evitar división por cero
-                    self.dinero * 0.7 / max(1, self.costos_unitarios[bien]))
+                    # Considerar restricciones financieras
+                    costo_unitario = max(
+                        0.01, self.costos_unitarios.get(bien, 1))
+                    costo_produccion = produccion_planificada * costo_unitario
 
-            plan_produccion[bien] = max(0, produccion_planificada)
+                    if costo_produccion > self.dinero * 0.7:  # No usar más del 70% del capital
+                        produccion_planificada = int(
+                            # Evitar división por cero
+                            self.dinero * 0.7 / costo_unitario)
+
+                    plan_produccion[bien] = max(0, produccion_planificada)
+
+                except (ZeroDivisionError, ValueError, TypeError, KeyError) as e:
+                    logging.error(
+                        f"Error planificando producción de {bien} en {self.nombre}: {e}")
+                    plan_produccion[bien] = 0
+                except Exception as e:
+                    logging.error(
+                        f"Error inesperado planificando producción de {bien} en {self.nombre}: {e}")
+                    plan_produccion[bien] = 0
+
+        except Exception as e:
+            logging.error(
+                f"Error general en planificación de producción de {self.nombre}: {e}")
+            # Retornar un plan vacío en caso de error
+            plan_produccion = {bien: 0 for bien in self.capacidad_produccion}
 
         return plan_produccion
 
     def producir_bien_mejorado(self, bien, cantidad, mercado):
         """Versión mejorada del método de producción"""
-        if cantidad <= 0:
-            return 0
+        try:
+            if cantidad <= 0:
+                return 0
 
-        costo_unitario = self.costos_unitarios[bien]
+            costo_unitario = max(0.01, self.costos_unitarios.get(bien, 1))
 
-        # Considerar eficiencia y economías de escala
-        cantidad_efectiva = int(cantidad * self.eficiencia_produccion)
-        if cantidad_efectiva > 50:  # Economías de escala
+            # Considerar eficiencia y economías de escala
             cantidad_efectiva = int(
-                cantidad_efectiva * ConfigEconomica.FACTOR_ECONOMIA_ESCALA)
+                cantidad * max(0.1, self.eficiencia_produccion))
+            if cantidad_efectiva > 50:  # Economías de escala
+                factor_escala = getattr(
+                    ConfigEconomica, 'FACTOR_ECONOMIA_ESCALA', 1.1)
+                cantidad_efectiva = int(cantidad_efectiva * factor_escala)
 
-        # Limitar por disponibilidad de dinero
-        # Evitar división por cero
-        max_por_dinero = int(self.dinero / max(1, costo_unitario))
-        cantidad_efectiva = max(0, min(cantidad_efectiva, max_por_dinero))
-        if cantidad_efectiva <= 0:
+            # Limitar por disponibilidad de dinero
+            # Evitar división por cero
+            max_por_dinero = int(max(0, self.dinero) / costo_unitario)
+            cantidad_efectiva = max(0, min(cantidad_efectiva, max_por_dinero))
+            if cantidad_efectiva <= 0:
+                return 0
+
+            # Registrar uso de recursos y emisiones
+            try:
+                sistema_ambiental = getattr(
+                    mercado.gobierno, 'sostenibilidad', None)
+                if sistema_ambiental:
+                    cantidad_efectiva, _ = sistema_ambiental.registrar_produccion(
+                        self.nombre, bien, cantidad_efectiva, self.factor_emisiones
+                    )
+            except Exception as e:
+                logging.warning(
+                    f"Error en registro ambiental para {self.nombre}: {e}")
+
+            if cantidad_efectiva <= 0:
+                return 0
+
+            costo_total = cantidad_efectiva * costo_unitario
+            self.dinero -= costo_total
+
+            # Añadir al inventario
+            if bien not in self.bienes:
+                self.bienes[bien] = []
+
+            for _ in range(cantidad_efectiva):
+                costo_unitario_efectivo = costo_unitario * \
+                    random.uniform(0.95, 1.05)
+                self.bienes[bien].append(InventarioBien(
+                    bien, costo_unitario_efectivo, mercado.bienes))
+
+            self.produccion_actual[bien] = self.produccion_actual.get(
+                bien, 0) + cantidad_efectiva
+            return cantidad_efectiva
+
+        except (ZeroDivisionError, ValueError, TypeError, AttributeError) as e:
+            logging.error(f"Error produciendo {bien} en {self.nombre}: {e}")
             return 0
-
-        # Registrar uso de recursos y emisiones
-        sistema_ambiental = getattr(mercado.gobierno, 'sostenibilidad', None)
-        if sistema_ambiental:
-            cantidad_efectiva, _ = sistema_ambiental.registrar_produccion(
-                self.nombre, bien, cantidad_efectiva, self.factor_emisiones
-            )
-        if cantidad_efectiva <= 0:
+        except Exception as e:
+            logging.error(
+                f"Error inesperado produciendo {bien} en {self.nombre}: {e}")
             return 0
-
-        costo_total = cantidad_efectiva * costo_unitario
-        self.dinero -= costo_total
-
-        # Añadir al inventario
-        if bien not in self.bienes:
-            self.bienes[bien] = []
-
-        for _ in range(cantidad_efectiva):
-            costo_unitario_efectivo = costo_unitario * \
-                random.uniform(0.95, 1.05)
-            self.bienes[bien].append(InventarioBien(
-                bien, costo_unitario_efectivo, mercado.bienes))
-
-        self.produccion_actual[bien] = self.produccion_actual.get(
-            bien, 0) + cantidad_efectiva
-        return cantidad_efectiva
 
     def ajustar_precios_dinamico(self, mercado, bien):
         """Ajusta precios basado en múltiples factores económicos mejorados"""
-        # Validaciones de seguridad más robustas
-        if not hasattr(self, 'precios') or bien not in self.precios:
-            return
-        if not hasattr(self, 'costos_unitarios') or bien not in self.costos_unitarios:
-            return
-        if not hasattr(self, 'bienes'):
-            return
-
-        # Asegurar que el precio actual no sea cero
-        if self.precios[bien] <= 0:
-            costo_base = self.costos_unitarios.get(bien, 10)
-            self.precios[bien] = max(costo_base * 1.2, 1.0)
-            return
-
         try:
+            logging.debug(
+                f"{self.nombre}: INICIO ajuste de precio para {bien}")
+
+            # Validaciones de seguridad más robustas
+            if not hasattr(self, 'precios') or bien not in self.precios:
+                logging.debug(
+                    f"{self.nombre}: No tiene precios para {bien}, saliendo")
+                return
+            if not hasattr(self, 'costos_unitarios') or bien not in self.costos_unitarios:
+                logging.debug(
+                    f"{self.nombre}: No tiene costos unitarios para {bien}, saliendo")
+                return
+            if not hasattr(self, 'bienes'):
+                logging.debug(
+                    f"{self.nombre}: No tiene atributo bienes, saliendo")
+                return
+
+            # Asegurar que el precio actual no sea cero
+            if self.precios[bien] <= 0:
+                costo_base = self.costos_unitarios.get(bien, 10)
+                self.precios[bien] = max(costo_base * 1.2, 1.0)
+                logging.warning(
+                    f"{self.nombre}: Precio de {bien} era <= 0, ajustado a {self.precios[bien]}")
+                return
+
             precio_actual = self.precios[bien]
             costo_unitario = max(
                 0.01, self.costos_unitarios[bien])  # Evitar cero
 
+            logging.debug(
+                f"{self.nombre}: Precio actual de {bien}: ${precio_actual:.2f}, Costo: ${costo_unitario:.2f}")
+
             # Factor 1: Análisis de demanda (ventas recientes)
-            ventas_recientes = self.obtener_ventas_recientes(
-                bien, mercado, 3)  # Últimos 3 ciclos
-            demanda_estimada = max(
-                1, self.calcular_demanda_estimada(bien, mercado))
+            try:
+                ventas_recientes = self.obtener_ventas_recientes(
+                    bien, mercado, 3)  # Últimos 3 ciclos
+                demanda_estimada = max(
+                    1, self.calcular_demanda_estimada(bien, mercado))
 
-            # Protección adicional contra división por cero
-            ratio_demanda = ventas_recientes / \
-                max(1.0, float(demanda_estimada))
+                logging.debug(
+                    f"{self.nombre}: Ventas recientes de {bien}: {ventas_recientes}, Demanda estimada: {demanda_estimada}")
 
-        except (ZeroDivisionError, ValueError, TypeError) as e:
-            # En caso de cualquier error numérico, no cambiar precio
-            return
+                # Protección adicional contra división por cero
+                if demanda_estimada == 0:
+                    logging.warning(
+                        f"{self.nombre}: Demanda estimada es 0 para {bien}, usando 1")
+                    demanda_estimada = 1
 
-        # Factor 2: Nivel de inventario (más sensible)
-        stock_actual = len(self.bienes.get(bien, []))
-        stock_optimo = max(5, demanda_estimada * 1.5)
+                ratio_demanda = ventas_recientes / float(demanda_estimada)
+                logging.debug(
+                    f"{self.nombre}: Ratio demanda para {bien}: {ratio_demanda}")
 
-        # Evitar división por cero
-        ratio_stock = stock_actual / max(1.0, float(stock_optimo))
+            except (ZeroDivisionError, ValueError, TypeError) as e:
+                logging.error(
+                    f"{self.nombre}: Error calculando ratio demanda para {bien}: {e}")
+                # En caso de cualquier error numérico, no cambiar precio
+                return
 
-        # Factor 3: Competencia (más agresiva)
-        competidores = [e for e in mercado.getEmpresas() if e !=
-                        self and bien in e.precios]
-        factor_competencia = 1.0
-        if competidores:
-            precios_competencia = [e.precios.get(
-                bien, 0) for e in competidores if bien in e.precios and e.precios.get(bien, 0) > 0]
-            if precios_competencia:
-                precio_promedio_competencia = sum(
-                    precios_competencia) / max(1, len(precios_competencia))
-                if precio_promedio_competencia > 0 and precio_actual > precio_promedio_competencia * 1.1:
-                    factor_competencia = 0.95  # Reducir precio para competir
-                elif precio_promedio_competencia > 0 and precio_actual < precio_promedio_competencia * 0.9:
-                    factor_competencia = 1.05  # Aumentar precio si somos muy baratos
+            # Factor 2: Nivel de inventario (más sensible)
+            stock_actual = len(self.bienes.get(bien, []))
+            stock_optimo = max(5, demanda_estimada * 1.5)
 
-        # Factor 4: Condiciones macroeconómicas
-        factor_macro = 1.0
-        if hasattr(mercado, 'inflacion_historica') and mercado.inflacion_historica:
-            inflacion_actual = mercado.inflacion_historica[-1]
-            factor_macro += inflacion_actual * 0.5  # Ajustar por inflación
+            # Evitar división por cero
+            if stock_optimo == 0:
+                logging.warning(
+                    f"{self.nombre}: Stock óptimo es 0 para {bien}, usando 5")
+                stock_optimo = 5
 
-        if hasattr(mercado, 'crisis_financiera_activa') and mercado.crisis_financiera_activa:
-            factor_macro *= 0.95  # Reducir precios durante crisis
+            ratio_stock = stock_actual / float(stock_optimo)
+            logging.debug(
+                f"{self.nombre}: Stock actual de {bien}: {stock_actual}, Óptimo: {stock_optimo}, Ratio: {ratio_stock}")
 
-        # Factor 5: Estacionalidad (nuevo)
-        factor_estacional = 1.0
-        if hasattr(mercado.bienes[bien], 'obtener_factor_estacional'):
-            mes_actual = mercado.ciclo_actual % 12
-            factor_estacional = mercado.bienes[bien].obtener_factor_estacional(
-                mes_actual)
+            # Factor 3: Competencia (más agresiva)
+            competidores = [e for e in mercado.getEmpresas(
+            ) if e != self and bien in e.precios]
+            factor_competencia = 1.0
+            if competidores:
+                precios_competencia = [e.precios.get(
+                    bien, 0) for e in competidores if bien in e.precios and e.precios.get(bien, 0) > 0]
+                if precios_competencia:
+                    precio_promedio_competencia = sum(
+                        precios_competencia) / len(precios_competencia)
+                    logging.debug(
+                        f"{self.nombre}: Precio promedio competencia para {bien}: ${precio_promedio_competencia:.2f}")
 
-        # Calcular ajuste de precio combinado
-        ajuste_demanda = - \
-            0.1 if ratio_demanda < 0.7 else (0.1 if ratio_demanda > 1.3 else 0)
-        ajuste_stock = 0.15 if ratio_stock < 0.5 else (
-            -0.1 if ratio_stock > 2.0 else 0)
-        ajuste_aleatorio = random.uniform(-0.02, 0.02)  # Variabilidad natural
+                    if precio_promedio_competencia > 0 and precio_actual > precio_promedio_competencia * 1.1:
+                        factor_competencia = 0.95  # Reducir precio para competir
+                        logging.debug(
+                            f"{self.nombre}: Precio alto vs competencia, factor: {factor_competencia}")
+                    elif precio_promedio_competencia > 0 and precio_actual < precio_promedio_competencia * 0.9:
+                        factor_competencia = 1.05  # Aumentar precio si somos muy baratos
+                        logging.debug(
+                            f"{self.nombre}: Precio bajo vs competencia, factor: {factor_competencia}")
 
-        factor_total = (1 + ajuste_demanda + ajuste_stock + ajuste_aleatorio) * \
-            factor_competencia * factor_macro * factor_estacional
+            # Factor 4: Condiciones macroeconómicas
+            factor_macro = 1.0
+            if hasattr(mercado, 'inflacion_historica') and mercado.inflacion_historica:
+                inflacion_actual = mercado.inflacion_historica[-1]
+                factor_macro += inflacion_actual * 0.5  # Ajustar por inflación
+                logging.debug(
+                    f"{self.nombre}: Factor macro por inflación: {factor_macro}")
 
-        # Aplicar ajuste con límites
-        precio_nuevo = precio_actual * factor_total
-        precio_minimo = costo_unitario * 1.05  # Mínimo 5% margen
-        precio_maximo = costo_unitario * 4.0   # Máximo 300% margen
+            if hasattr(mercado, 'crisis_financiera_activa') and mercado.crisis_financiera_activa:
+                factor_macro *= 0.95  # Reducir precios durante crisis
+                logging.debug(
+                    f"{self.nombre}: Factor macro por crisis: {factor_macro}")
 
-        precio_nuevo = max(precio_minimo, min(precio_maximo, precio_nuevo))
+            # Factor 5: Estacionalidad (nuevo)
+            factor_estacional = 1.0
+            if hasattr(mercado.bienes[bien], 'obtener_factor_estacional'):
+                mes_actual = mercado.ciclo_actual % 12
+                factor_estacional = mercado.bienes[bien].obtener_factor_estacional(
+                    mes_actual)
+                logging.debug(
+                    f"{self.nombre}: Factor estacional para {bien}: {factor_estacional}")
 
-        # Limitar cambios drásticos (máximo ±15% por ciclo)
-        cambio_maximo = precio_actual * 0.15
-        if abs(precio_nuevo - precio_actual) > cambio_maximo:
-            if precio_nuevo > precio_actual:
-                precio_nuevo = precio_actual + cambio_maximo
-            else:
-                precio_nuevo = precio_actual - cambio_maximo
+            # Calcular ajuste de precio combinado
+            ajuste_demanda = - \
+                0.1 if ratio_demanda < 0.7 else (
+                    0.1 if ratio_demanda > 1.3 else 0)
+            ajuste_stock = 0.15 if ratio_stock < 0.5 else (
+                -0.1 if ratio_stock > 2.0 else 0)
+            # Variabilidad natural
+            ajuste_aleatorio = random.uniform(-0.02, 0.02)
 
-        # Asegurar que el precio final nunca sea cero o negativo
-        self.precios[bien] = round(max(precio_nuevo, 1.0), 2)
+            factor_total = (1 + ajuste_demanda + ajuste_stock + ajuste_aleatorio) * \
+                factor_competencia * factor_macro * factor_estacional
+
+            logging.debug(
+                f"{self.nombre}: Factores para {bien} - demanda: {ajuste_demanda}, stock: {ajuste_stock}, total: {factor_total}")
+
+            # Aplicar ajuste con límites
+            precio_nuevo = precio_actual * factor_total
+            precio_minimo = costo_unitario * 1.05  # Mínimo 5% margen
+            precio_maximo = costo_unitario * 4.0   # Máximo 300% margen
+
+            precio_nuevo = max(precio_minimo, min(precio_maximo, precio_nuevo))
+
+            # Limitar cambios drásticos (máximo ±15% por ciclo)
+            cambio_maximo = precio_actual * 0.15
+            if abs(precio_nuevo - precio_actual) > cambio_maximo:
+                if precio_nuevo > precio_actual:
+                    precio_nuevo = precio_actual + cambio_maximo
+                else:
+                    precio_nuevo = precio_actual - cambio_maximo
+
+            # Asegurar que el precio final nunca sea cero o negativo
+            precio_final = round(max(precio_nuevo, 1.0), 2)
+
+            logging.debug(
+                f"{self.nombre}: Precio de {bien} cambiado de ${precio_actual:.2f} a ${precio_final:.2f}")
+            self.precios[bien] = precio_final
+
+        except Exception as e:
+            logging.error(
+                f"{self.nombre}: Error inesperado ajustando precio de {bien}: {e}")
+            logging.error(
+                f"Estado: precio_actual={self.precios.get(bien, 'N/A')}, costo={self.costos_unitarios.get(bien, 'N/A')}")
 
     def obtener_ventas_recientes(self, bien, mercado, num_ciclos):
         """Obtiene las ventas de los últimos N ciclos"""
@@ -446,30 +582,148 @@ class EmpresaProductora(Empresa):
                     self.costo_salarios -= empleado.ingreso_mensual
             return False
 
+    def verificar_estado_financiero(self):
+        """Verifica si la empresa está en quiebra o puede seguir operando"""
+        costos_totales = self.costos_fijos_mensuales + self.costo_salarios
+
+        # Marcar en quiebra si no puede cubrir costos básicos por 3 ciclos consecutivos
+        if self.dinero < costos_totales:
+            self.ciclos_sin_actividad += 1
+            if self.ciclos_sin_actividad >= 3:
+                self.en_quiebra = True
+                logging.warning(
+                    f"{self.nombre}: EMPRESA EN QUIEBRA - Dinero: ${self.dinero:.2f}, Costos: ${costos_totales:.2f}")
+                return False
+        else:
+            self.ciclos_sin_actividad = 0  # Resetear contador si tiene fondos
+
+        # Verificar si tiene dinero mínimo para operaciones básicas
+        if self.dinero < self.dinero_minimo_operacion:
+            logging.debug(
+                f"{self.nombre}: Fondos insuficientes para operaciones (${self.dinero:.2f} < ${self.dinero_minimo_operacion:.2f})")
+            return False
+
+        return True
+
     def ciclo_persona(self, ciclo, mercado):
         """Ciclo principal de la empresa productora"""
-        # Pagar costos operativos
-        self.pagar_costos_operativos()
+        try:
+            logging.debug(
+                f"INICIO ciclo {ciclo} para {self.nombre} - Dinero: ${self.dinero:.2f}")
 
-        # Planificar y ejecutar producción
-        plan_produccion = self.planificar_produccion(mercado)
+            # Verificar estado financiero antes de cualquier operación
+            if not self.verificar_estado_financiero():
+                if self.en_quiebra:
+                    logging.warning(
+                        f"{self.nombre}: EMPRESA EN QUIEBRA - Saltando ciclo")
+                    return False
+                else:
+                    logging.debug(
+                        f"{self.nombre}: Fondos insuficientes - Saltando operaciones complejas")
+                    return False
 
-        for bien, cantidad in plan_produccion.items():
-            if cantidad > 0:
-                cantidad_producida = self.producir_bien_mejorado(
-                    bien, cantidad, mercado)
+            # Pagar costos operativos
+            logging.debug(f"{self.nombre}: Pagando costos operativos...")
+            resultado_costos = self.pagar_costos_operativos()
+            logging.debug(
+                f"{self.nombre}: Costos pagados - Resultado: {resultado_costos}, Dinero restante: ${self.dinero:.2f}")
 
-        # Ajustar precios dinámicamente
-        for bien in self.precios:
-            self.ajustar_precios_dinamico(mercado, bien)
+            # Si no pudo pagar costos, no continuar con operaciones
+            if not resultado_costos:
+                logging.warning(
+                    f"{self.nombre}: No pudo pagar costos operativos - Saltando producción")
+                return False
 
-        # Considerar expansión
-        if ciclo % 5 == 0:  # Cada 5 ciclos evaluar expansión
-            self.gestionar_expansion()
+            # Planificar y ejecutar producción
+            logging.debug(f"{self.nombre}: Planificando producción...")
+            plan_produccion = self.planificar_produccion(mercado)
+            logging.debug(
+                f"{self.nombre}: Plan de producción: {plan_produccion}")
 
-        # Actividades de empresa base (acciones, dividendos)
-        self.emitir_acciones(5, mercado.mercado_financiero)
-        self.distribuir_dividendos(mercado.mercado_financiero)
+            for bien, cantidad in plan_produccion.items():
+                if cantidad > 0:
+                    try:
+                        logging.debug(
+                            f"{self.nombre}: Produciendo {cantidad} unidades de {bien}")
+                        cantidad_producida = self.producir_bien_mejorado(
+                            bien, cantidad, mercado)
+                        logging.debug(
+                            f"{self.nombre}: Producidas {cantidad_producida} unidades de {bien}")
+                    except ZeroDivisionError as e:
+                        logging.error(
+                            f"DIVISION POR CERO en producción de {self.nombre} para {bien}: {e}")
+                        logging.error(
+                            f"Estado: dinero={self.dinero}, costo_unitario={self.costos_unitarios.get(bien, 'N/A')}")
+                        continue
+                    except Exception as e:
+                        logging.error(
+                            f"Error en producción de {self.nombre} para {bien}: {e}")
+                        continue
+
+            # Ajustar precios dinámicamente solo si tiene inventario o puede producir
+            logging.debug(f"{self.nombre}: Ajustando precios dinámicamente...")
+            for bien in list(self.precios.keys()):  # Crear copia de las llaves
+                try:
+                    precio_anterior = self.precios.get(bien, 0)
+                    logging.debug(
+                        f"{self.nombre}: Ajustando precio de {bien} (actual: ${precio_anterior:.2f})")
+                    self.ajustar_precios_dinamico(mercado, bien)
+                    precio_nuevo = self.precios.get(bien, 0)
+                    logging.debug(
+                        f"{self.nombre}: Precio de {bien} ajustado: ${precio_anterior:.2f} -> ${precio_nuevo:.2f}")
+                except ZeroDivisionError as e:
+                    logging.error(
+                        f"DIVISION POR CERO en ajuste de precios de {self.nombre} para {bien}: {e}")
+                    logging.error(
+                        f"Estado precio: precio_actual={self.precios.get(bien, 'N/A')}, costo={self.costos_unitarios.get(bien, 'N/A')}")
+                    continue
+                except Exception as e:
+                    logging.error(
+                        f"Error en ajuste de precios de {self.nombre} para {bien}: {e}")
+                    continue
+
+            # Considerar expansión solo si tiene fondos suficientes
+            if ciclo % 5 == 0 and self.dinero > self.costos_fijos_mensuales * 2:  # Cada 5 ciclos y con reservas
+                try:
+                    logging.debug(f"{self.nombre}: Evaluando expansión...")
+                    self.gestionar_expansion()
+                    logging.debug(f"{self.nombre}: Expansión evaluada")
+                except ZeroDivisionError as e:
+                    logging.error(
+                        f"DIVISION POR CERO en expansión de {self.nombre}: {e}")
+                    logging.error(
+                        f"Estado expansión: dinero={self.dinero}, costos_fijos={self.costos_fijos_mensuales}")
+                except Exception as e:
+                    logging.error(f"Error en expansión de {self.nombre}: {e}")
+
+            # Actividades de empresa base (acciones, dividendos)
+            try:
+                logging.debug(
+                    f"{self.nombre}: Ejecutando actividades financieras...")
+                self.emitir_acciones(5, mercado.mercado_financiero)
+                self.distribuir_dividendos(mercado.mercado_financiero)
+                logging.debug(
+                    f"{self.nombre}: Actividades financieras completadas")
+            except Exception as e:
+                logging.error(
+                    f"Error en actividades financieras de {self.nombre}: {e}")
+
+            logging.debug(
+                f"FIN ciclo {ciclo} para {self.nombre} - Dinero final: ${self.dinero:.2f}")
+
+        except Exception as e:
+            logging.error(f"Error general en ciclo de {self.nombre}: {e}")
+            # Agregar más información de debug
+            logging.error(f"Estado completo de {self.nombre}:")
+            logging.error(f"  - Dinero: ${self.dinero:.2f}")
+            logging.error(f"  - Empleados: {len(self.empleados)}")
+            logging.error(f"  - Costos fijos: ${self.costos_fijos_mensuales}")
+            logging.error(f"  - Costo salarios: ${self.costo_salarios}")
+            # Solo mostrar primeros 3
+            logging.error(
+                f"  - Precios: {dict(list(self.precios.items())[:3])}...")
+            logging.error(
+                f"  - Costos unitarios: {dict(list(self.costos_unitarios.items())[:3])}...")
 
         # Reset de producción actual para próximo ciclo
         for bien in self.produccion_actual:

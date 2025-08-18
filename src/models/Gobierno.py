@@ -65,9 +65,10 @@ class Gobierno:
             precios_actuales.extend(empresa.precios.values())
 
         if hasattr(self, 'precios_ciclo_anterior') and precios_actuales:
-            inflacion = (sum(precios_actuales) / len(precios_actuales)) / \
+
+            inflacion = (sum(precios_actuales) / len(precios_actuales) if len(precios_actuales) > 0 else 0) / \
                 (sum(self.precios_ciclo_anterior) /
-                 len(self.precios_ciclo_anterior)) - 1
+                 len(self.precios_ciclo_anterior) if len(self.precios_ciclo_anterior) > 0 else 1) - 1
             # Limitar entre -5% y 10%
             self.inflacion_mensual = max(-0.05, min(0.10, inflacion))
 
@@ -125,15 +126,21 @@ class Gobierno:
                         fondo_sector = subsidios * \
                             (self.desempleo_sectorial.get(sector, 0) / total_ratio)
                     else:
-                        fondo_sector = subsidios / len(agrupados)
-                    subsidio_individual = fondo_sector / len(lista)
+                        if len(agrupados) > 0:
+                            fondo_sector = subsidios / len(agrupados)
+                        else:
+                            fondo_sector = 0
+                    if len(lista) > 0:
+                        subsidio_individual = fondo_sector / len(lista)
+                    else:
+                        subsidio_individual = 0
                     for desempleado in lista:
                         desempleado.dinero += subsidio_individual
 
             # 40% a compras gubernamentales (estimula demanda)
             compras_gobierno = gasto_efectivo * 0.4
             empresas = self.mercado.getEmpresas()
-            if empresas:
+            if empresas and len(empresas) > 0:
                 compra_por_empresa = compras_gobierno / len(empresas)
                 for empresa in empresas:
                     empresa.dinero += compra_por_empresa
@@ -165,7 +172,7 @@ class Gobierno:
             inyeccion = min(100000, self.reservas_monetarias * 0.1)
             # Distribuir entre bancos/empresas
             empresas = self.mercado.getEmpresas()
-            if empresas:
+            if empresas and len(empresas) > 0:
                 inyeccion_empresa = inyeccion / len(empresas)
                 for empresa in empresas:
                     empresa.dinero += inyeccion_empresa

@@ -54,16 +54,17 @@ class SistemaPreciosDinamicos:
                 categoria, -0.8)
 
     def calcular_precio_dinamico(self, empresa, bien_nombre, inventario_actual, demanda_reciente):
-        """Calcula el precio dinámico basado en múltiples factores"""
+        """Calcula el precio dinámico con control de inflación mejorado"""
         if bien_nombre not in self.precios_base:
             self.precios_base[bien_nombre] = random.uniform(10, 50)
 
         precio_base = self.precios_base[bien_nombre]
         precio_actual = empresa.precios.get(bien_nombre, precio_base)
 
-        # Factor 1: Oferta y demanda básica
-        factor_stock = self._calcular_factor_stock(inventario_actual)
-        factor_demanda = self._calcular_factor_demanda(demanda_reciente)
+        # Factor 1: Oferta y demanda básica (moderado)
+        factor_stock = self._calcular_factor_stock_moderado(inventario_actual)
+        factor_demanda = self._calcular_factor_demanda_moderado(
+            demanda_reciente)
 
         # Factor 2: Competencia
         factor_competencia = self._calcular_factor_competencia(
@@ -72,24 +73,26 @@ class SistemaPreciosDinamicos:
         # Factor 3: Condiciones macroeconómicas
         factor_macro = self._calcular_factor_macroeconomico()
 
-        # Factor 4: Costos de producción
-        factor_costos = self._calcular_factor_costos(empresa, bien_nombre)
+        # Factor 4: Control de inflación
+        factor_control_inflacion = self._calcular_control_inflacion(
+            self.mercado)
 
-        # Factor 5: Ciclo estacional (simplificado)
-        factor_estacional = self._calcular_factor_estacional(bien_nombre)
+        # Factor 5: Volatilidad reducida
+        factor_volatilidad = random.uniform(
+            0.98, 1.02)  # ±2% de ruido (reducido)
 
-        # Combinar todos los factores
+        # Combinar todos los factores con pesos balanceados
         multiplicador_total = (
             factor_stock * 0.25 +
             factor_demanda * 0.25 +
             factor_competencia * 0.20 +
-            factor_macro * 0.15 +
-            factor_costos * 0.10 +
-            factor_estacional * 0.05
+            factor_macro * 0.10 +
+            factor_control_inflacion * 0.15 +
+            factor_volatilidad * 0.05
         )
 
-        # Aplicar cambio gradual (máximo 15% por ciclo)
-        max_cambio = 0.15
+        # Aplicar cambio controlado (máximo 8% por ciclo para controlar inflación)
+        max_cambio = 0.08  # Reducido de 25% a 8%
         cambio_propuesto = (multiplicador_total - 1.0)
         cambio_final = max(-max_cambio, min(max_cambio, cambio_propuesto))
 
@@ -98,6 +101,41 @@ class SistemaPreciosDinamicos:
         # Asegurar precio mínimo viable
         precio_minimo = self._calcular_precio_minimo(empresa, bien_nombre)
         nuevo_precio = max(nuevo_precio, precio_minimo)
+
+        return nuevo_precio
+
+    def _calcular_factor_stock_agresivo(self, inventario_actual):
+        """Factor de stock más agresivo para crear volatilidad"""
+        if inventario_actual == 0:
+            return 1.3  # Subir precio 30% si no hay stock
+        elif inventario_actual < 5:
+            return 1.15  # Subir precio 15% si stock bajo
+        elif inventario_actual > 20:
+            return 0.85  # Bajar precio 15% si mucho stock
+        else:
+            return 1.0
+
+    def _calcular_factor_demanda_agresivo(self, demanda_reciente):
+        """Factor de demanda más sensible"""
+        if demanda_reciente > 15:
+            return 1.2  # Alta demanda: subir precio 20%
+        elif demanda_reciente > 10:
+            return 1.1  # Demanda media-alta: subir precio 10%
+        elif demanda_reciente < 3:
+            return 0.9  # Baja demanda: bajar precio 10%
+        else:
+            return 1.0
+
+    def _calcular_factor_inflacionario(self):
+        """Nuevo factor que añade presión inflacionaria"""
+        # Presión inflacionaria base del 2% anual (aproximadamente 0.15% por ciclo)
+        if hasattr(self.mercado, 'fase_ciclo_economico'):
+            if self.mercado.fase_ciclo_economico == 'expansion':
+                return 1.003  # 0.3% por ciclo durante expansión
+            elif self.mercado.fase_ciclo_economico == 'recesion':
+                return 0.998  # -0.2% por ciclo durante recesión
+
+        return 1.001  # 0.1% base
 
         # Agregar volatilidad aleatoria
         volatilidad = random.uniform(-self.volatilidad_mercado,
@@ -335,3 +373,54 @@ def actualizar_precios_mercado(mercado):
             precios_actualizados += 1
 
     return precios_actualizados
+
+
+# Métodos auxiliares adicionales para SistemaPreciosDinamicos
+def _calcular_factor_stock_moderado(self, inventario_actual):
+    """Factor basado en stock con cambios moderados"""
+    if inventario_actual > 50:
+        return 0.96  # Reducción suave
+    elif inventario_actual > 20:
+        return 0.98  # Reducción mínima
+    elif inventario_actual < 5:
+        return 1.04  # Aumento moderado si stock muy bajo
+    elif inventario_actual < 10:
+        return 1.02  # Aumento suave
+    else:
+        return 1.0  # Precio estable
+
+
+def _calcular_factor_demanda_moderado(self, demanda_reciente):
+    """Factor basado en demanda con cambios moderados"""
+    if demanda_reciente == 0:
+        return 0.96  # Reducción suave si no hay demanda
+    elif demanda_reciente > 20:
+        return 1.04  # Aumento moderado si alta demanda
+    elif demanda_reciente > 10:
+        return 1.02  # Aumento suave
+    else:
+        return 0.99  # Reducción mínima
+
+
+def _calcular_control_inflacion(self, mercado):
+    """Factor para controlar inflación excesiva"""
+    if not mercado.inflacion_historica:
+        return 1.0
+
+    inflacion_reciente = mercado.inflacion_historica[-1]
+
+    # Si inflación es muy alta, aplicar presión deflacionaria
+    if inflacion_reciente > 0.15:  # Más de 15%
+        return 0.95  # Presión para bajar precios
+    elif inflacion_reciente > 0.08:  # Más de 8%
+        return 0.98  # Presión suave para bajar
+    elif inflacion_reciente < -0.02:  # Deflación
+        return 1.02  # Presión suave para subir
+    else:
+        return 1.0  # Estable
+
+
+# Agregar métodos a la clase
+SistemaPreciosDinamicos._calcular_factor_stock_moderado = _calcular_factor_stock_moderado
+SistemaPreciosDinamicos._calcular_factor_demanda_moderado = _calcular_factor_demanda_moderado
+SistemaPreciosDinamicos._calcular_control_inflacion = _calcular_control_inflacion

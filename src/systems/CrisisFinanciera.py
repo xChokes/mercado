@@ -79,46 +79,51 @@ def simular_corrida_bancaria(sistema_bancario, intensidad: float = 0.3) -> Dict[
 def evaluar_recuperacion_crisis(mercado) -> bool:
     """Evalúa si la economía ha cumplido condiciones para salir de crisis.
 
-    Condiciones de recuperación (más flexibles):
-    - Crisis activa por más de 10 ciclos (reducido de 15)
-    - PIB mayor que cero por 2+ ciclos consecutivos
-    - Desempleo no empeorando dramáticamente
-    - Al menos alguna actividad económica presente
+    Condiciones de recuperación más realistas:
+    - PIB creciente por 2+ ciclos consecutivos
+    - Actividad económica mínima sostenida
+    - Desempleo estabilizado
+    - Sistema bancario funcional
     """
     if not mercado.crisis_financiera_activa:
         return False
 
-    # Condición 1: Crisis prolongada (recuperación forzada más temprana)
-    if hasattr(mercado, 'ciclos_en_crisis') and mercado.ciclos_en_crisis > 10:
+    # Condición 1: Crisis muy prolongada (recuperación forzada)
+    if hasattr(mercado, 'ciclos_en_crisis') and mercado.ciclos_en_crisis > 15:
+        print(
+            f"🔄 Forzando salida de crisis tras {mercado.ciclos_en_crisis} ciclos")
         return True
 
-    # Condición 2: PIB positivo por 2+ ciclos (más flexible)
+    # Condición 2: PIB creciente por 2+ ciclos consecutivos
     if len(mercado.pib_historico) >= 3:
         ultimos_pibs = mercado.pib_historico[-3:]
-        # Al menos uno positivo
-        pib_positivo = any(pib > 0 for pib in ultimos_pibs[-2:])
-        # No caída dramática
-        pib_estable = ultimos_pibs[-1] >= ultimos_pibs[-2] * 0.9
+        # Verificar tendencia creciente
+        # Crecimiento 1%
+        crecimiento1 = ultimos_pibs[-1] > ultimos_pibs[-2] * 1.01
+        crecimiento2 = ultimos_pibs[-2] > ultimos_pibs[-3] * 1.01
+        pib_positivo = ultimos_pibs[-1] > 100  # PIB mínimo absoluto
 
-        if pib_positivo and pib_estable:
+        if crecimiento1 and crecimiento2 and pib_positivo:
+            print("📈 Recuperación detectada: PIB creciente sostenido")
             return True
 
-    # Condición 3: Actividad económica mínima (nueva condición)
+    # Condición 3: Actividad económica sostenida
     if len(mercado.transacciones) > 0:
         transacciones_recientes = [
             t for t in mercado.transacciones
-            if t.get('ciclo', 0) >= len(mercado.pib_historico) - 5
+            if t.get('ciclo', 0) >= mercado.ciclo_actual - 3
         ]
-        if len(transacciones_recientes) > 10:  # Al menos 10 transacciones en últimos 5 ciclos
+        if len(transacciones_recientes) > 150:  # Más actividad requerida
+            print(
+                f"💼 Actividad económica recuperada: {len(transacciones_recientes)} transacciones")
             return True
 
-    # Condición 4: Desempleo estabilizado o mejorando ligeramente
-    if (len(mercado.desempleo_historico) >= 3):
-        desempleo_actual = mercado.desempleo_historico[-1]
-        desempleo_anterior = mercado.desempleo_historico[-3]
-
-        # Si el desempleo no está empeorando mucho, permitir recuperación
-        if desempleo_actual <= desempleo_anterior * 1.1:  # Máximo 10% de empeoramiento
+    # Condición 4: Sistema bancario estable
+    if hasattr(mercado, 'sistema_bancario') and mercado.sistema_bancario.bancos:
+        bancos_solventes = sum(1 for banco in mercado.sistema_bancario.bancos
+                               if banco.calcular_ratio_solvencia() > 0.1)
+        if bancos_solventes >= len(mercado.sistema_bancario.bancos) * 0.8:
+            print("🏦 Sistema bancario estabilizado")
             return True
 
     return False

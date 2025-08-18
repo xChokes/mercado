@@ -76,36 +76,134 @@ class MercadoLaboral:
         return 0.1  # movilidad simple entre sectores distintos
 
     def facilitar_contrataciones_masivas(self):
-        """Facilita contrataciones masivas durante crisis de desempleo"""
+        """Facilita contrataciones masivas con lógica más agresiva"""
         desempleados = [c for c in self.mercado.getConsumidores()
                         if not c.empleado]
-        empresas_contratando = [e for e in self.mercado.getEmpresas()
-                                if hasattr(e, 'empleados') and hasattr(e, 'dinero')]
+        empresas = [e for e in self.mercado.getEmpresas()
+                    if hasattr(e, 'dinero')]
 
-        # Incentivar contratación si hay alto desempleo
+        # Calcular tasa de desempleo actual
         tasa_desempleo = len(desempleados) / \
             max(1, len(self.mercado.getConsumidores()))
 
-        if tasa_desempleo > 0.25:  # Si desempleo > 25%
-            # Programa de subsidios de contratación
-            # Limitar a 10 empresas por ciclo
-            for empresa in empresas_contratando[:10]:
-                if empresa.dinero > 50000:  # Solo empresas con capital suficiente
-                    # Max 5 por empresa
-                    candidatos = [
-                        d for d in desempleados if not d.empleado][:5]
+        if tasa_desempleo > 0.10:  # Si desempleo > 10%
+            print(
+                f"🔄 Facilitando contrataciones masivas (desempleo: {tasa_desempleo:.1%})")
 
-                    for candidato in candidatos:
-                        if empresa.contratar(candidato):
-                            # Subsidio gubernamental por contratación
-                            subsidio = candidato.ingreso_mensual * 0.5
+            contrataciones_exitosas = 0
+            objetivo_contrataciones = min(
+                len(desempleados), 20)  # Máximo 20 por ciclo
+
+            # Ordenar empresas por capacidad financiera
+            empresas_viables = [
+                e for e in empresas if e.dinero > 20000]  # Capital mínimo
+            empresas_viables.sort(key=lambda x: x.dinero, reverse=True)
+
+            for empresa in empresas_viables:
+                if contrataciones_exitosas >= objetivo_contrataciones:
+                    break
+
+                # Cada empresa puede contratar hasta 3 empleados por ciclo
+                max_contrataciones_empresa = min(
+                    3, int(empresa.dinero / 30000))
+                contrataciones_empresa = 0
+
+                # Seleccionar candidatos aleatorios
+                candidatos_disponibles = [
+                    d for d in desempleados if not d.empleado]
+                random.shuffle(candidatos_disponibles)
+
+                for candidato in candidatos_disponibles[:max_contrataciones_empresa]:
+                    if contrataciones_empresa >= max_contrataciones_empresa:
+                        break
+
+                    if empresa.contratar(candidato):
+                        contrataciones_exitosas += 1
+                        contrataciones_empresa += 1
+
+                        # Subsidio gubernamental por contratación de emergencia
+                        if hasattr(self.mercado, 'gobierno'):
+                            subsidio = candidato.ingreso_mensual * 0.5  # 50% del salario
                             empresa.dinero += subsidio
-                            candidato.empleador = empresa
-                            candidato.empleado = True
+                            self.mercado.gobierno.presupuesto -= subsidio
 
-                            # Remover de lista de desempleados
-                            if candidato in desempleados:
-                                desempleados.remove(candidato)
+            if contrataciones_exitosas > 0:
+                print(
+                    f"✅ {contrataciones_exitosas} contrataciones de emergencia realizadas")
+
+    def ciclo_mercado_laboral(self):
+        """Ciclo principal del mercado laboral con contrataciones y despidos dinámicos"""
+        # 1. Facilitar contrataciones si hay alto desempleo
+        self.facilitar_contrataciones_masivas()
+
+        # 2. Gestionar despidos por crisis económica
+        if hasattr(self.mercado, 'fase_ciclo_economico'):
+            if self.mercado.fase_ciclo_economico in ['recesion', 'depresion']:
+                self._gestionar_despidos_por_crisis()
+            elif self.mercado.fase_ciclo_economico in ['expansion', 'recuperacion']:
+                self._gestionar_contrataciones_por_crecimiento()
+
+        # 3. Movilidad laboral básica
+        self._procesar_movilidad_laboral()
+
+    def _gestionar_despidos_por_crisis(self):
+        """Gestiona despidos durante crisis económica"""
+        for empresa in self.mercado.getEmpresas():
+            if hasattr(empresa, 'empleados') and hasattr(empresa, 'dinero'):
+                # Si la empresa está en problemas financieros
+                if empresa.dinero < 10000:  # Umbral de crisis
+                    empleados_actuales = [
+                        e for e in empresa.empleados if e.empleado]
+                    # Despedir hasta 20% de empleados
+                    despidos = min(len(empleados_actuales), max(
+                        1, len(empleados_actuales) // 5))
+
+                    for _ in range(despidos):
+                        if empleados_actuales:
+                            empleado = random.choice(empleados_actuales)
+                            empresa.despedir(empleado)
+                            empleados_actuales.remove(empleado)
+
+    def _gestionar_contrataciones_por_crecimiento(self):
+        """Gestiona contrataciones durante crecimiento económico"""
+        desempleados = [c for c in self.mercado.getConsumidores()
+                        if not c.empleado]
+
+        for empresa in self.mercado.getEmpresas():
+            if hasattr(empresa, 'dinero') and empresa.dinero > 100000:  # Empresas prósperas
+                # Probabilidad de contratar durante crecimiento
+                if random.random() < 0.3 and desempleados:  # 30% probabilidad
+                    candidato = random.choice(desempleados)
+                    if empresa.contratar(candidato):
+                        desempleados.remove(candidato)
+
+    def _procesar_movilidad_laboral(self):
+        """Procesa movilidad laboral básica entre sectores"""
+        empleados = [c for c in self.mercado.getConsumidores() if c.empleado]
+
+        # 5% de empleados pueden cambiar de trabajo cada ciclo
+        empleados_moviles = random.sample(
+            empleados, min(len(empleados), len(empleados) // 20))
+
+        for empleado in empleados_moviles:
+            if random.random() < 0.1:  # 10% probabilidad de cambio
+                # Buscar mejor oportunidad
+                empresas_alternativas = [e for e in self.mercado.getEmpresas()
+                                         if e != empleado.empleador and hasattr(e, 'dinero')
+                                         and e.dinero > 50000]
+
+                if empresas_alternativas:
+                    nueva_empresa = random.choice(empresas_alternativas)
+                    salario_actual = empleado.ingreso_mensual
+
+                    # Intentar obtener mejor salario
+                    nuevo_salario = salario_actual * \
+                        random.uniform(1.05, 1.15)  # 5-15% aumento
+
+                    if nueva_empresa.dinero > nuevo_salario * 12:  # Puede pagar el salario anual
+                        empleado.empleador.despedir(empleado)
+                        empleado.ingreso_mensual = nuevo_salario
+                        nueva_empresa.contratar(empleado)
 
     def crear_empresas_emergentes(self):
         """Crea nuevas empresas pequeñas para absorber desempleo"""

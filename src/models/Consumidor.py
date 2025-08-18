@@ -398,22 +398,33 @@ class Consumidor(Persona):
                     self.dinero -= monto_deposito
                     self.ahorros += monto_deposito
 
-        # Solicitar préstamo si necesita liquidez
-        if self.dinero < self.ingreso_mensual * 0.5 and self.empleado and hasattr(self.mercado, 'sistema_bancario'):
+        # Solicitar préstamo con criterios más flexibles
+        deberia_solicitar_prestamo = (
+            self.dinero < self.ingreso_mensual * 1.0 and  # Umbral más alto
+            self.empleado and
+            hasattr(self.mercado, 'sistema_bancario') and
+            self.deuda < self.ingreso_mensual * 6  # Límite de endeudamiento
+        )
+
+        if deberia_solicitar_prestamo:
             banco_elegido = self.mercado.sistema_bancario.bancos[
                 0] if self.mercado.sistema_bancario.bancos else None
             if banco_elegido:
-                monto_prestamo = self.ingreso_mensual * 2  # Solicitar 2 meses de salario
-                resultado_prestamo = banco_elegido.otorgar_prestamo(
-                    self, monto_prestamo, self.ingreso_mensual)
+                # Monto más conservador pero más frecuente
+                monto_prestamo = max(1000, self.ingreso_mensual * 1.5)
 
-                # Corregir manejo del resultado (es una tupla)
+                # Intentar con el plazo adecuado
+                resultado_prestamo = banco_elegido.solicitar_prestamo(
+                    self, monto_prestamo, 12)
+
+                # Manejo correcto del resultado
                 if isinstance(resultado_prestamo, tuple) and resultado_prestamo[0]:
-                    # Préstamo aprobado - el dinero ya se agregó en el método bancario
-                    self.deuda += monto_prestamo * 1.1  # Incluir intereses
+                    # Préstamo aprobado - el dinero ya se agregó automáticamente
+                    self.deuda += monto_prestamo * 1.08  # 8% de intereses
+                    # print(
+                    #     f"💳 {self.nombre} obtuvo préstamo de ${monto_prestamo:,.0f}")
                 elif resultado_prestamo is True:  # Por compatibilidad
-                    self.dinero += monto_prestamo
-                    self.deuda += monto_prestamo * 1.1
+                    self.deuda += monto_prestamo * 1.08
 
         # Gestión de deudas
         if self.deuda > 0:

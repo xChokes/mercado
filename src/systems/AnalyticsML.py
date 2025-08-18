@@ -318,13 +318,13 @@ class ClusterizadorAgentes:
     def extraer_caracteristicas_consumidor(self, consumidor):
         """Extrae características de un consumidor para clustering"""
         # Calcular total de bienes en inventario
-        total_bienes = sum([len(lista_bienes)
-                           for lista_bienes in consumidor.bienes.values()])
+        total_bienes = sum(consumidor.bienes.values()) if hasattr(
+            consumidor, 'bienes') and consumidor.bienes else 0
 
         caracteristicas = [
             consumidor.dinero / 10000,  # Normalizado
             consumidor.ingreso_mensual / 5000,  # Normalizado
-            total_bienes,  # Usar total de bienes en lugar de inventario
+            total_bienes,  # Total de cantidades de bienes
             int(consumidor.empleado),
             consumidor.propension_consumo,
             consumidor.aversion_riesgo,

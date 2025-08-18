@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-08-18T22:37:57.778989",
+  "ciclos_ejecutados": 50,
+  "configuracion_mercado": {
+    "num_consumidores": 250,
+    "num_empresas": 13,
+    "crisis_financiera_activa": false,
+    "fase_ciclo_economico": "recuperacion"
+  },
+  "resultados_finales": {
+    "pib_final": 458685.3129574096,
+    "desempleo_final": 8.4,
+    "inflacion_final": 20.5305671051752,
+    "modelos_ml_entrenados": 55
+  }
+}

@@ -34,16 +34,27 @@ class Empresa(Persona):
             self.ventasPorBienPorCiclo[bien] = {}
 
     def contratar(self, consumidor):
-        """Contrata a un consumidor como empleado"""
-        if len(self.empleados) < self.capacidad_empleo:
+        """Contrata a un consumidor como empleado con lógica mejorada"""
+        if len(self.empleados) < self.capacidad_empleo and self.dinero > 10000:
             self.empleados.append(consumidor)
+            consumidor.empleado = True
+            consumidor.empleador = self
+            # Asignar salario basado en capacidad de la empresa
+            salario_base = max(2000, min(8000, self.dinero / 100))
+            consumidor.ingreso_mensual = salario_base * \
+                random.uniform(0.8, 1.2)
             return True
         return False
 
     def despedir(self, consumidor):
-        """Despide a un empleado"""
+        """Despide a un empleado con lógica mejorada"""
         if consumidor in self.empleados:
             self.empleados.remove(consumidor)
+            consumidor.empleado = False
+            consumidor.empleador = None
+            consumidor.ingreso_mensual = 0
+            return True
+        return False
 
     def ajustar_precio_bien(self, mercado, nombre_bien):
         if nombre_bien not in self.precios:
@@ -112,8 +123,9 @@ class Empresa(Persona):
                     self.dinero -= dividendo_total
 
     def calcular_dividendo(self):
-        if self.acciones_emitidas > 0:
-            # 2% del capital
+        """Calcula dividendo por acción con protección contra división por cero"""
+        if self.acciones_emitidas > 0 and self.dinero > 0:
+            # 2% del capital dividido entre acciones
             return max(0, self.dinero * 0.02 / self.acciones_emitidas)
         return 0
 

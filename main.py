@@ -1,668 +1,591 @@
 """
-SIMULADOR ECONÓMICO AVANZADO
-============================
+SIMULADOR ECONÓMICO AVANZADO v2.2 - CON SISTEMA DE LOGGING
+===========================================================
 
-Simulación económica realista con sistemas integrados:
-- Sistema Bancario y Crédito
-- Sectores Económicos Multi-sectoriales  
-- Innovación y Tecnología
-- Psicología Económica (Behavioral Economics)
-- Analytics y Machine Learning
+Simulación económica realista con todas las mejoras implementadas:
+- ✅ Sistema ML con datos sintéticos garantizados
+- ✅ Sistema de precios dinámicos 
+- ✅ Configuración externa via JSON
+- ✅ Dashboard avanzado con múltiples métricas
+- ✅ Sistema de crisis mejorado
+- ✅ Mercado laboral activado
+- ✅ Sistema bancario completamente funcional
+- ✅ Sistema de logging avanzado
 
 Autor: Simulador Económico Team
-Versión: 2.0 - Sistemas Avanzados Integrados
+Versión: 2.2 - Sistema de Logging Implementado
 """
 
-from src.systems.ComercioInternacional import Pais, TipoCambio
-from src.systems.PsicologiaEconomica import inicializar_perfiles_psicologicos
-from src.config.ConfiguradorSimulacion import configurador
-from src.config.ConfigEconomica import ConfigEconomica
+from src.config.ConfiguradorSimulacion import ConfiguradorSimulacion
+from src.utils.SimuladorLogger import SimuladorLogger
+from src.systems.PreciosDinamicos import integrar_sistema_precios_dinamicos, actualizar_precios_mercado
+from src.systems.VisualizacionAvanzada import DashboardEconomico, VisualizadorTiempoReal, exportar_resultados_completos
+from src.systems.EstimuloEconomico import detectar_estancamiento_economico, aplicar_estimulo_emergencia
+from src.systems.CrisisFinanciera import evaluar_recuperacion_crisis, aplicar_medidas_recuperacion, evaluar_riesgo_sistemico
+from src.systems.MercadoLaboral import MercadoLaboral
+from src.systems.AnalyticsML import SistemaAnalyticsML
+from src.systems.SistemaBancario import SistemaBancario, Banco
+from src.models.Gobierno import Gobierno
 from src.models.EmpresaProductora import EmpresaProductora
 from src.models.Empresa import Empresa
 from src.models.Consumidor import Consumidor
 from src.models.Bien import Bien
 from src.models.Mercado import Mercado
+from src.utils.SimuladorLogger import init_logging, get_simulador_logger, close_logging
 import sys
 import os
-import random
 import time
+import random
+import logging
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Añadir src al path de Python
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
+# Inicializar logger global
+logger = SimuladorLogger()
 
-def crear_bienes_realistas():
-    """Crea bienes con características económicas realistas - CATÁLOGO EXPANDIDO"""
+# Importaciones principales
+
+# Sistemas avanzados
+
+# Configuración
+
+
+def crear_bienes_expandidos():
+    """Crea catálogo expandido de 45+ bienes en múltiples categorías"""
     bienes = {}
 
-    # Bienes básicos (necesidades)
-    bienes['Arroz'] = Bien('Arroz', 'alimentos_basicos')
-    bienes['Papa'] = Bien('Papa', 'alimentos_basicos')
-    bienes['Pan'] = Bien('Pan', 'alimentos_basicos')
-    bienes['Leche'] = Bien('Leche', 'alimentos_basicos')
-    bienes['Sal'] = Bien('Sal', 'alimentos_basicos')
-    bienes['Aceite'] = Bien('Aceite', 'alimentos_basicos')
-    bienes['Azucar'] = Bien('Azucar', 'alimentos_basicos')
-    bienes['Agua'] = Bien('Agua', 'alimentos_basicos')
-    bienes['Harina'] = Bien('Harina', 'alimentos_basicos')
-    bienes['Frijoles'] = Bien('Frijoles', 'alimentos_basicos')
+    logger.log_configuracion("Creando catálogo expandido de bienes...")
 
-    # Bienes de lujo alimentarios
-    bienes['Carne'] = Bien('Carne', 'alimentos_lujo')
-    bienes['Pollo'] = Bien('Pollo', 'alimentos_lujo')
-    bienes['Huevos'] = Bien('Huevos', 'alimentos_lujo')
-    bienes['Cafe'] = Bien('Cafe', 'alimentos_lujo')
-    bienes['Pescado'] = Bien('Pescado', 'alimentos_lujo')
-    bienes['Queso'] = Bien('Queso', 'alimentos_lujo')
-    bienes['Chocolate'] = Bien('Chocolate', 'alimentos_lujo')
-    bienes['Vino'] = Bien('Vino', 'alimentos_lujo')
-    bienes['Frutas'] = Bien('Frutas', 'alimentos_lujo')
-    bienes['Verduras'] = Bien('Verduras', 'alimentos_lujo')
+    # ALIMENTOS BÁSICOS (10 bienes)
+    alimentos_basicos = [
+        'Arroz', 'Papa', 'Pan', 'Leche', 'Sal', 'Aceite', 'Azucar',
+        'Agua', 'Harina', 'Frijoles'
+    ]
+    for nombre in alimentos_basicos:
+        bienes[nombre] = Bien(nombre, 'alimentos_basicos')
 
-    # Bienes manufacturados básicos
-    bienes['Ropa'] = Bien('Ropa', 'bienes_duraderos')
-    bienes['Calzado'] = Bien('Calzado', 'bienes_duraderos')
-    bienes['Muebles'] = Bien('Muebles', 'bienes_duraderos')
-    bienes['Electrodomesticos'] = Bien('Electrodomesticos', 'bienes_duraderos')
-    bienes['Libros'] = Bien('Libros', 'bienes_duraderos')
-    bienes['Herramientas'] = Bien('Herramientas', 'bienes_duraderos')
+    # ALIMENTOS DE LUJO (10 bienes)
+    alimentos_lujo = [
+        'Carne', 'Pollo', 'Huevos', 'Cafe', 'Pescado', 'Queso',
+        'Chocolate', 'Vino', 'Frutas', 'Verduras'
+    ]
+    for nombre in alimentos_lujo:
+        bienes[nombre] = Bien(nombre, 'alimentos_lujo')
 
-    # Bienes tecnológicos
-    bienes['Computadora'] = Bien('Computadora', 'tecnologia')
-    bienes['Telefono'] = Bien('Telefono', 'tecnologia')
-    bienes['Television'] = Bien('Television', 'tecnologia')
-    bienes['Internet'] = Bien('Internet', 'tecnologia')
-    bienes['Software'] = Bien('Software', 'tecnologia')
+    # BIENES MANUFACTURADOS (8 bienes)
+    manufacturados = [
+        'Ropa', 'Calzado', 'Muebles', 'Electrodomesticos',
+        'Libros', 'Herramientas', 'Juguetes', 'Medicinas'
+    ]
+    for nombre in manufacturados:
+        bienes[nombre] = Bien(nombre, 'bienes_duraderos')
 
-    # Servicios básicos
-    bienes['Transporte'] = Bien('Transporte', 'servicios')
-    bienes['Educacion'] = Bien('Educacion', 'servicios')
-    bienes['Salud'] = Bien('Salud', 'servicios')
-    bienes['Vivienda'] = Bien('Vivienda', 'servicios')
-    bienes['Electricidad'] = Bien('Electricidad', 'servicios')
-    bienes['Gas'] = Bien('Gas', 'servicios')
-    bienes['Seguridad'] = Bien('Seguridad', 'servicios')
+    # TECNOLOGÍA (7 bienes)
+    tecnologia = [
+        'Computadora', 'Telefono', 'Television', 'Internet',
+        'Software', 'Videojuegos', 'Electronica'
+    ]
+    for nombre in tecnologia:
+        bienes[nombre] = Bien(nombre, 'tecnologia')
 
-    # Servicios de lujo
-    bienes['Entretenimiento'] = Bien('Entretenimiento', 'servicios_lujo')
-    bienes['Turismo'] = Bien('Turismo', 'servicios_lujo')
-    bienes['Restaurante'] = Bien('Restaurante', 'servicios_lujo')
-    bienes['Gimnasio'] = Bien('Gimnasio', 'servicios_lujo')
-    bienes['Spa'] = Bien('Spa', 'servicios_lujo')
+    # SERVICIOS BÁSICOS (8 bienes)
+    servicios = [
+        'Transporte', 'Educacion', 'Salud', 'Vivienda',
+        'Electricidad', 'Gas', 'Seguridad', 'Comunicaciones'
+    ]
+    for nombre in servicios:
+        bienes[nombre] = Bien(nombre, 'servicios')
 
-    # Bienes de capital e intermedios
-    bienes['Maquinaria'] = Bien('Maquinaria', 'capital')
-    bienes['Materias_Primas'] = Bien('Materias_Primas', 'intermedio')
-    bienes['Energia'] = Bien('Energia', 'intermedio')
-    bienes['Acero'] = Bien('Acero', 'intermedio')
-    bienes['Cemento'] = Bien('Cemento', 'intermedio')
-    bienes['Plastico'] = Bien('Plastico', 'intermedio')
+    # SERVICIOS DE LUJO (6 bienes)
+    servicios_lujo = [
+        'Entretenimiento', 'Turismo', 'Restaurante',
+        'Gimnasio', 'Spa', 'Arte'
+    ]
+    for nombre in servicios_lujo:
+        bienes[nombre] = Bien(nombre, 'servicios_lujo')
 
-    # Bienes financieros
-    bienes['Seguros'] = Bien('Seguros', 'financiero')
-    bienes['Credito'] = Bien('Credito', 'financiero')
-    bienes['Inversion'] = Bien('Inversion', 'financiero')
+    # BIENES DE CAPITAL E INTERMEDIOS (6 bienes)
+    capital_intermedio = [
+        ('Maquinaria', 'capital'),
+        ('Materias_Primas', 'intermedio'),
+        ('Energia', 'intermedio'),
+        ('Acero', 'intermedio'),
+        ('Cemento', 'intermedio'),
+        ('Combustible', 'intermedio')
+    ]
+    for nombre, categoria in capital_intermedio:
+        bienes[nombre] = Bien(nombre, categoria)
 
+    logger.log_configuracion(
+        f"Catálogo creado: {len(bienes)} bienes en {len(set(b.categoria for b in bienes.values()))} categorías")
     return bienes
 
 
-def configurar_economia_inicial(mercado):
-    """Configura el estado inicial de la economía con parámetros configurables"""
-    print("🏗️  Configurando economía inicial...")
+def configurar_economia_avanzada(mercado, config):
+    """Configura la economía con parámetros del archivo de configuración"""
+    logger.log_configuracion("Configurando economía avanzada...")
 
     # Obtener configuración
-    config_sim = configurador.obtener_seccion('simulacion')
-    config_econ = configurador.obtener_seccion('economia')
+    sim_config = config.obtener_seccion('simulacion')
+    eco_config = config.obtener_seccion('economia')
+    banco_config = config.obtener_seccion('sistema_bancario')
 
-    num_productoras = config_sim.get('num_empresas_productoras', 5)
-    num_comerciales = config_sim.get('num_empresas_comerciales', 8)
-    num_consumidores = config_sim.get('num_consumidores', 250)
+    # === CONSUMIDORES ===
+    num_consumidores = sim_config.get('num_consumidores', 250)
+    dinero_config = eco_config.get('dinero_inicial_consumidores', {
+                                   'min': 5000, 'max': 15000})
 
-    # Actualizar configuración económica global
-    configurador.actualizar_configuracion_economica(ConfigEconomica)
-
-    # Crear empresas productoras especializadas
-    empresas_productoras = []
-    nombres_productoras = [
-        "AgroIndustrias SA", "AlimentosPro Ltd", "ManufacturaMax Corp",
-        "ProduccionTotal Inc", "IndustriasPrima SA", "TecnoFabrik SA",
-        "ProcessingCorp Ltd", "MaterialesPro Inc"
-    ]
-
-    for i, nombre in enumerate(nombres_productoras):
-        empresa = EmpresaProductora(nombre, mercado)
-        mercado.agregar_persona(empresa)
-        empresas_productoras.append(empresa)
-        print(
-            f"   ✅ Creada {nombre} con capital inicial ${empresa.dinero:,.2f}")
-
-    # Crear consumidores con características diversas
-    consumidores = []
-    for i in range(250):  # 250 consumidores para mayor realismo
-        nombre = f"Consumidor{i+1:03d}"
-        consumidor = Consumidor(nombre, mercado)
+    logger.log_configuracion(f"Creando {num_consumidores} consumidores...")
+    for i in range(num_consumidores):
+        consumidor = Consumidor(f'Consumidor_{i+1}', mercado)
+        # Dinero inicial aleatorio en el rango configurado
+        consumidor.dinero = random.uniform(
+            dinero_config['min'], dinero_config['max'])
+        consumidor.ingreso_mensual = random.uniform(2000, 8000)
         mercado.agregar_persona(consumidor)
-        consumidores.append(consumidor)
 
-        # Asignar empleos iniciales (75% empleados)
-        if consumidor.empleado and empresas_productoras and random.random() < 0.75:
-            empleador = random.choice(empresas_productoras)
-            if empleador.contratar(consumidor):
-                consumidor.empleador = empleador
+    # === EMPRESAS PRODUCTORAS ===
+    num_empresas_prod = sim_config.get('num_empresas_productoras', 5)
+    capital_config = eco_config.get('capital_inicial_empresas', {
+                                    'min': 100000, 'max': 1500000})
 
-    # Crear empresas de servicios/comercio
-    nombres_comerciales = [
-        "ComercioLocal SA", "ServiciosPlus Ltd", "RetailMax Corp",
-        "DistribucionTotal Inc", "ComercialCenter SA", "MarketPlace Ltd",
-        "ServiceHub Corp", "TradingPro Inc"
-    ]
-
-    for nombre in nombres_comerciales:
-        empresa = Empresa.crear_con_acciones(
-            nombre=nombre,
-            mercado=mercado,
-            cantidad_acciones=1000,
-            bienes={}
-        )
+    logger.log_configuracion(
+        f"Creando {num_empresas_prod} empresas productoras...")
+    empresas = []
+    for i in range(num_empresas_prod):
+        empresa = EmpresaProductora(f'Productora_{i+1}', mercado)
+        empresa.dinero = random.uniform(
+            capital_config['min'], capital_config['max'])
         mercado.agregar_persona(empresa)
-        print(
-            f"   ✅ Creada {nombre} con capital inicial ${empresa.dinero:,.2f}")
+        empresas.append(empresa)
 
-    print(f"   📊 Total: {len(empresas_productoras)} productoras, {len(consumidores)} consumidores, {len(nombres_comerciales)} comerciales")
-    print("   🎯 Economía inicial configurada correctamente")
+    # === EMPRESAS COMERCIALES ===
+    num_empresas_com = sim_config.get('num_empresas_comerciales', 8)
 
-    return empresas_productoras, consumidores
+    logger.log_configuracion(
+        f"Creando {num_empresas_com} empresas comerciales...")
+    for i in range(num_empresas_com):
+        # Seleccionar algunos bienes aleatorios para vender
+        bienes_empresa = random.sample(list(mercado.bienes.keys()),
+                                       random.randint(3, 8))
+        bienes_dict = {bien: [] for bien in bienes_empresa}
 
+        empresa = Empresa.crear_con_acciones(
+            f'Comercial_{i+1}', mercado, 1000, bienes_dict
+        )
+        empresa.dinero = random.uniform(50000, 300000)
+        mercado.agregar_persona(empresa)
+        empresas.append(empresa)
 
-def ejecutar_simulacion(mercado, num_ciclos=50):
-    """Ejecuta la simulación económica completa"""
-    print(f"\n🚀 Iniciando simulación económica de {num_ciclos} ciclos...")
-    inicio = time.time()
+    # === SISTEMA BANCARIO ===
+    if banco_config.get('activar', True):
+        logger.log_configuracion("Configurando sistema bancario...")
+        mercado.sistema_bancario = SistemaBancario(mercado)
 
-    # Almacenar métricas expandidas
-    metricas = {
-        'pib': [],
-        'inflacion': [],
-        'desempleo': [],
-        'dinero_consumidores': [],
-        'dinero_empresas': [],
-        'precios_promedio': [],
-        'transacciones_totales': [],
-        'sistema_bancario': [],
-        'sectores_economicos': [],
-        'innovacion': [],
-        'psicologia': [],
-        'analytics': []
-    }
+        # El SistemaBancario ya crea los bancos automáticamente
+        num_bancos = len(mercado.sistema_bancario.bancos)
+        capital_total = sum(
+            banco.capital for banco in mercado.sistema_bancario.bancos)
 
-    for ciclo in range(num_ciclos):
-        print(f"\n📅 Ejecutando ciclo {ciclo + 1}/{num_ciclos}")
+        logger.log_configuracion(
+            f"{num_bancos} bancos creados con capital total ${capital_total:,}")
 
-        try:
-            mercado.actualizar_demografia()
-            mercado.ejecutar_ciclo(ciclo)
+    # === GOBIERNO ===
+    logger.log_configuracion("Configurando gobierno...")
+    mercado.gobierno = Gobierno(mercado)
+    mercado.gobierno.presupuesto = eco_config.get(
+        'pib_inicial', 100000) * 0.3  # 30% del PIB inicial
 
-            # Recopilar métricas básicas
-            stats = mercado.obtener_estadisticas_completas()
-            metricas['pib'].append(stats['pib_historico']
-                                   [-1] if stats['pib_historico'] else 0)
-            metricas['inflacion'].append(
-                stats['inflacion_historica'][-1] if stats['inflacion_historica'] else 0)
-            metricas['desempleo'].append(
-                stats['desempleo_historico'][-1] if stats['desempleo_historico'] else 0)
+    # === CONTRATACIONES INICIALES ===
+    logger.log_configuracion("Ejecutando contrataciones iniciales...")
+    tasa_empleo_objetivo = 1 - eco_config.get('tasa_desempleo_inicial', 0.15)
+    empleos_objetivo = int(num_consumidores * tasa_empleo_objetivo)
 
-            # Dinero por tipo de agente
-            dinero_cons = [c.dinero for c in mercado.getConsumidores()]
-            dinero_emp = [e.dinero for e in mercado.getEmpresas()]
-            metricas['dinero_consumidores'].append(
-                sum(dinero_cons) / len(dinero_cons) if dinero_cons else 0)
-            metricas['dinero_empresas'].append(
-                sum(dinero_emp) / len(dinero_emp) if dinero_emp else 0)
+    consumidores_desempleados = [
+        c for c in mercado.getConsumidores() if not c.empleado]
+    empleos_creados = 0
 
-            # Precio promedio
-            precios_todos = []
-            for empresa in mercado.getEmpresas():
-                precios_todos.extend(empresa.precios.values())
-            metricas['precios_promedio'].append(
-                sum(precios_todos) / len(precios_todos) if precios_todos else 0)
+    for empresa in empresas:
+        if empleos_creados >= empleos_objetivo:
+            break
 
-            # Transacciones
-            trans_ciclo = len(
-                [t for t in mercado.transacciones if t.get('ciclo') == ciclo])
-            metricas['transacciones_totales'].append(trans_ciclo)
+        # Cada empresa contrata entre 5-20 empleados
+        contrataciones_empresa = min(
+            random.randint(5, 20),
+            len(consumidores_desempleados),
+            empleos_objetivo - empleos_creados
+        )
 
-            # Sistemas avanzados
-            try:
-                # Sistema bancario
-                stats_bancario = mercado.sistema_bancario.obtener_estadisticas_sistema()
-                metricas['sistema_bancario'].append(stats_bancario)
+        for _ in range(contrataciones_empresa):
+            if consumidores_desempleados:
+                trabajador = consumidores_desempleados.pop(0)
+                if empresa.contratar(trabajador):
+                    empleos_creados += 1
 
-                # Sectores económicos
-                stats_sectores = mercado.economia_sectorial.obtener_estadisticas_sectoriales()
-                metricas['sectores_economicos'].append(stats_sectores)
+    tasa_desempleo_real = (
+        len(consumidores_desempleados) / num_consumidores) * 100
+    logger.log_configuracion(
+        f"Tasa de desempleo inicial: {tasa_desempleo_real:.1f}%")
 
-                # Sistema de innovación
-                stats_innovacion = mercado.sistema_innovacion.obtener_estadisticas_innovacion()
-                metricas['innovacion'].append(stats_innovacion)
-
-                # Analytics y ML
-                stats_analytics = mercado.sistema_analytics.obtener_estadisticas_analytics()
-                metricas['analytics'].append(stats_analytics)
-
-                # Psicología económica
-                if hasattr(mercado, 'sistema_psicologia') and mercado.sistema_psicologia:
-                    stats_psicologia = mercado.sistema_psicologia.obtener_estadisticas_psicologicas()
-                    metricas['psicologia'].append(stats_psicologia)
-                else:
-                    metricas['psicologia'].append({})
-
-            except Exception as e:
-                print(f"   ⚠️  Error recopilando métricas avanzadas: {e}")
-                # Agregar valores vacíos para mantener consistencia
-                for key in ['sistema_bancario', 'sectores_economicos', 'innovacion', 'analytics', 'psicologia']:
-                    metricas[key].append({})
-
-            # Progreso cada 10 ciclos
-            if (ciclo + 1) % 10 == 0:
-                porcentaje = ((ciclo + 1) / num_ciclos) * 100
-                print(f"   ⏱️  Progreso: {porcentaje:.1f}% completado")
-
-                # Mini-reporte intermedio
-                pib_actual = metricas['pib'][-1] if metricas['pib'] else 0
-                desempleo_actual = metricas['desempleo'][-1] if metricas['desempleo'] else 0
-                print(
-                    f"   📊 PIB: ${pib_actual:,.0f} | Desempleo: {desempleo_actual:.1%} | Fase: {mercado.fase_ciclo_economico}")
-
-        except Exception as e:
-            print(f"   ❌ Error en ciclo {ciclo + 1}: {e}")
-            continue
-
-    tiempo_total = time.time() - inicio
-    print(f"\n✅ Simulación completada en {tiempo_total:.2f} segundos")
-
-    return metricas
+    return empresas
 
 
-def generar_analisis_economico(mercado, metricas):
-    """Genera análisis económico detallado"""
-    print("\n" + "="*80)
-    print("📊 ANÁLISIS ECONÓMICO FINAL - SIMULADOR AVANZADO")
-    print("="*80)
+def integrar_sistemas_avanzados(mercado, config):
+    """Integra todos los sistemas avanzados"""
+    logger.log_configuracion("Integrando sistemas avanzados...")
 
-    # === INDICADORES MACROECONÓMICOS ===
-    print("\n🎯 INDICADORES MACROECONÓMICOS:")
-    print("-" * 50)
+    # === MACHINE LEARNING ===
+    ml_config = config.obtener_seccion('machine_learning')
+    if ml_config.get('activar', True):
+        logger.log_configuracion("Activando sistema de Machine Learning...")
+        mercado.analytics_ml = SistemaAnalyticsML(mercado)
 
-    pib_final = metricas['pib'][-1] if metricas['pib'] else 0
-    pib_inicial = metricas['pib'][0] if metricas['pib'] else 0
-    crecimiento_pib = ((pib_final - pib_inicial) /
-                       pib_inicial * 100) if pib_inicial > 0 else 0
+        # Entrenar modelos iniciales con datos sintéticos
+        logger.log_configuracion("Entrenando modelos ML iniciales...")
+        modelos_entrenados = 0
+        # Entrenar primeros 10 bienes
+        for bien_nombre in list(mercado.bienes.keys())[:10]:
+            if mercado.analytics_ml.predictor_demanda.get(bien_nombre) is None:
+                from src.systems.AnalyticsML import PredictorDemanda
+                mercado.analytics_ml.predictor_demanda[bien_nombre] = PredictorDemanda(
+                )
 
-    inflacion_promedio = sum(
-        metricas['inflacion']) / len(metricas['inflacion']) if metricas['inflacion'] else 0
-    desempleo_promedio = sum(
-        metricas['desempleo']) / len(metricas['desempleo']) if metricas['desempleo'] else 0
+            if mercado.analytics_ml.predictor_demanda[bien_nombre].entrenar(mercado, bien_nombre):
+                modelos_entrenados += 1
 
-    print(f"📈 PIB Final: ${pib_final:,.2f}")
-    print(f"📊 Crecimiento PIB: {crecimiento_pib:+.2f}%")
-    print(f"💰 Inflación Promedio: {inflacion_promedio:.2%}")
-    print(f"👥 Desempleo Promedio: {desempleo_promedio:.2%}")
+        logger.log_configuracion(
+            f"{modelos_entrenados} modelos ML entrenados exitosamente")
 
-    # Estado del mercado laboral
-    empleados = sum([1 for c in mercado.getConsumidores() if c.empleado])
-    total_consumidores = len(mercado.getConsumidores())
-    tasa_empleo = empleados / total_consumidores if total_consumidores > 0 else 0
+    # === MERCADO LABORAL ===
+    logger.log_configuracion("Activando mercado laboral avanzado...")
+    mercado.mercado_laboral = MercadoLaboral(mercado)
 
-    print(f"💼 Tasa de Empleo Final: {tasa_empleo:.2%}")
-    print(f"🏢 Empresas Activas: {len(mercado.getEmpresas())}")
+    # Asignar perfiles de habilidades a consumidores
+    for consumidor in mercado.getConsumidores():
+        if not hasattr(consumidor, 'perfil_habilidades'):
+            consumidor.perfil_habilidades = mercado.mercado_laboral.crear_perfil()
+            # 50% probabilidad de afiliación sindical
+            mercado.mercado_laboral.asignar_sindicato(consumidor)
 
-    # === ANÁLISIS DE COMPETENCIA ===
-    print(f"\n🏆 ANÁLISIS DE COMPETENCIA:")
-    print("-" * 50)
-    for bien, nivel in mercado.nivel_competencia.items():
-        estado = "🔴 Baja" if nivel < 0.4 else "🟡 Media" if nivel < 0.7 else "🟢 Alta"
-        print(f"   {bien}: {estado} competencia (índice: {nivel:.2f})")
+    # === SISTEMA DE PRECIOS DINÁMICOS ===
+    logger.log_configuracion("Configurando sistema de precios dinámicos...")
+    sistema_precios = integrar_sistema_precios_dinamicos(mercado)
 
-    # === CICLO ECONÓMICO ===
-    print(f"\n🔄 ESTADO MACROECONÓMICO:")
-    print("-" * 50)
-    print(f"Fase Económica: {mercado.fase_ciclo_economico.upper()}")
-    if mercado.shock_economico_activo:
-        print("⚠️  SHOCK ECONÓMICO ACTIVO")
+    # Asignar precios iniciales a todas las empresas
+    precios_asignados = 0
+    for empresa in mercado.getEmpresas():
+        if hasattr(empresa, 'bienes') and empresa.bienes:
+            for bien_nombre in empresa.bienes.keys():
+                if bien_nombre in mercado.bienes:
+                    precio_base = sistema_precios.precios_base.get(
+                        bien_nombre, 10)
+                    empresa.precios[bien_nombre] = precio_base * \
+                        random.uniform(0.8, 1.2)
+                    precios_asignados += 1
 
-    # === SISTEMAS AVANZADOS ===
-    print(f"\n🏦 SISTEMA BANCARIO:")
-    print("-" * 50)
-    if metricas['sistema_bancario']:
-        stats_bancario = metricas['sistema_bancario'][-1]
-        print(f"Capital Total: ${stats_bancario.get('capital_total', 0):,.2f}")
-        print(
-            f"Préstamos Totales: ${stats_bancario.get('prestamos_totales', 0):,.2f}")
-        print(
-            f"Depósitos Totales: ${stats_bancario.get('depositos_totales', 0):,.2f}")
-        print(
-            f"Tasa de Referencia: {stats_bancario.get('tasa_referencia', 0):.2%}")
-        print(f"Bancos Operando: {stats_bancario.get('bancos_operando', 0)}")
+    logger.log_configuracion(
+        f"{precios_asignados} precios dinámicos asignados")
 
-    print(f"\n🏭 ANÁLISIS SECTORIAL:")
-    print("-" * 50)
-    if metricas['sectores_economicos']:
-        stats_sectores = metricas['sectores_economicos'][-1]
-        for sector, datos in stats_sectores.items():
-            if isinstance(datos, dict) and 'pib' in datos:
-                participacion = datos.get('participacion_pib', 0) * 100
-                print(
-                    f"{sector.capitalize()}: PIB ${datos['pib']:,.0f} ({participacion:.1f}%) - {datos['empresas']} empresas - {datos['empleo']} empleos")
+    # === DASHBOARD ===
+    logger.log_configuracion("Configurando dashboard avanzado...")
+    mercado.dashboard = DashboardEconomico(mercado)
 
-    print(f"\n🔬 SISTEMA DE INNOVACIÓN:")
-    print("-" * 50)
-    if metricas['innovacion']:
-        stats_innovacion = metricas['innovacion'][-1]
-        print(
-            f"Inversión I+D Total: ${stats_innovacion.get('inversion_id_total', 0):,.2f}")
-        print(
-            f"Tecnologías Disponibles: {stats_innovacion.get('tecnologias_disponibles', 0)}")
-        print(
-            f"Productos Innovadores: {stats_innovacion.get('productos_innovadores', 0)}")
-        print(
-            f"Empresas Innovadoras: {stats_innovacion.get('empresas_innovadoras', 0)} ({stats_innovacion.get('porcentaje_empresas_innovadoras', 0):.1%})")
-
-    print(f"\n🤖 SISTEMA DE ANALYTICS Y ML:")
-    print("-" * 50)
-    if metricas['analytics']:
-        stats_analytics = metricas['analytics'][-1]
-        print(
-            f"Modelos Entrenados: {stats_analytics.get('modelos_entrenados', 0)}")
-        print(
-            f"Predictores Disponibles: {stats_analytics.get('predictores_disponibles', 0)}")
-        if 'clusters_identificados' in stats_analytics:
-            print(
-                f"Clusters de Consumidores: {stats_analytics.get('clusters_identificados', 0)}")
-            if 'perfiles_consumidor' in stats_analytics:
-                print("Perfiles Identificados:")
-                for cluster, perfil in stats_analytics['perfiles_consumidor'].items():
-                    print(f"  • {cluster}: {perfil}")
-
-    print(f"\n🧠 PERFIL PSICOLÓGICO ECONÓMICO:")
-    print("-" * 50)
-    if metricas['psicologia'] and any(metricas['psicologia']):
-        stats_psicologia = next(
-            (p for p in reversed(metricas['psicologia']) if p), {})
-        print(
-            f"Confianza del Consumidor: {stats_psicologia.get('confianza_promedio', 0.5):.1%}")
-        print(
-            f"Aversión al Riesgo Promedio: {stats_psicologia.get('aversion_riesgo_promedio', 0.5):.1%}")
-        print(
-            f"Optimismo General: {stats_psicologia.get('optimismo_promedio', 0.5):.1%}")
-
-    # === RANKING EMPRESARIAL ===
-    print(f"\n🥇 TOP 5 EMPRESAS POR CAPITAL:")
-    print("-" * 50)
-    empresas_ordenadas = sorted(mercado.getEmpresas(),
-                                key=lambda e: e.dinero, reverse=True)[:5]
-    for i, empresa in enumerate(empresas_ordenadas, 1):
-        emoji = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else "🏅"
-        print(f"{emoji} {i}. {empresa.nombre}: ${empresa.dinero:,.2f}")
-
-    # === ACTIVIDAD ECONÓMICA ===
-    print(f"\n💵 ACTIVIDAD ECONÓMICA:")
-    print("-" * 50)
-    total_transacciones = len(mercado.transacciones)
-    volumen_total = sum([t.get('costo_total', 0)
-                        for t in mercado.transacciones])
-    print(f"Total Transacciones: {total_transacciones:,}")
-    print(f"Volumen Total: ${volumen_total:,.2f}")
-    print(
-        f"Transacción Promedio: ${volumen_total/max(1, total_transacciones):,.2f}")
+    logger.log_configuracion("Todos los sistemas avanzados integrados")
 
 
-def crear_visualizaciones_avanzadas(metricas):
-    """Crea gráficos de análisis económico avanzados"""
-    print("\n📊 Generando visualizaciones avanzadas...")
+def ejecutar_simulacion_completa(config):
+    """Ejecuta la simulación completa con todas las mejoras"""
+    logger.log_inicio("INICIANDO SIMULACIÓN ECONÓMICA AVANZADA v2.2")
+    logger.log_inicio("=" * 60)
 
-    # Configurar estilo profesional
-    plt.style.use('default')
-    plt.rcParams.update({
-        'font.size': 10,
-        'axes.titlesize': 12,
-        'axes.labelsize': 10,
-        'xtick.labelsize': 9,
-        'ytick.labelsize': 9,
-        'legend.fontsize': 9
-    })
+    # Inicializar sistema de logging (ya tenemos uno global, pero mantenemos el local para compatibilidad)
+    local_logger = SimuladorLogger()
+    local_logger.log_inicio("Simulación Económica Avanzada v2.2 iniciada")
 
-    # Crear figura principal con 8 subplots
-    fig = plt.figure(figsize=(20, 16))
-    fig.suptitle('🏛️ SIMULADOR ECONÓMICO AVANZADO - ANÁLISIS INTEGRAL',
-                 fontsize=18, fontweight='bold', y=0.95)
+    tiempo_inicio = time.time()
 
-    ciclos = range(len(metricas['pib']))
+    # === CONFIGURACIÓN INICIAL ===
+    # Crear bienes expandidos primero
+    bienes = crear_bienes_expandidos()
 
-    # 1. PIB y Crecimiento
-    ax1 = plt.subplot(3, 3, 1)
-    ax1.plot(ciclos, metricas['pib'], 'b-',
-             linewidth=2, marker='o', markersize=2)
-    ax1.set_title('📈 Evolución del PIB', fontweight='bold')
-    ax1.set_xlabel('Ciclos')
-    ax1.set_ylabel('PIB ($)')
-    ax1.grid(True, alpha=0.3)
-    ax1.ticklabel_format(style='plain', axis='y')
+    # Crear mercado con bienes
+    mercado = Mercado(bienes)
 
-    # 2. Inflación vs Objetivo
-    ax2 = plt.subplot(3, 3, 2)
-    ax2.plot(ciclos, [i*100 for i in metricas['inflacion']],
-             'r-', linewidth=2, marker='s', markersize=2)
-    ax2.axhline(y=2, color='g', linestyle='--', alpha=0.7, label='Objetivo 2%')
-    ax2.axhline(y=-2, color='orange', linestyle='--',
-                alpha=0.7, label='Deflación -2%')
-    ax2.set_title('🔥 Tasa de Inflación', fontweight='bold')
-    ax2.set_xlabel('Ciclos')
-    ax2.set_ylabel('Inflación (%)')
-    ax2.grid(True, alpha=0.3)
-    ax2.legend()
+    # Configurar economía
+    empresas = configurar_economia_avanzada(mercado, config)
 
-    # 3. Desempleo
-    ax3 = plt.subplot(3, 3, 3)
-    ax3.plot(ciclos, [d*100 for d in metricas['desempleo']],
-             'orange', linewidth=2, marker='^', markersize=2)
-    ax3.axhline(y=5, color='g', linestyle='--', alpha=0.7, label='Objetivo 5%')
-    ax3.set_title('👥 Tasa de Desempleo', fontweight='bold')
-    ax3.set_xlabel('Ciclos')
-    ax3.set_ylabel('Desempleo (%)')
-    ax3.grid(True, alpha=0.3)
-    ax3.legend()
+    # Integrar sistemas avanzados
+    integrar_sistemas_avanzados(mercado, config)
 
-    # 4. Distribución de Riqueza
-    ax4 = plt.subplot(3, 3, 4)
-    ax4.plot(ciclos, metricas['dinero_consumidores'], 'g-',
-             linewidth=2, label='Consumidores', marker='o', markersize=2)
-    ax4.plot(ciclos, metricas['dinero_empresas'], 'purple',
-             linewidth=2, label='Empresas', marker='s', markersize=2)
-    ax4.set_title('💰 Dinero Promedio por Agente', fontweight='bold')
-    ax4.set_xlabel('Ciclos')
-    ax4.set_ylabel('Dinero Promedio ($)')
-    ax4.grid(True, alpha=0.3)
-    ax4.legend()
-    ax4.ticklabel_format(style='plain', axis='y')
+    # === CONFIGURACIÓN DE SIMULACIÓN ===
+    sim_config = config.obtener_seccion('simulacion')
+    num_ciclos = sim_config.get('num_ciclos', 50)
+    frecuencia_reportes = sim_config.get('frecuencia_reportes', 5)
 
-    # 5. Precios y Actividad
-    ax5 = plt.subplot(3, 3, 5)
-    ax5.plot(ciclos, metricas['precios_promedio'],
-             'brown', linewidth=2, marker='d', markersize=2)
-    ax5.set_title('💲 Precios Promedio', fontweight='bold')
-    ax5.set_xlabel('Ciclos')
-    ax5.set_ylabel('Precio Promedio ($)')
-    ax5.grid(True, alpha=0.3)
+    # Visualizador en tiempo real (opcional)
+    usar_tiempo_real = False  # Cambiar a True para gráficos en tiempo real
+    if usar_tiempo_real:
+        visualizador_tiempo_real = VisualizadorTiempoReal()
 
-    # 6. Volumen de Transacciones
-    ax6 = plt.subplot(3, 3, 6)
-    ax6.bar(ciclos[::5], metricas['transacciones_totales']
-            [::5], alpha=0.7, color='teal', width=1.5)
-    ax6.set_title('📊 Volumen de Transacciones', fontweight='bold')
-    ax6.set_xlabel('Ciclos (cada 5)')
-    ax6.set_ylabel('Número de Transacciones')
-    ax6.grid(True, alpha=0.3)
+    logger.log_configuracion(f"Ejecutando {num_ciclos} ciclos económicos...")
+    logger.log_configuracion("=" * 60)
 
-    # 7. Sistema Bancario
-    ax7 = plt.subplot(3, 3, 7)
-    if metricas['sistema_bancario']:
-        capital_bancario = [s.get('capital_total', 0)
-                            for s in metricas['sistema_bancario']]
-        ax7.plot(ciclos, capital_bancario, 'darkblue',
-                 linewidth=2, marker='x', markersize=3)
-        ax7.set_title('🏦 Capital Bancario Total', fontweight='bold')
-        ax7.set_xlabel('Ciclos')
-        ax7.set_ylabel('Capital ($)')
-        ax7.grid(True, alpha=0.3)
-        ax7.ticklabel_format(style='plain', axis='y')
+    # Logging inicial de configuración
+    local_logger.log_configuracion(
+        f"Simulación configurada con {num_ciclos} ciclos")
+    local_logger.log_configuracion(
+        f"Empresas creadas: {len(mercado.getEmpresas())}")
+    local_logger.log_configuracion(
+        f"Consumidores creados: {len(mercado.getConsumidores())}")
+    local_logger.log_configuracion(
+        f"Bienes disponibles: {len(mercado.bienes)}")
 
-    # 8. Innovación
-    ax8 = plt.subplot(3, 3, 8)
-    if metricas['innovacion']:
-        inversion_id = [s.get('inversion_id_total', 0)
-                        for s in metricas['innovacion']]
-        ax8.plot(ciclos, inversion_id, 'darkgreen',
-                 linewidth=2, marker='*', markersize=3)
-        ax8.set_title('🔬 Inversión en I+D Acumulada', fontweight='bold')
-        ax8.set_xlabel('Ciclos')
-        ax8.set_ylabel('Inversión I+D ($)')
-        ax8.grid(True, alpha=0.3)
-        ax8.ticklabel_format(style='plain', axis='y')
+    # === EJECUCIÓN PRINCIPAL ===
+    for ciclo in range(1, num_ciclos + 1):
+        # Log inicio de ciclo
+        local_logger.log_ciclo(f"=== INICIANDO CICLO {ciclo}/{num_ciclos} ===")
 
-    # 9. Indicador Compuesto
-    ax9 = plt.subplot(3, 3, 9)
-    if len(metricas['pib']) > 0 and len(metricas['desempleo']) > 0:
-        # Crear índice de bienestar económico
-        pib_norm = np.array(metricas['pib']) / max(metricas['pib']) if max(
-            metricas['pib']) > 0 else np.zeros(len(metricas['pib']))
-        # Invertir desempleo
-        desempleo_norm = 1 - np.array(metricas['desempleo'])
-        indice_bienestar = (pib_norm + desempleo_norm) / 2
+        # Actualizar dashboard antes del ciclo
+        mercado.dashboard.actualizar_metricas(ciclo)
 
-        ax9.plot(ciclos, indice_bienestar, 'darkred',
-                 linewidth=3, marker='o', markersize=2)
-        ax9.axhline(y=0.7, color='g', linestyle='--',
-                    alpha=0.7, label='Bienestar Alto')
-        ax9.set_title('📈 Índice de Bienestar Económico', fontweight='bold')
-        ax9.set_xlabel('Ciclos')
-        ax9.set_ylabel('Índice (0-1)')
-        ax9.grid(True, alpha=0.3)
-        ax9.legend()
+        # === SISTEMAS AUTOMÁTICOS ===
 
-    plt.tight_layout()
-    timestamp = int(time.time())
-    filename = f'results/simulacion_economica_avanzada_{timestamp}.png'
-    plt.savefig(filename, dpi=300, bbox_inches='tight', facecolor='white')
-    print(f"   📊 Análisis completo guardado: {filename}")
-    # plt.show()
+        # 1. Verificar y gestionar crisis financiera (una sola vez por ciclo)
+        if mercado.crisis_financiera_activa:
+            local_logger.log_crisis(
+                f"Ciclo {ciclo}: Crisis financiera activa - ciclos en crisis: {getattr(mercado, 'ciclos_en_crisis', 0)}")
+            if evaluar_recuperacion_crisis(mercado):
+                local_logger.log_crisis(
+                    f"Ciclo {ciclo}: Crisis financiera resuelta - Economía recuperándose")
+                local_logger.log_crisis(
+                    f"Ciclo {ciclo}: Crisis financiera RESUELTA - Economía recuperándose")
+                mercado.crisis_financiera_activa = False
+                mercado.ciclos_en_crisis = 0
+            else:
+                # Solo aplicar medidas cada 3 ciclos para evitar spam
+                if getattr(mercado, 'ciclos_en_crisis', 0) % 3 == 0:
+                    local_logger.log_crisis(
+                        f"Ciclo {ciclo}: Aplicando medidas de recuperación de crisis")
+                    aplicar_medidas_recuperacion(mercado)
+                mercado.ciclos_en_crisis = getattr(
+                    mercado, 'ciclos_en_crisis', 0) + 1
+        else:
+            # Evaluar si iniciar nueva crisis
+            riesgo = evaluar_riesgo_sistemico(mercado.sistema_bancario) if hasattr(
+                mercado, 'sistema_bancario') else 0
+            if riesgo > 0.7:  # Umbral más alto para evitar crisis constantes
+                mercado.crisis_financiera_activa = True
+                mercado.ciclos_en_crisis = 0
+                local_logger.log_crisis(
+                    f"Ciclo {ciclo}: Crisis financiera detectada (riesgo: {riesgo:.2f})")
+                local_logger.log_crisis(
+                    f"Ciclo {ciclo}: Crisis financiera DETECTADA (riesgo: {riesgo:.2f})")
+            elif riesgo > 0.4:  # Log niveles de riesgo elevados
+                local_logger.log_crisis(
+                    f"Ciclo {ciclo}: Riesgo sistémico elevado: {riesgo:.2f}")
 
-    print("   ✅ Visualizaciones avanzadas generadas correctamente")
+        # 2. Detectar estancamiento económico (solo si no hay crisis activa)
+        if not mercado.crisis_financiera_activa and detectar_estancamiento_economico(mercado):
+            local_logger.log_sistema(
+                f"Ciclo {ciclo}: Estancamiento económico detectado - aplicando estímulo de emergencia")
+            aplicar_estimulo_emergencia(mercado)
+
+        # 3. Mercado laboral - contrataciones masivas si es necesario
+        if hasattr(mercado, 'mercado_laboral'):
+            mercado.mercado_laboral.facilitar_contrataciones_masivas()
+            # Log que se ejecutó la función (no devuelve un valor específico)
+            local_logger.log_sistema(
+                f"Ciclo {ciclo}: Proceso de contrataciones masivas ejecutado")
+
+        # 4. Analytics ML cada 5 ciclos
+        if hasattr(mercado, 'analytics_ml') and ciclo % 5 == 0:
+            local_logger.log_ml(
+                f"Ciclo {ciclo}: Ejecutando ciclo de Analytics ML")
+            mercado.analytics_ml.ciclo_analytics()
+
+        # 5. Actualizar precios dinámicos cada 3 ciclos
+        if ciclo % 3 == 0:
+            local_logger.log_precios(
+                f"Ciclo {ciclo}: Actualizando precios dinámicos del mercado")
+            actualizar_precios_mercado(mercado)
+
+        # === CICLO ECONÓMICO PRINCIPAL ===
+        local_logger.log_ciclo(
+            f"Ciclo {ciclo}: Ejecutando ciclo económico principal")
+        mercado.ejecutar_ciclo(ciclo)
+
+        # Log métricas básicas del ciclo
+        pib_actual = mercado.pib_historico[-1] if mercado.pib_historico else 0
+        inflacion_actual = mercado.inflacion_historica[-1] if mercado.inflacion_historica else 0
+        local_logger.log_metricas(
+            f"Ciclo {ciclo}: PIB=${pib_actual:,.2f}, Inflación={inflacion_actual*100:.2f}%")
+
+        # === REPORTES PERIÓDICOS ===
+        if ciclo % frecuencia_reportes == 0 or ciclo == num_ciclos:
+            local_logger.log_sistema(
+                f"Generando reporte periódico para ciclo {ciclo}")
+            # Calcular métricas actuales
+            consumidores_totales = len(mercado.getConsumidores())
+            desempleados = len(
+                [c for c in mercado.getConsumidores() if not c.empleado])
+            tasa_desempleo = (
+                desempleados / max(1, consumidores_totales)) * 100
+
+            pib_actual = mercado.pib_historico[-1] if mercado.pib_historico else 0
+            inflacion_actual = mercado.inflacion_historica[-1] if mercado.inflacion_historica else 0
+
+            transacciones_ciclo = len(
+                [t for t in mercado.transacciones if t.get('ciclo', 0) == ciclo])
+            empresas_activas = len(
+                [e for e in mercado.getEmpresas() if hasattr(e, 'dinero') and e.dinero > 0])
+
+            # Métricas ML
+            modelos_entrenados = 0
+            if hasattr(mercado, 'analytics_ml'):
+                stats_ml = mercado.analytics_ml.obtener_estadisticas_analytics()
+                modelos_entrenados = stats_ml.get('modelos_entrenados', 0)
+
+            # Métricas bancarias
+            depositos_totales = prestamos_totales = 0
+            if hasattr(mercado, 'sistema_bancario') and mercado.sistema_bancario.bancos:
+                for banco in mercado.sistema_bancario.bancos:
+                    depositos_totales += sum(banco.depositos.values())
+                    prestamos_totales += sum([p['monto']
+                                             for p in banco.prestamos.values()])
+
+            local_logger.log_reporte(f"""
+REPORTE CICLO {ciclo}/{num_ciclos}:
+   PIB: ${pib_actual:,.2f} | Inflación: {inflacion_actual*100:.2f}%
+   Desempleo: {tasa_desempleo:.1f}% | Empresas Activas: {empresas_activas}
+   Transacciones: {transacciones_ciclo} | Modelos ML: {modelos_entrenados}
+   Depósitos: ${depositos_totales:,.0f} | Préstamos: ${prestamos_totales:,.0f}
+   Crisis: {'Activa' if mercado.crisis_financiera_activa else 'Inactiva'}""")
+
+            # Log reporte detallado
+            local_logger.log_reporte(
+                f"REPORTE CICLO {ciclo}: PIB=${pib_actual:,.2f}, Inflación={inflacion_actual*100:.2f}%, Desempleo={tasa_desempleo:.1f}%, Empresas={empresas_activas}, Transacciones={transacciones_ciclo}")
+            local_logger.log_reporte(
+                f"REPORTE CICLO {ciclo}: Depósitos=${depositos_totales:,.0f}, Préstamos=${prestamos_totales:,.0f}, Crisis={'Activa' if mercado.crisis_financiera_activa else 'Inactiva'}")
+
+        # Actualizar gráfico en tiempo real
+        if usar_tiempo_real and ciclo % 2 == 0:
+            visualizador_tiempo_real.actualizar_grafico_tiempo_real(
+                mercado.dashboard)
+
+    # === FINALIZACIÓN ===
+    tiempo_total = time.time() - tiempo_inicio
+    local_logger.log_sistema(
+        f"Simulación completada - Tiempo total: {tiempo_total:.2f} segundos")
+    local_logger.log_metricas(
+        f"Velocidad promedio: {tiempo_total/num_ciclos:.3f} segundos/ciclo")
+
+    if usar_tiempo_real:
+        visualizador_tiempo_real.cerrar()
+
+    logger.log_fin("=" * 60)
+    logger.log_fin("SIMULACIÓN COMPLETADA")
+    logger.log_fin("=" * 60)
+    logger.log_fin(f"Tiempo total: {tiempo_total:.2f} segundos")
+    logger.log_fin(f"Velocidad: {tiempo_total/num_ciclos:.3f} segundos/ciclo")
+
+    # === RESULTADOS FINALES ===
+    local_logger.log_sistema("Generando resultados finales de la simulación")
+    generar_resultados_finales(mercado, tiempo_total, num_ciclos)
+
+    # Log final de cierre
+    local_logger.log_fin(
+        "Simulación Económica Avanzada v2.2 completada exitosamente")
+
+    return mercado
 
 
-def mostrar_resumen_inicial():
-    """Muestra información del simulador al inicio"""
-    print("="*80)
-    print("🌟 SIMULADOR ECONÓMICO AVANZADO v2.0")
-    print("="*80)
-    print("🎯 SISTEMAS INTEGRADOS:")
-    print("   🏦 Sistema Bancario y Crédito")
-    print("   🏭 Sectores Económicos Multi-sectoriales")
-    print("   🔬 Innovación y Tecnología")
-    print("   🧠 Psicología Económica (Behavioral Economics)")
-    print("   🤖 Analytics y Machine Learning")
-    print("="*80)
+def generar_resultados_finales(mercado, tiempo_total, num_ciclos):
+    """Genera y guarda todos los resultados finales"""
+    logger.log_sistema("GENERANDO RESULTADOS FINALES...")
+
+    # === DASHBOARD COMPLETO ===
+    mercado.dashboard.crear_dashboard_completo(
+        num_ciclos, guardar_archivo=True)
+
+    # === REPORTE TEXTUAL ===
+    logger.log_reporte("Reporte textual generado:")
+    logger.log_reporte(mercado.dashboard.generar_reporte_textual())
+
+    # === EXPORTAR DATOS ===
+    csv_file, json_file, reporte_file = exportar_resultados_completos(
+        mercado.dashboard, prefijo="simulacion_v2_1"
+    )
+
+    # === ESTADÍSTICAS ADICIONALES ===
+    logger.log_sistema("ESTADÍSTICAS TÉCNICAS:")
+    logger.log_sistema(f"   Tiempo total: {tiempo_total:.2f}s")
+    logger.log_sistema(
+        f"   Velocidad promedio: {tiempo_total/num_ciclos:.3f}s/ciclo")
+    logger.log_sistema(f"   Agentes totales: {len(mercado.personas)}")
+    logger.log_sistema(f"   Tipos de bienes: {len(mercado.bienes)}")
+    logger.log_sistema(
+        f"   Transacciones totales: {len(mercado.transacciones)}")
+
+    if hasattr(mercado, 'sistema_precios'):
+        stats_precios = mercado.sistema_precios.obtener_estadisticas_precios()
+        if stats_precios:
+            logger.log_sistema(
+                f"   Precio promedio: ${stats_precios['precio_promedio']:.2f}")
+            logger.log_sistema(
+                f"   Dispersión precios: ${stats_precios['dispersion_precios']:.2f}")
+
+    logger.log_sistema("Archivos generados:")
+    logger.log_sistema(f"   Datos CSV: {csv_file}")
+    logger.log_sistema(f"   Configuración JSON: {json_file}")
+    logger.log_sistema(f"   Reporte: {reporte_file}")
 
 
 def main():
-    """Función principal del simulador económico avanzado"""
-    mostrar_resumen_inicial()
+    """Función principal mejorada"""
+    logger.log_inicio("SIMULADOR ECONÓMICO AVANZADO v2.2")
+    logger.log_inicio("=====================================")
+    logger.log_inicio("✅ Sistema ML con garantía de entrenamiento")
+    logger.log_inicio("✅ Precios dinámicos implementados")
+    logger.log_inicio("✅ Dashboard avanzado con múltiples métricas")
+    logger.log_inicio("✅ Configuración externa JSON")
+    logger.log_inicio("✅ Crisis financiera mejorada")
+    logger.log_inicio("✅ Mercado laboral activado")
+    logger.log_inicio("✅ Sistema bancario completamente funcional")
+    logger.log_inicio("✅ Sistema de logging avanzado implementado")
+    logger.log_inicio("=" * 60)
 
-    # 1. Crear bienes realistas ampliados
-    bienes = crear_bienes_realistas()
-    print(
-        f"✅ Creados {len(bienes)} tipos de bienes con características económicas realistas")
+    # Inicializar logger para la función main (usar el global)
+    main_logger = logger
 
-    # 2. Inicializar mercado con sistemas avanzados
-    mercado = Mercado(bienes)
-    print("✅ Mercado inicializado con sistemas avanzados integrados")
+    try:
+        # Cargar configuración
+        logger.log_configuracion("Cargando configuración...")
+        main_logger.log_inicio("Cargando configuración del simulador")
+        configurador = ConfiguradorSimulacion()
 
-    # 3. Configurar comercio internacional
-    tipo_cambio = TipoCambio(ConfigEconomica.TIPOS_CAMBIO_INICIALES)
-    pais_a = Pais("PaisA", "USD")
-    pais_b = Pais("PaisB", "EUR")
-    pais_a.establecer_arancel(pais_b.nombre, ConfigEconomica.ARANCEL_BASE)
-    pais_b.establecer_arancel(pais_a.nombre, ConfigEconomica.ARANCEL_BASE)
-    mercado.tipo_cambio = tipo_cambio
-    mercado.agregar_pais(pais_a)
-    mercado.agregar_pais(pais_b)
-    print("✅ Sistema de comercio internacional inicializado")
+        # Ejecutar simulación
+        main_logger.log_inicio("Iniciando ejecución de simulación completa")
+        mercado = ejecutar_simulacion_completa(configurador)
 
-    # 4. Configurar economía inicial
-    empresas_productoras, consumidores = configurar_economia_inicial(mercado)
+        main_logger.log_fin(
+            "Simulación exitosa - todas las mejoras funcionando correctamente")
 
-    # 5. Activar sistemas de psicología económica
-    inicializar_perfiles_psicologicos(mercado)
-    print("✅ Sistema de psicología económica activado con perfiles individualizados")
+        logger.log_fin(
+            "SIMULACIÓN ECONÓMICA AVANZADA v2.2 COMPLETADA EXITOSAMENTE")
+        main_logger.log_fin(
+            "SIMULACIÓN ECONÓMICA AVANZADA v2.2 COMPLETADA EXITOSAMENTE")
 
-    # 6. Asignar empresas a sectores económicos
-    mercado.economia_sectorial.asignar_empresas_a_sectores()
-    print("✅ Sistema sectorial configurado con especialización productiva")
-
-    # 7. Ejemplo de transacción internacional
-    exportador = random.choice(mercado.getEmpresas())
-    importador = random.choice(
-        [e for e in mercado.getEmpresas() if e != exportador])
-    mercado.realizar_transaccion_internacional(exportador, importador,
-                                               'Arroz', 10, 5,
-                                               pais_a, pais_b)
-    print("✅ Transacción internacional de ejemplo registrada")
-
-    # 8. Ejecutar simulación principal con configuración
-    num_ciclos = configurador.obtener('simulacion', 'num_ciclos', 50)
-    metricas = ejecutar_simulacion(mercado, num_ciclos)
-
-    # 9. Análisis económico integral
-    generar_analisis_economico(mercado, metricas)
-
-    # 10. Crear visualizaciones avanzadas
-    crear_visualizaciones_avanzadas(metricas)
-
-    # 11. Estadísticas finales comprehensivas
-    print("\n" + "="*80)
-    print("📋 ESTADÍSTICAS FINALES DEL SISTEMA")
-    print("="*80)
-    stats = mercado.obtener_estadisticas_completas()
-
-    print(f"🔄 Ciclos simulados: {num_ciclos}")
-    print(f"👥 Agentes económicos totales: {len(mercado.personas)}")
-    print(
-        f"   └─ Consumidores: {len([p for p in mercado.personas if p.__class__.__name__ == 'Consumidor'])}")
-    print(
-        f"   └─ Empresas: {len([p for p in mercado.personas if 'Empresa' in p.__class__.__name__])}")
-    print(f"🏪 Bienes en el mercado: {len(bienes)}")
-    print(f"📊 Transacciones registradas: {len(mercado.transacciones):,}")
-    print(f"🏦 Reservas gubernamentales: ${mercado.gobierno.presupuesto:,.2f}")
-    print(
-        f"📈 Tasa de interés gubernamental: {mercado.gobierno.tasa_interes_referencia:.2%}")
-
-    # Estado final de sistemas
-    print(f"\n🔧 ESTADO DE SISTEMAS AVANZADOS:")
-    print(f"   🏦 Bancos operando: {len(mercado.sistema_bancario.bancos)}")
-    print(
-        f"   🏭 Sectores activos: {len([s for s in mercado.economia_sectorial.sectores.values() if s.empresas])}")
-    print(
-        f"   🔬 Tecnologías disponibles: {len(mercado.sistema_innovacion.tecnologias_disponibles)}")
-    print(
-        f"   🤖 Modelos ML entrenados: {len([p for p in mercado.sistema_analytics.predictor_demanda.values() if p.caracteristicas_entrenadas])}")
-
-    print(f"\n🎉 ¡SIMULACIÓN ECONÓMICA AVANZADA COMPLETADA EXITOSAMENTE!")
-    print(
-        f"    ✨ Ecosistema económico complejo funcionando con {len(mercado.personas)} agentes")
-    print(f"    🎯 Sistemas realistas implementados y coordinados")
-    print(f"    📊 Análisis multi-dimensional disponible en /results/")
-    print("="*80)
+    except KeyboardInterrupt:
+        main_logger.log_error(
+            "Simulación interrumpida por el usuario (KeyboardInterrupt)")
+    except Exception as e:
+        main_logger.log_error(f"Error durante la simulación: {e}")
+        import traceback
+        main_logger.log_error(f"Traceback completo: {traceback.format_exc()}")
+        # Mantenemos el traceback para debug si es necesario
+        traceback.print_exc()
 
 
 if __name__ == "__main__":
