@@ -1,19 +1,47 @@
 """
-SIMULADOR ECONÓMICO AVANZADO v2.2 - CON SISTEMA DE LOGGING
-===========================================================
+SIMULADOR ECONÓMICO AVANZADO v2.3 - HIPERREALISMO IMPLEMENTADO
+==============================================================
 
-Simulación económica realista con todas las mejoras implementadas:
+Simulación económica hiperrealista con todas las mejoras implementadas:
 - ✅ Sistema ML con datos sintéticos garantizados
 - ✅ Sistema de precios dinámicos 
 - ✅ Configuración externa via JSON
-- ✅ Dashboard avanzado con múltiples métricas
+-    # 4. GESTOR DE RESCATE EMPRESARIAL - Prevenir colapso
+    logger.log_configuracion("🚑 Configurando Sistema de Rescate Empresarial...")
+    mercado.gestor_rescate = GestorRescateEmpresarial(mercado)
+    logger.log_configuracion(f"   Fondo rescate: {mercado.gestor_rescate.fondo_rescate_porcentaje:.1%} del PIB")
+    
+    # 5. SISTEMA FISCAL AVANZADO - Impuestos y política fiscal
+    logger.log_configuracion("💰 Configurando Sistema Fiscal Avanzado...")
+    mercado.sistema_fiscal = SistemaFiscal(mercado)
+    logger.log_configuracion(f"   Escalas tributarias: {len(mercado.sistema_fiscal.escalas_renta)} tramos de renta")
+    logger.log_configuracion(f"   IVA diferenciado: {len(mercado.sistema_fiscal.iva_rates)} categorías")
+    
+    # 6. MERCADO DE CAPITALES - Bolsa de valores y inversión
+    logger.log_configuracion("📈 Configurando Mercado de Capitales...")
+    mercado.bolsa_valores = BolsaValores(mercado)
+    mercado.bolsa_valores.listar_empresas()
+    logger.log_configuracion(f"   Empresas listadas: {len(mercado.bolsa_valores.acciones)}")
+    logger.log_configuracion(f"   Fondos de inversión: {len(mercado.bolsa_valores.fondos_inversion)}")
+    
+    # 7. SISTEMA DE CLASES SOCIALES - Estratificación y movilidad social
+    logger.log_configuracion("👥 Configurando Sistema de Clases Sociales...")
+    mercado.sistema_clases = SistemaClasesSociales(mercado)
+    mercado.sistema_clases.asignar_clases_sociales()
+    logger.log_configuracion(f"   Clases sociales asignadas con coeficiente Gini inicial")
+    
+    logger.log_configuracion("🎯 HIPERREALISMO IMPLEMENTADO - Simulador transformado")hboard avanzado con múltiples métricas
 - ✅ Sistema de crisis mejorado
 - ✅ Mercado laboral activado
 - ✅ Sistema bancario completamente funcional
 - ✅ Sistema de logging avanzado
+- 🚀 NUEVO: Banco Central con política monetaria automática
+- 🚀 NUEVO: Control de precios realista con inercia
+- 🚀 NUEVO: Ciclos económicos genuinos (4 fases)
+- 🚀 NUEVO: Sistema de rescate empresarial
 
 Autor: Simulador Económico Team
-Versión: 2.2 - Sistema de Logging Implementado
+Versión: 2.3 - Hiperrealismo Económico
 """
 
 from src.config.ConfiguradorSimulacion import ConfiguradorSimulacion
@@ -25,6 +53,14 @@ from src.systems.CrisisFinanciera import evaluar_recuperacion_crisis, aplicar_me
 from src.systems.MercadoLaboral import MercadoLaboral
 from src.systems.AnalyticsML import SistemaAnalyticsML
 from src.systems.SistemaBancario import SistemaBancario, Banco
+# NUEVOS SISTEMAS HIPERREALISTAS v2.3
+from src.systems.BancoCentral import BancoCentral
+from src.systems.ControlPreciosRealista import ControladorPreciosRealista
+from src.systems.CicloEconomicoRealista import CicloEconomicoRealista
+from src.systems.GestorRescateEmpresarial import GestorRescateEmpresarial
+from src.systems.SistemaFiscal import SistemaFiscal
+from src.systems.MercadoCapitales import BolsaValores
+from src.systems.ClasesSociales import SistemaClasesSociales
 from src.models.Gobierno import Gobierno
 from src.models.EmpresaProductora import EmpresaProductora
 from src.models.Empresa import Empresa
@@ -292,17 +328,42 @@ def integrar_sistemas_avanzados(mercado, config):
     logger.log_configuracion("Configurando dashboard avanzado...")
     mercado.dashboard = DashboardEconomico(mercado)
 
+    # === SISTEMAS HIPERREALISTAS v2.3 ===
+    logger.log_configuracion("🚀 INTEGRANDO SISTEMAS HIPERREALISTAS v2.3...")
+    
+    # 1. BANCO CENTRAL - Política monetaria automática
+    logger.log_configuracion("🏦 Configurando Banco Central...")
+    mercado.banco_central = BancoCentral(mercado)
+    logger.log_configuracion(f"   Banco Central creado - Tasa inicial: {mercado.banco_central.tasa_interes_base:.2%}")
+    
+    # 2. CONTROLADOR DE PRECIOS REALISTA - Inercia y límites
+    logger.log_configuracion("💰 Configurando Control de Precios Realista...")
+    mercado.controlador_precios = ControladorPreciosRealista(mercado)
+    logger.log_configuracion(f"   Control activado - Inercia: {mercado.controlador_precios.inercia_precios:.1%}")
+    
+    # 3. GESTOR DE CICLO ECONÓMICO - 4 fases reales
+    logger.log_configuracion("📊 Configurando Ciclo Económico Realista...")
+    mercado.gestor_ciclo = CicloEconomicoRealista(mercado)
+    logger.log_configuracion(f"   Fase inicial: {mercado.gestor_ciclo.fase_actual.value}")
+    
+    # 4. GESTOR DE RESCATE EMPRESARIAL - Prevenir colapso
+    logger.log_configuracion("🚑 Configurando Sistema de Rescate Empresarial...")
+    mercado.gestor_rescate = GestorRescateEmpresarial(mercado)
+    logger.log_configuracion(f"   Fondo rescate: {mercado.gestor_rescate.fondo_rescate_porcentaje:.1%} del PIB")
+    
+    logger.log_configuracion("🎯 HIPERREALISMO IMPLEMENTADO - Simulador transformado")
+
     logger.log_configuracion("Todos los sistemas avanzados integrados")
 
 
 def ejecutar_simulacion_completa(config):
-    """Ejecuta la simulación completa con todas las mejoras"""
-    logger.log_inicio("INICIANDO SIMULACIÓN ECONÓMICA AVANZADA v2.2")
-    logger.log_inicio("=" * 60)
+    """Ejecuta la simulación completa con todas las mejoras hiperrealistas v2.3"""
+    logger.log_inicio("INICIANDO SIMULACIÓN ECONÓMICA HIPERREALISTA v2.3")
+    logger.log_inicio("=" * 70)
 
     # Inicializar sistema de logging (ya tenemos uno global, pero mantenemos el local para compatibilidad)
     local_logger = SimuladorLogger()
-    local_logger.log_inicio("Simulación Económica Avanzada v2.2 iniciada")
+    local_logger.log_inicio("Simulación Económica Hiperrealista v2.3 iniciada")
 
     tiempo_inicio = time.time()
 
@@ -351,6 +412,78 @@ def ejecutar_simulacion_completa(config):
         mercado.dashboard.actualizar_metricas(ciclo)
 
         # === SISTEMAS AUTOMÁTICOS ===
+
+        # === SISTEMAS HIPERREALISTAS v2.3 (EJECUTAR PRIMERO) ===
+        
+        # 1. BANCO CENTRAL - Política monetaria automática cada ciclo
+        if hasattr(mercado, 'banco_central'):
+            decision_bc = mercado.banco_central.ejecutar_politica_monetaria(ciclo)
+            if decision_bc['accion_tomada']:
+                local_logger.log_sistema(f"🏦 Banco Central - Ciclo {ciclo}: {decision_bc['descripcion']}")
+                local_logger.log_sistema(f"   Nueva tasa: {decision_bc['nueva_tasa']:.2f}%, Justificación: {decision_bc['justificacion']}")
+        
+        # 2. CICLO ECONÓMICO REALISTA - Gestionar transiciones de fase
+        if hasattr(mercado, 'gestor_ciclo'):
+            fase_anterior = mercado.gestor_ciclo.fase_actual.value
+            cambio_fase = mercado.gestor_ciclo.procesar_ciclo_economico(ciclo)
+            if cambio_fase['transicion_ocurrida']:
+                local_logger.log_sistema(f"📊 Ciclo Económico - Ciclo {ciclo}: {fase_anterior} → {cambio_fase['nueva_fase']}")
+                local_logger.log_sistema(f"   Duración fase anterior: {cambio_fase['duracion_fase_anterior']} ciclos")
+                local_logger.log_sistema(f"   Efectos económicos aplicados: {cambio_fase['efectos_aplicados']}")
+        
+        # 3. RESCATE EMPRESARIAL - Evaluar y rescatar empresas en crisis
+        if hasattr(mercado, 'gestor_rescate'):
+            mercado.gestor_rescate.evaluar_y_rescatar_empresas(ciclo)
+            mercado.gestor_rescate.procesar_liquidaciones_programadas(ciclo)
+            
+            # Log estadísticas cada 10 ciclos
+            if ciclo % 10 == 0:
+                stats_rescate = mercado.gestor_rescate.obtener_estadisticas_rescate()
+                local_logger.log_sistema(f"🚑 Rescate Empresarial - Ciclo {ciclo}: "
+                                       f"Rescates={stats_rescate['rescates_totales']}, "
+                                       f"Fusiones={stats_rescate['fusiones_totales']}, "
+                                       f"Liquidaciones={stats_rescate['liquidaciones_totales']}")
+
+        # 4. SISTEMA FISCAL AVANZADO - Recaudación, gasto y política fiscal
+        if hasattr(mercado, 'sistema_fiscal'):
+            reporte_fiscal = mercado.sistema_fiscal.ejecutar_ciclo_fiscal(ciclo)
+            
+            # Log fiscal cada 5 ciclos
+            if ciclo % 5 == 0:
+                local_logger.log_sistema(f"💰 Sistema Fiscal - Ciclo {ciclo}: "
+                                       f"Recaudación=${reporte_fiscal['recaudacion_total']:,.0f}, "
+                                       f"Gasto=${reporte_fiscal['gasto_publico']:,.0f}, "
+                                       f"Política={reporte_fiscal['politica_fiscal']}")
+                local_logger.log_sistema(f"   Déficit/PIB: {reporte_fiscal['deficit_pib_ratio']:.1%}, "
+                                       f"Deuda/PIB: {reporte_fiscal['deuda_pib_ratio']:.1%}")
+
+        # 5. MERCADO DE CAPITALES - Trading y burbujas bursátiles
+        if hasattr(mercado, 'bolsa_valores'):
+            reporte_bursatil = mercado.bolsa_valores.ejecutar_ciclo_bursatil(ciclo)
+            
+            # Log bursátil cada 5 ciclos
+            if ciclo % 5 == 0:
+                local_logger.log_sistema(f"📈 Bolsa de Valores - Ciclo {ciclo}: "
+                                       f"Sentimiento={reporte_bursatil['sentimiento_mercado']:.2f}, "
+                                       f"Volumen={reporte_bursatil['volumen_total']:,}, "
+                                       f"Índice General={reporte_bursatil['indices'].get('GENERAL', 0):.1f}")
+                if reporte_bursatil['en_burbuja']:
+                    local_logger.log_sistema(f"   🎈 BURBUJA BURSÁTIL ACTIVA")
+
+        # 6. SISTEMA DE CLASES SOCIALES - Movilidad social
+        if hasattr(mercado, 'sistema_clases'):
+            reporte_social = mercado.sistema_clases.ejecutar_ciclo_movilidad_social(ciclo)
+            
+            # Log social cada 12 ciclos (anual)
+            if reporte_social:  # Solo si hubo evaluación de movilidad
+                local_logger.log_sistema(f"👥 Clases Sociales - Ciclo {ciclo}: "
+                                       f"Movilidad={reporte_social['movimientos_totales']}, "
+                                       f"Ascensos={reporte_social['movilidad_ascendente']}, "
+                                       f"Descensos={reporte_social['movilidad_descendente']}")
+                local_logger.log_sistema(f"   Gini={reporte_social['coeficiente_gini']:.3f}, "
+                                       f"Ratio 90/10={reporte_social['ratio_90_10']:.1f}")
+
+        # === SISTEMAS EXISTENTES ===
 
         # 1. Verificar y gestionar crisis financiera (una sola vez por ciclo)
         if mercado.crisis_financiera_activa:
@@ -405,11 +538,25 @@ def ejecutar_simulacion_completa(config):
                 f"Ciclo {ciclo}: Ejecutando ciclo de Analytics ML")
             mercado.analytics_ml.ciclo_analytics()
 
-        # 5. Actualizar precios dinámicos cada 3 ciclos
+        # 5. Actualizar precios dinámicos cada 3 ciclos + Control realista
         if ciclo % 3 == 0:
             local_logger.log_precios(
                 f"Ciclo {ciclo}: Actualizando precios dinámicos del mercado")
             actualizar_precios_mercado(mercado)
+            
+            # SISTEMA HIPERREALISTA: Control de precios realista (aplicar DESPUÉS de precios dinámicos)
+            if hasattr(mercado, 'controlador_precios'):
+                cambios_aplicados = mercado.controlador_precios.aplicar_control_masivo_precios(ciclo)
+                if cambios_aplicados > 0:
+                    local_logger.log_precios(
+                        f"💰 Control Precios - Ciclo {ciclo}: {cambios_aplicados} precios controlados por inercia")
+                    
+                # Log estadísticas cada 15 ciclos
+                if ciclo % 15 == 0:
+                    stats_precios = mercado.controlador_precios.obtener_estadisticas_control()
+                    local_logger.log_precios(f"💰 Control Precios - Estadísticas: "
+                                            f"Cambios aplicados={stats_precios['cambios_aplicados']}, "
+                                            f"Precio promedio=${stats_precios['precio_promedio_actual']:.2f}")
 
         # === CICLO ECONÓMICO PRINCIPAL ===
         local_logger.log_ciclo(
@@ -455,19 +602,52 @@ def ejecutar_simulacion_completa(config):
                     prestamos_totales += sum([p['monto']
                                              for p in banco.prestamos.values()])
 
+            # === MÉTRICAS HIPERREALISTAS v2.3 ===
+            # Banco Central
+            tasa_bc = 0.0
+            politica_bc = "N/A"
+            if hasattr(mercado, 'banco_central'):
+                tasa_bc = mercado.banco_central.tasa_interes_base
+                politica_bc = mercado.banco_central.historial_decisiones[-1]['decision'] if mercado.banco_central.historial_decisiones else "Inicial"
+            
+            # Ciclo Económico
+            fase_economica = "N/A"
+            if hasattr(mercado, 'gestor_ciclo'):
+                fase_economica = mercado.gestor_ciclo.fase_actual.value
+            
+            # Rescate Empresarial
+            empresas_rescatadas = fusiones = liquidaciones = 0
+            if hasattr(mercado, 'gestor_rescate'):
+                stats_rescate = mercado.gestor_rescate.obtener_estadisticas_rescate()
+                empresas_rescatadas = stats_rescate['rescates_totales']
+                fusiones = stats_rescate['fusiones_totales']
+                liquidaciones = stats_rescate['liquidaciones_totales']
+
             local_logger.log_reporte(f"""
-REPORTE CICLO {ciclo}/{num_ciclos}:
+REPORTE HIPERREALISTA v2.3 - CICLO {ciclo}/{num_ciclos}:
+═══════════════════════════════════════════════════════════
+📊 MÉTRICAS PRINCIPALES:
    PIB: ${pib_actual:,.2f} | Inflación: {inflacion_actual*100:.2f}%
    Desempleo: {tasa_desempleo:.1f}% | Empresas Activas: {empresas_activas}
    Transacciones: {transacciones_ciclo} | Modelos ML: {modelos_entrenados}
-   Depósitos: ${depositos_totales:,.0f} | Préstamos: ${prestamos_totales:,.0f}
-   Crisis: {'Activa' if mercado.crisis_financiera_activa else 'Inactiva'}""")
 
-            # Log reporte detallado
+🏦 SISTEMA BANCARIO:
+   Depósitos: ${depositos_totales:,.0f} | Préstamos: ${prestamos_totales:,.0f}
+   Tasa Banco Central: {tasa_bc:.2%} | Política: {politica_bc}
+
+🚀 SISTEMAS HIPERREALISTAS:
+   Fase Económica: {fase_economica}
+   Rescates: {empresas_rescatadas} | Fusiones: {fusiones} | Liquidaciones: {liquidaciones}
+   Crisis: {'🔴 Activa' if mercado.crisis_financiera_activa else '🟢 Inactiva'}
+═══════════════════════════════════════════════════════════""")
+
+            # Log reporte detallado (mantener formato original para compatibilidad)
             local_logger.log_reporte(
                 f"REPORTE CICLO {ciclo}: PIB=${pib_actual:,.2f}, Inflación={inflacion_actual*100:.2f}%, Desempleo={tasa_desempleo:.1f}%, Empresas={empresas_activas}, Transacciones={transacciones_ciclo}")
             local_logger.log_reporte(
                 f"REPORTE CICLO {ciclo}: Depósitos=${depositos_totales:,.0f}, Préstamos=${prestamos_totales:,.0f}, Crisis={'Activa' if mercado.crisis_financiera_activa else 'Inactiva'}")
+            local_logger.log_reporte(
+                f"REPORTE HIPERREALISTA CICLO {ciclo}: TasaBC={tasa_bc:.2f}%, Fase={fase_economica}, Rescates={empresas_rescatadas}, Fusiones={fusiones}, Liquidaciones={liquidaciones}")
 
         # Actualizar gráfico en tiempo real
         if usar_tiempo_real and ciclo % 2 == 0:
@@ -519,7 +699,7 @@ def generar_resultados_finales(mercado, tiempo_total, num_ciclos):
     )
 
     # === ESTADÍSTICAS ADICIONALES ===
-    logger.log_sistema("ESTADÍSTICAS TÉCNICAS:")
+    logger.log_sistema("ESTADÍSTICAS TÉCNICAS v2.3:")
     logger.log_sistema(f"   Tiempo total: {tiempo_total:.2f}s")
     logger.log_sistema(
         f"   Velocidad promedio: {tiempo_total/num_ciclos:.3f}s/ciclo")
@@ -528,6 +708,69 @@ def generar_resultados_finales(mercado, tiempo_total, num_ciclos):
     logger.log_sistema(
         f"   Transacciones totales: {len(mercado.transacciones)}")
 
+    # === ESTADÍSTICAS HIPERREALISTAS ===
+    logger.log_sistema("ESTADÍSTICAS HIPERREALISTAS:")
+    
+    # Banco Central
+    if hasattr(mercado, 'banco_central'):
+        decisiones_bc = len(mercado.banco_central.historial_decisiones)
+        tasa_final = mercado.banco_central.tasa_interes_base
+        logger.log_sistema(f"   🏦 Banco Central - Decisiones: {decisiones_bc}, Tasa final: {tasa_final:.2%}")
+    
+    # Ciclo Económico
+    if hasattr(mercado, 'gestor_ciclo'):
+        transiciones = mercado.gestor_ciclo.contador_transiciones
+        fase_final = mercado.gestor_ciclo.fase_actual.value
+        logger.log_sistema(f"   📊 Ciclo Económico - Transiciones: {transiciones}, Fase final: {fase_final}")
+    
+    # Rescate Empresarial
+    if hasattr(mercado, 'gestor_rescate'):
+        stats_rescate = mercado.gestor_rescate.obtener_estadisticas_rescate()
+        logger.log_sistema(f"   🚑 Rescate Empresarial - Rescates: {stats_rescate['rescates_totales']}, "
+                          f"Fusiones: {stats_rescate['fusiones_totales']}, Liquidaciones: {stats_rescate['liquidaciones_totales']}")
+    
+    # NUEVO: Sistema Fiscal
+    if hasattr(mercado, 'sistema_fiscal'):
+        stats_fiscal = mercado.sistema_fiscal.obtener_estadisticas_fiscales()
+        logger.log_sistema(f"   💰 Sistema Fiscal - Recaudación: ${stats_fiscal['recaudacion_total']:,.0f}")
+        logger.log_sistema(f"      Presión Fiscal/PIB: {stats_fiscal['presion_fiscal_pib']:.1%}")
+        logger.log_sistema(f"      Déficit Fiscal: ${stats_fiscal['deficit_fiscal']:,.0f}")
+        logger.log_sistema(f"      Deuda/PIB: {stats_fiscal['deuda_publica']/(mercado.pib_historico[-1] if mercado.pib_historico else 1):.1%}")
+        logger.log_sistema(f"      Política Actual: {stats_fiscal['politica_actual']}")
+    
+    # NUEVO: Mercado de Capitales
+    if hasattr(mercado, 'bolsa_valores'):
+        stats_bolsa = mercado.bolsa_valores.obtener_estadisticas_mercado()
+        logger.log_sistema(f"   📈 Bolsa de Valores - Acciones: {stats_bolsa['acciones_listadas']}")
+        logger.log_sistema(f"      Cap. Total: ${stats_bolsa['capitalizacion_total']:,.0f}")
+        logger.log_sistema(f"      Rendimiento Promedio: {stats_bolsa['rendimiento_promedio']:.1%}")
+        logger.log_sistema(f"      Sentimiento: {stats_bolsa['sentimiento_mercado']:.2f}")
+        logger.log_sistema(f"      Burbuja Activa: {'Sí' if stats_bolsa['en_burbuja'] else 'No'}")
+    
+    # NUEVO: Sistema de Clases Sociales
+    if hasattr(mercado, 'sistema_clases'):
+        stats_social = mercado.sistema_clases.obtener_estadisticas_sociales()
+        logger.log_sistema(f"   👥 Clases Sociales - Coef. Gini: {stats_social['coeficiente_gini']:.3f}")
+        logger.log_sistema(f"      Ratio 90/10: {stats_social['ratio_90_10']:.1f}")
+        logger.log_sistema(f"      Movilidad Total: {stats_social['movimientos_historicos_total']}")
+        logger.log_sistema(f"      Tasa Ascenso: {stats_social['tasa_ascenso_historica']:.1%}")
+        
+        # Distribución por clase
+        distribucion = stats_social['distribucion_clases']
+        total_consumidores = sum(distribucion.values())
+        if total_consumidores > 0:
+            logger.log_sistema(f"      Distribución: Alta {distribucion.get('alta', 0)/total_consumidores:.0%}, "
+                              f"Media-Alta {distribucion.get('media_alta', 0)/total_consumidores:.0%}, "
+                              f"Media {distribucion.get('media', 0)/total_consumidores:.0%}, "
+                              f"Baja {distribucion.get('baja', 0)/total_consumidores:.0%}")
+    
+    # Control de Precios
+    if hasattr(mercado, 'controlador_precios'):
+        stats_precios = mercado.controlador_precios.obtener_estadisticas_control()
+        logger.log_sistema(f"   💰 Control Precios - Cambios aplicados: {stats_precios['cambios_aplicados']}, "
+                          f"Precio promedio: ${stats_precios['precio_promedio_actual']:.2f}")
+
+    # Estadísticas existentes
     if hasattr(mercado, 'sistema_precios'):
         stats_precios = mercado.sistema_precios.obtener_estadisticas_precios()
         if stats_precios:
@@ -543,9 +786,9 @@ def generar_resultados_finales(mercado, tiempo_total, num_ciclos):
 
 
 def main():
-    """Función principal mejorada"""
-    logger.log_inicio("SIMULADOR ECONÓMICO AVANZADO v2.2")
-    logger.log_inicio("=====================================")
+    """Función principal mejorada v2.3"""
+    logger.log_inicio("SIMULADOR ECONÓMICO HIPERREALISTA v2.3")
+    logger.log_inicio("==========================================")
     logger.log_inicio("✅ Sistema ML con garantía de entrenamiento")
     logger.log_inicio("✅ Precios dinámicos implementados")
     logger.log_inicio("✅ Dashboard avanzado con múltiples métricas")
@@ -554,7 +797,11 @@ def main():
     logger.log_inicio("✅ Mercado laboral activado")
     logger.log_inicio("✅ Sistema bancario completamente funcional")
     logger.log_inicio("✅ Sistema de logging avanzado implementado")
-    logger.log_inicio("=" * 60)
+    logger.log_inicio("🚀 NUEVO: Banco Central con política monetaria")
+    logger.log_inicio("🚀 NUEVO: Control de precios realista")  
+    logger.log_inicio("🚀 NUEVO: Ciclos económicos genuinos")
+    logger.log_inicio("🚀 NUEVO: Sistema de rescate empresarial")
+    logger.log_inicio("=" * 70)
 
     # Inicializar logger para la función main (usar el global)
     main_logger = logger
@@ -566,16 +813,16 @@ def main():
         configurador = ConfiguradorSimulacion()
 
         # Ejecutar simulación
-        main_logger.log_inicio("Iniciando ejecución de simulación completa")
+        main_logger.log_inicio("Iniciando ejecución de simulación hiperrealista")
         mercado = ejecutar_simulacion_completa(configurador)
 
         main_logger.log_fin(
-            "Simulación exitosa - todas las mejoras funcionando correctamente")
+            "Simulación exitosa - HIPERREALISMO IMPLEMENTADO correctamente")
 
         logger.log_fin(
-            "SIMULACIÓN ECONÓMICA AVANZADA v2.2 COMPLETADA EXITOSAMENTE")
+            "🎯 SIMULACIÓN ECONÓMICA HIPERREALISTA v2.3 COMPLETADA EXITOSAMENTE")
         main_logger.log_fin(
-            "SIMULACIÓN ECONÓMICA AVANZADA v2.2 COMPLETADA EXITOSAMENTE")
+            "🎯 SIMULACIÓN ECONÓMICA HIPERREALISTA v2.3 COMPLETADA EXITOSAMENTE")
 
     except KeyboardInterrupt:
         main_logger.log_error(

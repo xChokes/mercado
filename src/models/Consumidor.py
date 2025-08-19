@@ -325,18 +325,25 @@ class Consumidor(Persona):
                 # Encontrar la empresa con mejor precio
                 mejor_empresa = min(
                     empresas_disponibles, key=lambda e: e.precios.get(bien, float('inf')))
-                precio = mejor_empresa.precios.get(bien, 0)
+                precio_base = mejor_empresa.precios.get(bien, 0)
+                
+                # Calcular precio final con IVA si existe sistema fiscal
+                if hasattr(mercado, 'sistema_fiscal') and bien in mercado.bienes:
+                    categoria_bien = mercado.bienes[bien].categoria
+                    precio_final = precio_base * (1 + mercado.sistema_fiscal.iva_rates.get(categoria_bien, 0.21))
+                else:
+                    precio_final = precio_base
 
-                if precio > 0 and precio <= presupuesto_consumo:
+                if precio_final > 0 and precio_final <= presupuesto_consumo:
                     utilidad = self.calcular_utilidad_marginal(bien)
-                    precio_reserva = self.calcular_precio_reserva(bien, precio)
+                    precio_reserva = self.calcular_precio_reserva(bien, precio_final)
 
-                    if precio <= precio_reserva:
-                        ratio_utilidad_precio = utilidad / precio
+                    if precio_final <= precio_reserva:
+                        ratio_utilidad_precio = utilidad / precio_final
                         opciones_compra.append({
                             'bien': bien,
                             'empresa': mejor_empresa,
-                            'precio': precio,
+                            'precio': precio_final,
                             'utilidad': utilidad,
                             'ratio': ratio_utilidad_precio
                         })
@@ -352,14 +359,24 @@ class Consumidor(Persona):
                     gastado += opcion['precio']
 
     def comprar_bien_mejorado(self, empresa, bien, cantidad, mercado, ciclo):
-        """Versión mejorada del método de compra"""
-        precio = empresa.precios.get(bien, 0)
-        costo_total = precio * cantidad
+        """Versión mejorada del método de compra con IVA incluido"""
+        precio_base = empresa.precios.get(bien, 0)
+        
+        # Aplicar IVA si existe sistema fiscal
+        if hasattr(mercado, 'sistema_fiscal') and bien in mercado.bienes:
+            categoria_bien = mercado.bienes[bien].categoria
+            precio_final = mercado.sistema_fiscal.aplicar_iva(precio_base, categoria_bien)
+        else:
+            precio_final = precio_base
+            
+        costo_total = precio_final * cantidad
 
         if self.dinero >= costo_total and len(empresa.bienes.get(bien, [])) >= cantidad:
             # Realizar transacción
             self.dinero -= costo_total
-            empresa.dinero += costo_total
+            empresa.dinero += precio_base * cantidad  # Empresa recibe precio sin IVA
+            
+            # El IVA ya fue registrado en el sistema fiscal
 
             # Actualizar inventarios
             if bien not in self.bienes:
@@ -380,7 +397,7 @@ class Consumidor(Persona):
                 self, bien, cantidad, costo_total, ciclo)
 
             # Actualizar historial para decisiones futuras
-            self.historial_compras[bien] = precio
+            self.historial_compras[bien] = precio_final
 
             return True
         return False
