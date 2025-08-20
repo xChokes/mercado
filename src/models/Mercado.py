@@ -126,12 +126,16 @@ class Mercado:
         return True
 
     def calcular_indice_precios(self):
-        """Calcula un índice de precios ponderado"""
+        """Calcula un índice de precios ponderado con controles anti-volatilidad"""
         precios_actuales = []
         pesos = []
 
         for empresa in self.getEmpresas():
             for bien, precio in empresa.precios.items():
+                # CONTROL: Filtrar precios extremos que pueden distorsionar el índice
+                if precio <= 0 or precio > 1000000:  # Filtrar precios irreales
+                    continue
+                    
                 categoria = ConfigEconomica.CATEGORIAS_BIENES.get(
                     bien, 'servicios')
 
@@ -151,6 +155,17 @@ class Mercado:
                 # Calcular índice ponderado
                 indice = sum(
                     p * w for p, w in zip(precios_actuales, pesos)) / sum(pesos)
+                
+                # NUEVO: Suavizar el índice para evitar cambios extremos
+                if hasattr(self, 'indice_anterior') and self.indice_anterior > 0:
+                    # Limitar variación del índice de precios a máximo 10% por ciclo
+                    ratio_cambio = indice / self.indice_anterior
+                    if ratio_cambio > 1.10:  # Subida > 10%
+                        indice = self.indice_anterior * 1.10
+                    elif ratio_cambio < 0.90:  # Bajada > 10%
+                        indice = self.indice_anterior * 0.90
+                
+                self.indice_anterior = indice
             else:
                 indice = 0
             return indice
@@ -387,8 +402,21 @@ class Mercado:
 
         if len(indices_precios) > 1:
             indice_anterior = indices_precios[-2]
-            inflacion = (indice_actual / indice_anterior -
-                         1) if indice_anterior > 1 else 0
+            if indice_anterior > 1:
+                inflacion_bruta = (indice_actual / indice_anterior - 1)
+                
+                # NUEVO: Suavizar la inflación calculada para evitar extremos
+                # Limitar inflación a ±15% por ciclo como máximo absoluto
+                inflacion = max(-0.15, min(0.15, inflacion_bruta))
+                
+                # Si la inflación es muy alta, aplicar suavizado adicional
+                if abs(inflacion) > 0.08:  # Si inflación > 8%
+                    # Promediar con inflación anterior para suavizar
+                    if len(self.inflacion_historica) > 0:
+                        inflacion_anterior = self.inflacion_historica[-1]
+                        inflacion = (inflacion * 0.7 + inflacion_anterior * 0.3)
+            else:
+                inflacion = 0
         else:
             inflacion = 0
         self.inflacion_historica.append(inflacion)

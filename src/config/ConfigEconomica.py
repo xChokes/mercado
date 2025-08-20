@@ -18,11 +18,20 @@ class ConfigEconomica:
     TASA_DESEMPLEO_OBJETIVO = 0.05  # 5%
     SUBSIDIO_DESEMPLEO = 1500
     
-    # Inflación y precios
-    INFLACION_MENSUAL_OBJETIVO = 0.02  # 2% mensual
-    FACTOR_AJUSTE_PRECIO_MAX = 0.10  # Máximo 10% de cambio por ciclo
+    # Inflación y precios - CONFIGURACIÓN MEJORADA PARA CONTROL FINO
+    INFLACION_OBJETIVO_ANUAL = 0.03    # 3% anual (target central)
+    INFLACION_OBJETIVO_CICLO = 0.0025  # ~3% anual / 12 ciclos = 0.25% por ciclo
+    INFLACION_TOLERANCIA = 0.01        # ±1% de tolerancia (banda 2-4%)
+    FACTOR_AJUSTE_PRECIO_MAX = 0.015   # Máximo 1.5% de cambio por ciclo (más restrictivo)
     PRECIO_BASE_MIN = 5.0
     PRECIO_BASE_MAX = 50.0
+    
+    # NUEVO: Parámetros para política monetaria óptima
+    TASA_INTERES_NEUTRAL = 0.03        # 3% tasa neutral real
+    TASA_INTERES_MINIMA = 0.001        # 0.1% mínimo (ZLB)
+    TASA_INTERES_MAXIMA = 0.25         # 25% máximo de emergencia
+    TRANSMISION_MONETARIA_NORMAL = 0.7  # 70% de transmisión normal
+    TRANSMISION_MONETARIA_EMERGENCIA = 0.9  # 90% en emergencias
     
     # Elasticidades por tipo de bien
     ELASTICIDADES_PRECIO = {

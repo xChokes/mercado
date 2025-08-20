@@ -58,6 +58,8 @@ class SimuladorLogger:
         )
         console_handler.setFormatter(console_formatter)
         self.logger.addHandler(console_handler)
+        # Evitar propagación al logger raíz para evitar duplicados
+        self.logger.propagate = False
 
         # Crear loggers especializados
         self.setup_specialized_loggers(formatter)

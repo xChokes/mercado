@@ -546,10 +546,17 @@ def ejecutar_simulacion_completa(config):
             
             # SISTEMA HIPERREALISTA: Control de precios realista (aplicar DESPUÉS de precios dinámicos)
             if hasattr(mercado, 'controlador_precios'):
+                # NUEVO: Monitorear y responder a hiperinflación ANTES del control normal
+                emergencia_activada = mercado.controlador_precios.monitorear_y_responder_hiperinflacion(ciclo)
+                
                 cambios_aplicados = mercado.controlador_precios.aplicar_control_masivo_precios(ciclo)
                 if cambios_aplicados > 0:
                     local_logger.log_precios(
                         f"💰 Control Precios - Ciclo {ciclo}: {cambios_aplicados} precios controlados por inercia")
+                    
+                # Log de emergencia si está activa
+                if emergencia_activada:
+                    local_logger.log_sistema(f"🚨 CONTROLES DE EMERGENCIA ANTI-HIPERINFLACIÓN ACTIVADOS - Ciclo {ciclo}")
                     
                 # Log estadísticas cada 15 ciclos
                 if ciclo % 15 == 0:
@@ -803,34 +810,28 @@ def main():
     logger.log_inicio("🚀 NUEVO: Sistema de rescate empresarial")
     logger.log_inicio("=" * 70)
 
-    # Inicializar logger para la función main (usar el global)
-    main_logger = logger
-
     try:
         # Cargar configuración
         logger.log_configuracion("Cargando configuración...")
-        main_logger.log_inicio("Cargando configuración del simulador")
+        logger.log_inicio("Cargando configuración del simulador")
         configurador = ConfiguradorSimulacion()
 
         # Ejecutar simulación
-        main_logger.log_inicio("Iniciando ejecución de simulación hiperrealista")
+        logger.log_inicio("Iniciando ejecución de simulación hiperrealista")
         mercado = ejecutar_simulacion_completa(configurador)
 
-        main_logger.log_fin(
-            "Simulación exitosa - HIPERREALISMO IMPLEMENTADO correctamente")
-
         logger.log_fin(
-            "🎯 SIMULACIÓN ECONÓMICA HIPERREALISTA v2.3 COMPLETADA EXITOSAMENTE")
-        main_logger.log_fin(
+            "Simulación exitosa - HIPERREALISMO IMPLEMENTADO correctamente")
+        logger.log_fin(
             "🎯 SIMULACIÓN ECONÓMICA HIPERREALISTA v2.3 COMPLETADA EXITOSAMENTE")
 
     except KeyboardInterrupt:
-        main_logger.log_error(
+        logger.log_error(
             "Simulación interrumpida por el usuario (KeyboardInterrupt)")
     except Exception as e:
-        main_logger.log_error(f"Error durante la simulación: {e}")
+        logger.log_error(f"Error durante la simulación: {e}")
         import traceback
-        main_logger.log_error(f"Traceback completo: {traceback.format_exc()}")
+        logger.log_error(f"Traceback completo: {traceback.format_exc()}")
         # Mantenemos el traceback para debug si es necesario
         traceback.print_exc()
 

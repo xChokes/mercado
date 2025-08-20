@@ -48,6 +48,9 @@ class CicloEconomicoRealista:
             'inflacion_inicio_fase': 0,
             'desempleo_inicio_fase': 0
         }
+        
+        # Contador de transiciones para estadísticas
+        self.contador_transiciones = 0
     
     def procesar_ciclo_economico(self, ciclo):
         """Procesa la evolución del ciclo económico"""
@@ -366,6 +369,9 @@ class CicloEconomicoRealista:
         self.ciclos_en_fase = 0
         self.intensidad_fase = 0.0
         
+        # Incrementar contador de transiciones
+        self.contador_transiciones += 1
+        
         # Log transición
         self.logger.log_sistema(
             f"🔄 TRANSICIÓN ECONÓMICA: {fase_anterior.value} → {nueva_fase.value} (Ciclo {ciclo})"
@@ -376,6 +382,23 @@ class CicloEconomicoRealista:
         
         # Actualizar métricas de inicio de fase
         self._actualizar_metricas_inicio_fase()
+    
+    def _actualizar_metricas_inicio_fase(self):
+        """Actualiza métricas de referencia al inicio de una nueva fase"""
+        try:
+            # Guardar estado económico al inicio de la nueva fase
+            self.metricas_fase['pib_inicio_fase'] = (
+                self.mercado.pib_historico[-1] if self.mercado.pib_historico else 0
+            )
+            self.metricas_fase['inflacion_inicio_fase'] = (
+                self.mercado.inflacion_historica[-1] if self.mercado.inflacion_historica else 0
+            )
+            self.metricas_fase['desempleo_inicio_fase'] = self._calcular_tasa_desempleo()
+        except Exception as e:
+            # En caso de error, usar valores por defecto
+            self.metricas_fase['pib_inicio_fase'] = 0
+            self.metricas_fase['inflacion_inicio_fase'] = 0
+            self.metricas_fase['desempleo_inicio_fase'] = 0.05
     
     def _aplicar_efectos_transicion(self, fase_anterior, nueva_fase):
         """Aplica efectos inmediatos de la transición"""
@@ -421,6 +444,80 @@ class CicloEconomicoRealista:
             self._shock_credito(0.7)  # -30% disponibilidad crédito
         
         self.logger.log_sistema(f"⚡ SHOCK EXTERNO: {tipo_shock} aplicado en ciclo {ciclo}")
+    
+    def _aplicar_shock_confianza(self, factor):
+        """Aplica shock de confianza a consumidores y empresas"""
+        try:
+            # Afectar confianza de consumidores
+            for consumidor in self.mercado.getConsumidores():
+                if hasattr(consumidor, 'confianza'):
+                    consumidor.confianza = max(0.1, min(1.0, consumidor.confianza + factor))
+                elif hasattr(consumidor, 'propension_consumo'):
+                    # Si no tiene confianza, afectar propensión al consumo
+                    consumidor.propension_consumo = max(0.1, min(0.95, 
+                        consumidor.propension_consumo * (1 + factor)))
+            
+            # Afectar confianza empresarial
+            for empresa in self.mercado.getEmpresas():
+                if hasattr(empresa, 'confianza_empresarial'):
+                    empresa.confianza_empresarial = max(0.1, min(1.0, 
+                        empresa.confianza_empresarial + factor))
+        except Exception as e:
+            self.logger.log_error(f"Error aplicando shock de confianza: {e}")
+    
+    def _shock_precios_energia(self, factor):
+        """Aplica shock a precios de energía"""
+        try:
+            # Buscar empresas de energía y ajustar precios
+            for empresa in self.mercado.getEmpresas():
+                if hasattr(empresa, 'precios') and hasattr(empresa, 'sector'):
+                    if empresa.sector in ['energia', 'petroleo', 'gas']:
+                        for bien in empresa.precios:
+                            empresa.precios[bien] *= factor
+        except Exception as e:
+            self.logger.log_error(f"Error aplicando shock de energía: {e}")
+    
+    def _shock_productividad(self, factor):
+        """Aplica shock tecnológico de productividad"""
+        try:
+            # Mejorar productividad de empresas tecnológicas
+            empresas_tech = [e for e in self.mercado.getEmpresas() 
+                           if hasattr(e, 'sector') and e.sector in ['tecnologia', 'servicios']]
+            for empresa in empresas_tech[:len(empresas_tech)//2]:  # Solo algunas empresas
+                if hasattr(empresa, 'productividad'):
+                    empresa.productividad *= factor
+        except Exception as e:
+            self.logger.log_error(f"Error aplicando shock de productividad: {e}")
+    
+    def _shock_credito(self, factor):
+        """Aplica shock de restricción crediticia"""
+        try:
+            # Afectar capacidad de endeudamiento
+            for consumidor in self.mercado.getConsumidores():
+                if hasattr(consumidor, 'limite_credito'):
+                    consumidor.limite_credito *= factor
+            
+            for empresa in self.mercado.getEmpresas():
+                if hasattr(empresa, 'capacidad_endeudamiento'):
+                    empresa.capacidad_endeudamiento *= factor
+        except Exception as e:
+            self.logger.log_error(f"Error aplicando shock de crédito: {e}")
+    
+    def _aplicar_estimulo_fiscal(self, monto):
+        """Aplica estímulo fiscal distribuyendo dinero"""
+        try:
+            # Distribuir estímulo entre consumidores (proporcionalmente a ingresos bajos)
+            consumidores = self.mercado.getConsumidores()
+            if consumidores:
+                estimulo_per_capita = monto / len(consumidores)
+                for consumidor in consumidores:
+                    # Más estímulo para consumidores con menos dinero
+                    multiplicador = 2.0 if consumidor.dinero < 5000 else 1.0
+                    consumidor.dinero += estimulo_per_capita * multiplicador
+                
+                self.logger.log_sistema(f"Estímulo fiscal aplicado: ${monto:,.0f}")
+        except Exception as e:
+            self.logger.log_error(f"Error aplicando estímulo fiscal: {e}")
     
     def _calcular_crecimiento_pib(self):
         """Calcula crecimiento del PIB"""

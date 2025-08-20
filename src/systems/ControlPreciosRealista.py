@@ -12,21 +12,32 @@ class ControladorPreciosRealista:
     
     def __init__(self, mercado):
         self.mercado = mercado
-        self.inercia_precios = 0.85  # 85% de inercia
-        self.cambio_maximo_ciclo = 0.03  # Máximo 3% por ciclo
+        self.inercia_precios = 0.95  # 95% de inercia (más estable)
+        self.cambio_maximo_ciclo = 0.015  # Máximo 1.5% por ciclo (más restrictivo)
         self.factor_monetario = 1.0  # Factor del banco central
         
         # Cache de precios para cálculo de inercia
         self.precios_anteriores = {}
         self.presion_inflacionaria = 0.0
         
+        # NUEVOS CONTROLES ANTI-HIPERINFLACIÓN
+        self.inflacion_acumulada_periodo = 0.0
+        self.ciclos_inflacion_alta = 0
+        self.limite_inflacion_emergencia = 0.08  # 8% máximo por ciclo
+        self.activar_controles_emergencia = False
+        
     def aplicar_control_precios(self, empresa, bien_nombre, precio_propuesto):
-        """Aplica control de precios con inercia realista"""
+        """Aplica control de precios con inercia realista y controles anti-hiperinflación"""
         
         # Obtener precio anterior
         precio_anterior = empresa.precios.get(bien_nombre, precio_propuesto)
         if bien_nombre not in self.precios_anteriores:
             self.precios_anteriores[bien_nombre] = precio_anterior
+        
+        # CONTROL DE EMERGENCIA: Si hay hiperinflación, aplicar controles extremos
+        if self._detectar_hiperinflacion():
+            self.activar_controles_emergencia = True
+            return self._aplicar_controles_emergencia(precio_anterior, precio_propuesto)
         
         # Calcular precio objetivo con factores económicos
         precio_objetivo = self._calcular_precio_objetivo(
@@ -39,13 +50,13 @@ class ControladorPreciosRealista:
             precio_objetivo * (1 - self.inercia_precios)
         )
         
-        # Aplicar límites de variación
-        precio_final = self._aplicar_limites_variacion(
+        # Aplicar límites de variación más estrictos
+        precio_final = self._aplicar_limites_variacion_mejorados(
             precio_con_inercia, precio_anterior
         )
         
-        # Aplicar factor monetario del banco central
-        precio_final *= self.factor_monetario
+        # Aplicar factor monetario del banco central (con límites)
+        precio_final *= max(0.95, min(1.05, self.factor_monetario))  # Limitar impacto
         
         # Actualizar caché
         self.precios_anteriores[bien_nombre] = precio_final
@@ -122,6 +133,54 @@ class ControladorPreciosRealista:
         
         return 1.0  # Neutral
     
+    def _detectar_hiperinflacion(self):
+        """Detecta condiciones de hiperinflación para activar controles de emergencia"""
+        if len(self.mercado.inflacion_historica) < 3:
+            return False
+        
+        # Hiperinflación: inflación > 8% en un ciclo o > 20% acumulada en 3 ciclos
+        inflacion_actual = self.mercado.inflacion_historica[-1]
+        inflaciones_recientes = self.mercado.inflacion_historica[-3:]
+        inflacion_acumulada = sum(inflaciones_recientes)
+        
+        return inflacion_actual > self.limite_inflacion_emergencia or inflacion_acumulada > 0.20
+    
+    def _aplicar_controles_emergencia(self, precio_anterior, precio_propuesto):
+        """Aplica controles de emergencia anti-hiperinflación"""
+        # En emergencia: congelar precios o permitir solo deflación
+        if precio_propuesto > precio_anterior:
+            # No permitir subidas de precios
+            return precio_anterior * 0.999  # Pequeña deflación forzada
+        else:
+            # Permitir deflación limitada
+            return max(precio_propuesto, precio_anterior * 0.95)  # Máximo 5% deflación
+    
+    def _aplicar_limites_variacion_mejorados(self, precio_nuevo, precio_anterior):
+        """Aplica límites más estrictos de variación de precios"""
+        if precio_anterior <= 0:
+            return precio_nuevo
+        
+        ratio_cambio = precio_nuevo / precio_anterior
+        
+        # Límites más estrictos
+        cambio_maximo = self.cambio_maximo_ciclo
+        
+        # Si hay inflación alta, reducir límites aún más
+        if len(self.mercado.inflacion_historica) > 0:
+            inflacion_actual = self.mercado.inflacion_historica[-1]
+            if inflacion_actual > 0.05:  # Si inflación > 5%
+                cambio_maximo *= 0.5  # Reducir límites a la mitad
+        
+        limite_superior = 1 + cambio_maximo
+        limite_inferior = 1 - cambio_maximo
+        
+        if ratio_cambio > limite_superior:
+            return precio_anterior * limite_superior
+        elif ratio_cambio < limite_inferior:
+            return precio_anterior * limite_inferior
+        else:
+            return precio_nuevo
+    
     def _aplicar_limites_variacion(self, precio_nuevo, precio_anterior):
         """Aplica límites realistas de variación de precios"""
         if precio_anterior <= 0:
@@ -165,13 +224,21 @@ class ControladorPreciosRealista:
         return inflacion_esperada + productividad * 0.5
     
     def aplicar_factor_monetario(self, factor):
-        """Aplica factor monetario del banco central"""
-        # Suavizar impacto de política monetaria
-        cambio = (factor - 1.0) * 0.3  # Solo 30% de transmisión inmediata
+        """Aplica factor monetario del banco central con mayor efectividad"""
+        # Transmisión más agresiva de política monetaria
+        cambio = (factor - 1.0) * 0.7  # 70% de transmisión inmediata (más que antes)
         self.factor_monetario = 1.0 + cambio
         
-        # Límites del factor monetario
-        self.factor_monetario = max(0.8, min(1.2, self.factor_monetario))
+        # Límites más amplios del factor monetario para mayor efectividad
+        self.factor_monetario = max(0.7, min(1.3, self.factor_monetario))
+        
+        # Si hay hiperinflación, hacer la política contractiva aún más agresiva
+        if hasattr(self.mercado, 'inflacion_historica') and len(self.mercado.inflacion_historica) > 0:
+            inflacion_actual = self.mercado.inflacion_historica[-1]
+            if inflacion_actual > 0.10:  # Si inflación > 10%
+                # Política contractiva extrema
+                if factor < 1.0:
+                    self.factor_monetario = max(0.5, self.factor_monetario * 0.8)
     
     def calcular_inflacion_core(self):
         """Calcula inflación subyacente (sin alimentos y energía)"""
@@ -246,3 +313,69 @@ class ControladorPreciosRealista:
             'precio_promedio_actual': precio_promedio,
             'factor_monetario_actual': self.factor_monetario
         }
+    
+    def monitorear_y_responder_hiperinflacion(self, ciclo):
+        """Monitorea y responde automáticamente a condiciones de hiperinflación"""
+        if len(self.mercado.inflacion_historica) < 1:
+            return False
+        
+        inflacion_actual = self.mercado.inflacion_historica[-1]
+        
+        # RESPUESTA AUTOMÁTICA A HIPERINFLACIÓN
+        if inflacion_actual > 0.10:  # Inflación > 10%
+            print(f"⚠️  ALERTA HIPERINFLACIÓN DETECTADA: {inflacion_actual:.1%}")
+            
+            # Activar controles de emergencia
+            self.activar_controles_emergencia = True
+            self.inercia_precios = 0.98  # Aumentar inercia al 98%
+            self.cambio_maximo_ciclo = 0.005  # Reducir a 0.5% máximo por ciclo
+            
+            # Aplicar deflación forzada en mercado
+            self._aplicar_deflacion_emergencia()
+            
+            return True
+        
+        elif inflacion_actual > 0.05:  # Inflación > 5%
+            print(f"⚠️  ALERTA INFLACIÓN ALTA: {inflacion_actual:.1%}")
+            
+            # Ajustes moderados
+            self.inercia_precios = min(0.97, self.inercia_precios + 0.02)
+            self.cambio_maximo_ciclo = max(0.01, self.cambio_maximo_ciclo * 0.8)
+            
+            return True
+        
+        elif self.activar_controles_emergencia and inflacion_actual < 0.03:
+            # Desactivar controles de emergencia si inflación baja
+            print(f"✅ INFLACIÓN CONTROLADA: {inflacion_actual:.1%} - Desactivando emergencia")
+            self.activar_controles_emergencia = False
+            self.inercia_precios = 0.95  # Volver a normal
+            self.cambio_maximo_ciclo = 0.015  # Volver a normal
+        
+        return False
+    
+    def activar_deflacion_emergencia(self, intensidad=0.5):
+        """NUEVO: Método para deflación de emergencia llamado por el Banco Central"""
+        factor_deflacion = 1.0 - (0.02 * intensidad)  # Base 2% * intensidad
+        
+        bienes_deflacionados = 0
+        for empresa in self.mercado.getEmpresas():
+            if hasattr(empresa, 'precios') and empresa.precios:
+                for bien_nombre in empresa.precios.keys():
+                    precio_actual = empresa.precios[bien_nombre]
+                    empresa.precios[bien_nombre] = precio_actual * factor_deflacion
+                    bienes_deflacionados += 1
+        
+        self.activar_controles_emergencia = True  # Activar controles
+        print(f"🏛️ BANCO CENTRAL: Deflación de emergencia aplicada a {bienes_deflacionados} bienes ({(1-factor_deflacion)*100:.1f}%)")
+    
+    def _aplicar_deflacion_emergencia(self):
+        """Aplica deflación forzada de emergencia en todos los precios"""
+        factor_deflacion = 0.98  # 2% de deflación forzada
+        
+        for empresa in self.mercado.getEmpresas():
+            if hasattr(empresa, 'precios') and empresa.precios:
+                for bien_nombre in empresa.precios.keys():
+                    precio_actual = empresa.precios[bien_nombre]
+                    empresa.precios[bien_nombre] = precio_actual * factor_deflacion
+        
+        print(f"🚨 DEFLACIÓN DE EMERGENCIA APLICADA: {(1-factor_deflacion)*100:.1f}%")

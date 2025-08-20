@@ -153,8 +153,8 @@ class Gobierno:
 
     def politica_monetaria(self):
         """Implementa política monetaria basada en condiciones económicas"""
-        # Política anti-inflacionaria
-        if self.inflacion_mensual > ConfigEconomica.INFLACION_MENSUAL_OBJETIVO * 1.5:
+        # Política anti-inflacionaria - ACTUALIZADO para nueva configuración
+        if self.inflacion_mensual > ConfigEconomica.INFLACION_OBJETIVO_CICLO * 1.5:
             # Aumentar tasa de interés para reducir inflación
             self.tasa_interes_referencia = min(
                 0.15, self.tasa_interes_referencia * 1.1)

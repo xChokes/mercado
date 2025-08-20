@@ -50,11 +50,24 @@ class DashboardEconomico:
         self.metricas_historicas['crisis_activa'].append(
             1 if self.mercado.crisis_financiera_activa else 0)
 
-        # Transacciones por ciclo
-        transacciones_ciclo = len(
-            [t for t in self.mercado.transacciones if t.get('ciclo', 0) == ciclo])
-        self.metricas_historicas['transacciones_por_ciclo'].append(
-            transacciones_ciclo)
+        # Transacciones por ciclo - CORRECCIÓN CRÍTICA
+        # Usar múltiples fuentes para obtener count real de transacciones
+        transacciones_ciclo = 0
+        
+        # Método 1: Buscar por ciclo en transacciones globales
+        if hasattr(self.mercado, 'transacciones') and self.mercado.transacciones:
+            transacciones_ciclo = len([t for t in self.mercado.transacciones if t.get('ciclo', 0) == ciclo])
+        
+        # Método 2: Usar contador del ciclo actual si existe
+        if hasattr(self.mercado, 'transacciones_ciclo_actual') and ciclo == getattr(self.mercado, 'ciclo_actual', 0):
+            transacciones_ciclo = max(transacciones_ciclo, len(self.mercado.transacciones_ciclo_actual))
+        
+        # Método 3: Fallback usando volumen de transacciones si está disponible
+        if transacciones_ciclo == 0 and hasattr(self.mercado, 'volumen_transacciones'):
+            if len(self.mercado.volumen_transacciones) > 0:
+                transacciones_ciclo = self.mercado.volumen_transacciones[-1] if isinstance(self.mercado.volumen_transacciones[-1], int) else 0
+        
+        self.metricas_historicas['transacciones_por_ciclo'].append(transacciones_ciclo)
 
         # Empresas activas
         empresas_activas = len(
@@ -229,15 +242,21 @@ class DashboardEconomico:
         reporte.append("📊 REPORTE ECONÓMICO FINAL")
         reporte.append("=" * 60)
 
-        # Métricas finales
+        # Métricas finales - CORRECCIÓN CRÍTICA del cálculo PIB
         pib_final = self.metricas_historicas['pib'][-1]
         pib_inicial = self.metricas_historicas['pib'][0] if len(
             self.metricas_historicas['pib']) > 1 else pib_final
-        crecimiento_pib = ((pib_final - pib_inicial) /
-                           max(pib_inicial, 1)) * 100
+        
+        # CORRECCIÓN: Cálculo robusto de crecimiento PIB
+        if pib_inicial > 0 and len(self.metricas_historicas['pib']) > 1:
+            crecimiento_pib = ((pib_final - pib_inicial) / pib_inicial) * 100
+            # Límite de seguridad para evitar valores absurdos
+            crecimiento_pib = max(-99.9, min(1000.0, crecimiento_pib))
+        else:
+            crecimiento_pib = 0.0
 
-        desempleo_promedio = np.mean(self.metricas_historicas['desempleo'])
-        inflacion_promedio = np.mean(self.metricas_historicas['inflacion'])
+        desempleo_promedio = np.mean(self.metricas_historicas['desempleo']) * 100  # Convertir a %
+        inflacion_promedio = np.mean(self.metricas_historicas['inflacion']) * 100  # Convertir a %
 
         reporte.append(f"💰 PIB Final: ${pib_final:,.2f}")
         reporte.append(f"📈 Crecimiento PIB: {crecimiento_pib:+.2f}%")

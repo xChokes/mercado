@@ -1,26 +1,14 @@
 """
-Sistema de Banco Central para Control Monetario Realista
-Implementa política monetaria automática tipo Fed/BCE
+Sistema de Banco Central para Control Monetario Realista MEJORADO
+Implementa política monetaria automática tipo Fed/BCE con Taylor Rule
 """
 
 import random
 import math
-from ..utils.Si        return {
-          return {
-            'accion': 'EXPANSION',
-            'tasa_interes': nueva_tasa,
-            'reservas': max(0.05, self.reservas_obligatorias - 0.05),
-            'multiplicador': min(2.0, self.multiplicador_monetario + 0.5),
-            'justificacion': f'Estimular economía (desempleo: {desempleo:.1%})'
-        }   'accion': 'CONTRACCION_MODERADA',
-            'tasa_interes': nueva_tasa,
-            'reservas': min(0.20, self.reservas_obligatorias + 0.05),
-            'multiplicador': max(0.5, self.multiplicador_monetario - 0.3),
-            'justificacion': f'Controlar inflación del {inflacion:.1%}'
-        }Logger import get_simulador_logger
+from ..utils.SimuladorLogger import get_simulador_logger
 
 class BancoCentral:
-    """Banco Central con política monetaria automática"""
+    """Banco Central con política monetaria automática MEJORADA"""
     
     def __init__(self, mercado):
         self.mercado = mercado
@@ -45,34 +33,34 @@ class BancoCentral:
         self.peso_pib = 0.3           # Peso moderado para PIB
         self.suavizado_tasa = 0.3     # Suavizado de cambios (30% por ciclo)
         
-        # Historial para decisiones
+        # Logger y historial
+        self.logger = get_simulador_logger()
         self.historial_tasas = [self.tasa_interes_base]
         self.historial_decisiones = []
         
-        self.logger = get_simulador_logger()
-        
+        self.logger.log_sistema(f"Banco Central creado - Tasa inicial: {self.tasa_interes_base:.2%}")
+    
     def ejecutar_politica_monetaria(self, ciclo):
-        """Ejecuta política monetaria basada en indicadores económicos"""
+        """Ejecuta política monetaria basada en condiciones económicas"""
         
-        # Obtener indicadores actuales
-        inflacion_actual = self.mercado.inflacion_historica[-1] if self.mercado.inflacion_historica else 0
-        pib_crecimiento = self.calcular_crecimiento_pib()
+        # Obtener métricas económicas actuales
+        inflacion = self.calcular_inflacion()
+        crecimiento_pib = self.calcular_crecimiento_pib()
         desempleo = self.calcular_tasa_desempleo()
         
-        # Decisión de política monetaria
-        decision = self.tomar_decision_monetaria(inflacion_actual, pib_crecimiento, desempleo)
+        # Tomar decisión de política monetaria
+        decision = self.tomar_decision_monetaria(inflacion, crecimiento_pib, desempleo)
         
         # Aplicar medidas
         self.aplicar_medidas_monetarias(decision, ciclo)
         
         # Log de la decisión
-        self.logger.log_sistema(f"Banco Central - Ciclo {ciclo}: {decision['accion']} - Tasa: {self.tasa_interes_base:.2%}")
+        self.logger.log_sistema(f"🏦 Banco Central - Ciclo {ciclo}: Política {decision['accion']}: {decision['justificacion']}")
+        self.logger.log_sistema(f"   Nueva tasa: {self.tasa_interes_base:.2%}, Justificación: {decision['justificacion']}")
         
-        # Devolver información de la decisión
         return {
-            'accion_tomada': True,
-            'descripcion': f"Política {decision['accion']}: {decision['justificacion']}",
-            'nueva_tasa': self.tasa_interes_base,
+            'decision_monetaria': decision,
+            'tasa_interes': self.tasa_interes_base,
             'justificacion': decision['justificacion'],
             'accion': decision['accion']
         }
@@ -151,7 +139,7 @@ class BancoCentral:
             'justificacion': justificacion,
             'transmision_inmediata': False
         }
-    
+
     def _decision_antiinflacionaria_agresiva(self, inflacion):
         """Política contractiva agresiva para hiperinflación MEJORADA"""
         # Política más agresiva: respuesta de 2x la inflación
@@ -173,26 +161,27 @@ class BancoCentral:
         
         return {
             'accion': 'CONTRACCION_MODERADA',
-            'nueva_tasa': nueva_tasa,
-            'reservas': min(0.20, self.reservas_obligatorias + 0.02),
-            'multiplicador': max(0.7, self.multiplicador_monetario - 0.1),
+            'tasa_interes': nueva_tasa,
+            'reservas': min(0.20, self.reservas_obligatorias + 0.05),
+            'multiplicador': max(0.5, self.multiplicador_monetario - 0.3),
             'justificacion': f'Controlar inflación del {inflacion:.1%}'
         }
     
     def _decision_expansiva(self, inflacion, desempleo):
-        """Política expansiva para estimular economía"""
+        """Política expansiva para estimular crecimiento"""
         reduccion_tasa = min(0.02, (self.meta_inflacion - inflacion) * 1.5)
         nueva_tasa = max(0.01, self.tasa_interes_base - reduccion_tasa)
         
         return {
-            'decision_monetaria': decision,
-            'tasa_interes': self.tasa_interes_base,
-            'justificacion': decision['justificacion'],
-            'accion': decision['accion']
+            'accion': 'EXPANSION',
+            'tasa_interes': nueva_tasa,
+            'reservas': max(0.05, self.reservas_obligatorias - 0.05),
+            'multiplicador': min(2.0, self.multiplicador_monetario + 0.5),
+            'justificacion': f'Estimular economía (desempleo: {desempleo:.1%})'
         }
     
     def _decision_neutral(self):
-        """Mantener política actual"""
+        """Política neutral - mantener"""
         return {
             'accion': 'MANTENER',
             'tasa_interes': self.tasa_interes_base,
@@ -218,14 +207,6 @@ class BancoCentral:
         
         self.tasa_interes_base += cambio_tasa
         self.tasa_interes_base = max(self.tasa_minima, min(self.tasa_maxima, self.tasa_interes_base))
-        
-        # Actualizar otras herramientas
-        self.reservas_obligatorias = decision['reservas']
-        self.multiplicador_monetario = decision['multiplicador']
-        
-        # Aplicar efectos al sistema bancario
-        if hasattr(self.mercado, 'sistema_bancario'):
-            self._aplicar_efectos_bancarios(decision)
         
         # Aplicar efectos a precios (canal de transmisión MEJORADO)
         self._aplicar_efectos_precios_mejorados(decision)
@@ -273,39 +254,7 @@ class BancoCentral:
             else:
                 # Política neutral o mantenimiento
                 self.mercado.controlador_precios.factor_monetario = 1.0
-    
-    def _aplicar_efectos_bancarios(self, decision):
-        """Aplica efectos de política monetaria al sistema bancario"""
-        for banco in self.mercado.sistema_bancario.bancos:
-            # Ajustar tasas de préstamos (usar spread de 3% como margen bancario estándar)
-            margen_bancario = 0.03  # 3% de margen bancario estándar
-            banco.tasa_base_prestamos = self.tasa_interes_base + margen_bancario
-            
-            # Ajustar reservas obligatorias
-            depositos_totales = sum(banco.depositos.values())
-            reservas_requeridas = depositos_totales * self.reservas_obligatorias
-            if banco.reservas < reservas_requeridas:
-                # Banco debe aumentar reservas
-                deficit_reservas = reservas_requeridas - banco.reservas
-                # Simplificación: ajustar capital en lugar de reducir préstamos
-                banco.capital -= deficit_reservas * 0.1  # Costo de ajuste
-    
-    def _aplicar_efectos_precios(self, decision):
-        """Aplica efectos de política monetaria a la formación de precios"""
-        # Aplicar efectos a través del controlador de precios realista si existe
-        if hasattr(self.mercado, 'controlador_precios'):
-            # Política contractiva reduce presión inflacionaria
-            if decision['accion'] in ['CONTRACCION_AGRESIVA', 'CONTRACCION_MODERADA']:
-                factor_deflacionario = 1 - (self.tasa_interes_base - 0.05) * 0.3
-                self.mercado.controlador_precios.factor_monetario = factor_deflacionario
-            # Política expansiva aumenta presión inflacionaria  
-            elif decision['accion'] in ['EXPANSION_AGRESIVA', 'EXPANSION_MODERADA', 'EXPANSION']:
-                factor_inflacionario = 1 + (0.05 - self.tasa_interes_base) * 0.3
-                self.mercado.controlador_precios.factor_monetario = factor_inflacionario
-            else:
-                # Política neutral
-                self.mercado.controlador_precios.factor_monetario = 1.0
-    
+
     def calcular_crecimiento_pib(self):
         """Calcula tasa de crecimiento del PIB"""
         if len(self.mercado.pib_historico) < 2:
@@ -317,7 +266,19 @@ class BancoCentral:
         if pib_anterior > 0:
             return (pib_actual - pib_anterior) / pib_anterior
         return 0.0
-    
+
+    def calcular_inflacion(self):
+        """Calcula inflación actual"""
+        if len(self.mercado.precio_historico) < 2:
+            return 0.0
+        
+        precio_actual = self.mercado.precio_historico[-1]
+        precio_anterior = self.mercado.precio_historico[-2]
+        
+        if precio_anterior > 0:
+            return (precio_actual - precio_anterior) / precio_anterior
+        return 0.0
+
     def calcular_tasa_desempleo(self):
         """Calcula tasa de desempleo actual"""
         total_consumidores = len([p for p in self.mercado.personas 
@@ -328,25 +289,3 @@ class BancoCentral:
         desempleados = len([p for p in self.mercado.personas 
                           if hasattr(p, 'empleado') and not p.empleado])
         return desempleados / total_consumidores
-    
-    def obtener_reporte_monetario(self):
-        """Genera reporte del estado de la política monetaria"""
-        inflacion_actual = self.mercado.inflacion_historica[-1] if self.mercado.inflacion_historica else 0
-        
-        return {
-            'tasa_interes': self.tasa_interes_base,
-            'meta_inflacion': self.meta_inflacion,
-            'inflacion_actual': inflacion_actual,
-            'brecha_inflacion': inflacion_actual - self.meta_inflacion,
-            'stance_monetario': self._evaluar_stance_monetario(),
-            'ultima_decision': self.historial_decisiones[-1] if self.historial_decisiones else None
-        }
-    
-    def _evaluar_stance_monetario(self):
-        """Evalúa si la política es expansiva, neutral o contractiva"""
-        if self.tasa_interes_base > 0.07:
-            return 'CONTRACTIVA'
-        elif self.tasa_interes_base < 0.03:
-            return 'EXPANSIVA'
-        else:
-            return 'NEUTRAL'
