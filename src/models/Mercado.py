@@ -425,11 +425,21 @@ class Mercado:
         self.desempleo_historico.append(self.gobierno.tasa_desempleo)
 
         # Precios por bien
-        for bien in self.bienes:
+        # Primero, recopilar todos los bienes que las empresas manejan actualmente
+        todos_los_bienes = set(self.bienes)
+        for empresa in self.getEmpresas():
+            todos_los_bienes.update(empresa.precios.keys())
+        
+        for bien in todos_los_bienes:
             precios_bien = [e.precios.get(
                 bien, 0) for e in self.getEmpresas() if bien in e.precios]
             precio_promedio = sum(precios_bien) / \
                 len(precios_bien) if len(precios_bien) > 0 else 0
+            
+            # Asegurar que el bien existe en precios_historicos
+            if bien not in self.precios_historicos:
+                self.precios_historicos[bien] = []
+            
             self.precios_historicos[bien].append(precio_promedio)
 
         # Volumen de transacciones

@@ -541,45 +541,70 @@ class EmpresaProductora(Empresa):
 
     def pagar_costos_operativos(self):
         """Paga costos fijos y salarios con opción de financiamiento bancario"""
-        costo_total = self.costos_fijos_mensuales + self.costo_salarios
+        try:
+            # Validar y corregir valores antes de usar
+            if not hasattr(self, 'costos_fijos_mensuales') or self.costos_fijos_mensuales <= 0:
+                self.costos_fijos_mensuales = 100.0  # Valor por defecto
+            
+            if not hasattr(self, 'costo_salarios') or self.costo_salarios < 0:
+                self.costo_salarios = 0
+                
+            costo_total = self.costos_fijos_mensuales + self.costo_salarios
 
-        if self.dinero >= costo_total:
-            self.dinero -= costo_total
-            return True
-        else:
-            # Intentar obtener préstamo bancario antes de despedir
-            deficit = costo_total - self.dinero
-            if hasattr(self.mercado, 'sistema_bancario') and self.mercado.sistema_bancario.bancos:
-                banco = self.mercado.sistema_bancario.bancos[0]
-                ingreso_estimado = len(self.empleados) * \
-                    3000  # Estimación de ingresos
-                prestamo_resultado = banco.otorgar_prestamo(
-                    self, deficit * 2, ingreso_estimado)
+            if self.dinero >= costo_total:
+                self.dinero -= costo_total
+                return True
+            else:
+                # Intentar obtener préstamo bancario antes de despedir
+                deficit = costo_total - self.dinero
+                if hasattr(self.mercado, 'sistema_bancario') and self.mercado.sistema_bancario.bancos:
+                    banco = self.mercado.sistema_bancario.bancos[0]
+                    
+                    # Cálculo seguro del ingreso estimado
+                    num_empleados = max(0, len(self.empleados)) if hasattr(self, 'empleados') else 0
+                    ingreso_estimado = num_empleados * 3000  # Estimación de ingresos
+                    
+                    prestamo_resultado = banco.otorgar_prestamo(
+                        self, deficit * 2, ingreso_estimado)
 
-                # Corregir manejo del resultado (es una tupla)
-                prestamo_aprobado = False
-                if isinstance(prestamo_resultado, tuple) and prestamo_resultado[0]:
-                    prestamo_aprobado = True
-                elif prestamo_resultado is True:  # Por compatibilidad
-                    prestamo_aprobado = True
-                    self.dinero += deficit * 2
+                    # Corregir manejo del resultado (es una tupla)
+                    prestamo_aprobado = False
+                    if isinstance(prestamo_resultado, tuple) and prestamo_resultado[0]:
+                        prestamo_aprobado = True
+                    elif prestamo_resultado is True:  # Por compatibilidad
+                        prestamo_aprobado = True
+                        self.dinero += deficit * 2
 
-                if prestamo_aprobado:
-                    # Registrar deuda (simplificado)
-                    if not hasattr(self, 'deuda_bancaria'):
-                        self.deuda_bancaria = 0
-                    self.deuda_bancaria += deficit * 2.2  # Con intereses
-                    return True
+                    if prestamo_aprobado:
+                        # Registrar deuda (simplificado)
+                        if not hasattr(self, 'deuda_bancaria'):
+                            self.deuda_bancaria = 0
+                        self.deuda_bancaria += deficit * 2.2  # Con intereses
+                        return True
 
-            # Crisis financiera - despedir empleados como último recurso
-            empleados_a_despedir = min(len(self.empleados),
-                                       # Asumir salario promedio 3000
-                                       int((costo_total - self.dinero) / 3000))
-            for _ in range(empleados_a_despedir):
-                if self.empleados:
-                    empleado = self.empleados.pop()
-                    empleado.perder_empleo()
-                    self.costo_salarios -= empleado.ingreso_mensual
+                # Crisis financiera - despedir empleados como último recurso
+                num_empleados = len(self.empleados) if hasattr(self, 'empleados') and self.empleados else 0
+                if num_empleados > 0:
+                    # Cálculo seguro para empleados a despedir
+                    empleados_a_despedir = min(num_empleados,
+                                               max(1, int((costo_total - self.dinero) / 3000)))  # Evitar 0
+                    for _ in range(empleados_a_despedir):
+                        if self.empleados:
+                            empleado = self.empleados.pop()
+                            if hasattr(empleado, 'perder_empleo'):
+                                empleado.perder_empleo()
+                            if hasattr(empleado, 'ingreso_mensual'):
+                                self.costo_salarios -= empleado.ingreso_mensual
+                return False
+                
+        except ZeroDivisionError as e:
+            logging.error(f"División por cero en pagar_costos_operativos de {self.nombre}: {e}")
+            # Aplicar valores de emergencia
+            self.costos_fijos_mensuales = max(100.0, getattr(self, 'costos_fijos_mensuales', 100.0))
+            self.costo_salarios = max(0, getattr(self, 'costo_salarios', 0))
+            return False
+        except Exception as e:
+            logging.error(f"Error en pagar_costos_operativos de {self.nombre}: {e}")
             return False
 
     def verificar_estado_financiero(self):
@@ -622,23 +647,51 @@ class EmpresaProductora(Empresa):
                         f"{self.nombre}: Fondos insuficientes - Saltando operaciones complejas")
                     return False
 
-            # Pagar costos operativos
-            logging.debug(f"{self.nombre}: Pagando costos operativos...")
-            resultado_costos = self.pagar_costos_operativos()
-            logging.debug(
-                f"{self.nombre}: Costos pagados - Resultado: {resultado_costos}, Dinero restante: ${self.dinero:.2f}")
+            # CORRECCIÓN: Asegurar que la empresa tenga al menos un empleado para operar
+            if len(self.empleados) == 0 and self.dinero > 5000:  # Solo si tiene dinero suficiente
+                try:
+                    logging.debug(f"{self.nombre}: Intentando contratar empleado inicial...")
+                    # Contratar directamente un consumidor desempleado
+                    consumidores_desempleados = [c for c in mercado.getConsumidores() if not c.empleado]
+                    if consumidores_desempleados:
+                        consumidor = random.choice(consumidores_desempleados)
+                        self.contratar(consumidor)
+                        logging.debug(f"{self.nombre}: Empleado inicial contratado")
+                except Exception as e:
+                    logging.warning(f"{self.nombre}: No pudo contratar empleado inicial: {e}")
+            
+            # Si aún no tiene empleados, usar modo de operación limitada
+            if len(self.empleados) == 0:
+                logging.debug(f"{self.nombre}: Operando sin empleados - capacidad limitada")
+                # La empresa puede funcionar con capacidad muy reducida pero sin dividir por cero
 
-            # Si no pudo pagar costos, no continuar con operaciones
-            if not resultado_costos:
-                logging.warning(
-                    f"{self.nombre}: No pudo pagar costos operativos - Saltando producción")
+            # Pagar costos operativos
+            try:
+                logging.debug(f"{self.nombre}: Pagando costos operativos...")
+                resultado_costos = self.pagar_costos_operativos()
+                logging.debug(
+                    f"{self.nombre}: Costos pagados - Resultado: {resultado_costos}, Dinero restante: ${self.dinero:.2f}")
+
+                # Si no pudo pagar costos, no continuar con operaciones
+                if not resultado_costos:
+                    logging.warning(
+                        f"{self.nombre}: No pudo pagar costos operativos - Saltando producción")
+                    return False
+            except ZeroDivisionError as e:
+                logging.error(f"DIVISIÓN POR CERO en pago de costos de {self.nombre}: {e}")
+                self._aplicar_correcciones_division_cero()
                 return False
 
             # Planificar y ejecutar producción
-            logging.debug(f"{self.nombre}: Planificando producción...")
-            plan_produccion = self.planificar_produccion(mercado)
-            logging.debug(
-                f"{self.nombre}: Plan de producción: {plan_produccion}")
+            try:
+                logging.debug(f"{self.nombre}: Planificando producción...")
+                plan_produccion = self.planificar_produccion(mercado)
+                logging.debug(
+                    f"{self.nombre}: Plan de producción: {plan_produccion}")
+            except ZeroDivisionError as e:
+                logging.error(f"DIVISIÓN POR CERO en planificación de {self.nombre}: {e}")
+                self._aplicar_correcciones_division_cero()
+                plan_produccion = {}  # Plan vacío de emergencia
 
             for bien, cantidad in plan_produccion.items():
                 if cantidad > 0:
@@ -711,6 +764,12 @@ class EmpresaProductora(Empresa):
             logging.debug(
                 f"FIN ciclo {ciclo} para {self.nombre} - Dinero final: ${self.dinero:.2f}")
 
+        except ZeroDivisionError as e:
+            logging.error(f"DIVISIÓN POR CERO en ciclo de {self.nombre}: {e}")
+            logging.error(f"Estado: dinero={self.dinero:.2f}, empleados={len(self.empleados)}")
+            # Aplicar correcciones de emergencia
+            self._aplicar_correcciones_division_cero()
+            
         except Exception as e:
             logging.error(f"Error general en ciclo de {self.nombre}: {e}")
             # Agregar más información de debug
@@ -728,3 +787,39 @@ class EmpresaProductora(Empresa):
         # Reset de producción actual para próximo ciclo
         for bien in self.produccion_actual:
             self.produccion_actual[bien] = 0
+
+    def _aplicar_correcciones_division_cero(self):
+        """Aplica correcciones de emergencia para evitar divisiones por cero"""
+        try:
+            # Corregir precios que sean cero o negativos
+            for bien in self.precios:
+                if self.precios[bien] <= 0:
+                    self.precios[bien] = 1.0  # Precio mínimo de seguridad
+                    logging.warning(f"{self.nombre}: Precio de {bien} corregido a $1.00")
+            
+            # Corregir costos unitarios que sean cero
+            for bien in self.costos_unitarios:
+                if self.costos_unitarios[bien] <= 0:
+                    self.costos_unitarios[bien] = 0.5  # Costo mínimo de seguridad
+                    logging.warning(f"{self.nombre}: Costo unitario de {bien} corregido a $0.50")
+            
+            # Asegurar que acciones_emitidas no sea cero
+            if hasattr(self, 'acciones_emitidas') and self.acciones_emitidas <= 0:
+                self.acciones_emitidas = 1
+                logging.warning(f"{self.nombre}: Acciones emitidas corregidas a 1")
+            
+            # Asegurar capacidad de producción mínima
+            for bien in self.capacidad_produccion:
+                if self.capacidad_produccion[bien] <= 0:
+                    self.capacidad_produccion[bien] = 1
+                    logging.warning(f"{self.nombre}: Capacidad de producción de {bien} corregida a 1")
+            
+            # Asegurar que los costos fijos no sean cero
+            if self.costos_fijos_mensuales <= 0:
+                self.costos_fijos_mensuales = 100.0  # Costo fijo mínimo
+                logging.warning(f"{self.nombre}: Costos fijos corregidos a $100.00")
+                
+            logging.info(f"{self.nombre}: Correcciones de división por cero aplicadas")
+            
+        except Exception as e:
+            logging.error(f"{self.nombre}: Error aplicando correcciones: {e}")
