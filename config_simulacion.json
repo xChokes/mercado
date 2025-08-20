@@ -1,6 +1,6 @@
 {
   "simulacion": {
-    "num_ciclos": 50,
+    "num_ciclos": 50, 
     "num_consumidores": 250,
     "num_empresas_productoras": 5,
     "num_empresas_comerciales": 8,
@@ -53,5 +53,15 @@
     "factor_irracionalidad": 0.3,
     "influencia_social": 0.2,
     "variabilidad_perfiles": 0.5
+  },
+  "agentes_ia": {
+    "activar": true,
+    "num_consumidores": 15,
+    "num_empresas": 6,
+    "deep_learning": true,
+    "redes_sociales": true,
+    "coaliciones": true,
+    "logs_detallados": true,
+    "duracion_minutos": 3
   }
 }

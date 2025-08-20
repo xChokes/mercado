@@ -12,19 +12,23 @@ class ControladorPreciosRealista:
     
     def __init__(self, mercado):
         self.mercado = mercado
-        self.inercia_precios = 0.95  # 95% de inercia (más estable)
-        self.cambio_maximo_ciclo = 0.015  # Máximo 1.5% por ciclo (más restrictivo)
+        self.inercia_precios = 0.98  # 98% de inercia (MÁS estable)
+        self.cambio_maximo_ciclo = 0.008  # Máximo 0.8% por ciclo (MÁS restrictivo)
         self.factor_monetario = 1.0  # Factor del banco central
         
         # Cache de precios para cálculo de inercia
         self.precios_anteriores = {}
         self.presion_inflacionaria = 0.0
         
-        # NUEVOS CONTROLES ANTI-HIPERINFLACIÓN
+        # CONTROLES ANTI-HIPERINFLACIÓN MÁS ESTRICTOS
         self.inflacion_acumulada_periodo = 0.0
         self.ciclos_inflacion_alta = 0
-        self.limite_inflacion_emergencia = 0.08  # 8% máximo por ciclo
+        self.limite_inflacion_emergencia = 0.04  # 4% máximo por ciclo (MÁS estricto)
         self.activar_controles_emergencia = False
+        
+        # NUEVO: Control de precios extremos
+        self.precio_maximo_permitido = 10000.0  # Límite absoluto de precios
+        self.precio_minimo_permitido = 0.1      # Límite mínimo
         
     def aplicar_control_precios(self, empresa, bien_nombre, precio_propuesto):
         """Aplica control de precios con inercia realista y controles anti-hiperinflación"""
@@ -57,6 +61,9 @@ class ControladorPreciosRealista:
         
         # Aplicar factor monetario del banco central (con límites)
         precio_final *= max(0.95, min(1.05, self.factor_monetario))  # Limitar impacto
+        
+        # NUEVO: Control absoluto de precios extremos
+        precio_final = self._aplicar_limites_absolutos(precio_final)
         
         # Actualizar caché
         self.precios_anteriores[bien_nombre] = precio_final
@@ -135,15 +142,24 @@ class ControladorPreciosRealista:
     
     def _detectar_hiperinflacion(self):
         """Detecta condiciones de hiperinflación para activar controles de emergencia"""
-        if len(self.mercado.inflacion_historica) < 3:
+        if len(self.mercado.inflacion_historica) < 2:
             return False
         
-        # Hiperinflación: inflación > 8% en un ciclo o > 20% acumulada en 3 ciclos
+        # CONTROLES MÁS ESTRICTOS
+        # Hiperinflación: inflación > 4% en un ciclo o > 10% acumulada en 3 ciclos
         inflacion_actual = self.mercado.inflacion_historica[-1]
-        inflaciones_recientes = self.mercado.inflacion_historica[-3:]
-        inflacion_acumulada = sum(inflaciones_recientes)
         
-        return inflacion_actual > self.limite_inflacion_emergencia or inflacion_acumulada > 0.20
+        # Verificar también precios extremos
+        precio_promedio_actual = self._calcular_precio_promedio_actual()
+        if precio_promedio_actual > 1000:  # Precios muy altos
+            return True
+        
+        if len(self.mercado.inflacion_historica) >= 3:
+            inflaciones_recientes = self.mercado.inflacion_historica[-3:]
+            inflacion_acumulada = sum(inflaciones_recientes)
+            return inflacion_actual > self.limite_inflacion_emergencia or inflacion_acumulada > 0.10
+        
+        return inflacion_actual > self.limite_inflacion_emergencia
     
     def _aplicar_controles_emergencia(self, precio_anterior, precio_propuesto):
         """Aplica controles de emergencia anti-hiperinflación"""
@@ -162,14 +178,16 @@ class ControladorPreciosRealista:
         
         ratio_cambio = precio_nuevo / precio_anterior
         
-        # Límites más estrictos
-        cambio_maximo = self.cambio_maximo_ciclo
+        # Límites MUCHO más estrictos para simulaciones largas
+        cambio_maximo = self.cambio_maximo_ciclo  # 0.8% base
         
-        # Si hay inflación alta, reducir límites aún más
+        # Si hay inflación alta, reducir límites drásticamente
         if len(self.mercado.inflacion_historica) > 0:
             inflacion_actual = self.mercado.inflacion_historica[-1]
-            if inflacion_actual > 0.05:  # Si inflación > 5%
-                cambio_maximo *= 0.5  # Reducir límites a la mitad
+            if inflacion_actual > 0.03:  # Si inflación > 3%
+                cambio_maximo *= 0.25  # Reducir límites al 25%
+            elif inflacion_actual > 0.02:  # Si inflación > 2%
+                cambio_maximo *= 0.5   # Reducir límites al 50%
         
         limite_superior = 1 + cambio_maximo
         limite_inferior = 1 - cambio_maximo
@@ -371,6 +389,36 @@ class ControladorPreciosRealista:
     def _aplicar_deflacion_emergencia(self):
         """Aplica deflación forzada de emergencia en todos los precios"""
         factor_deflacion = 0.98  # 2% de deflación forzada
+        
+        for empresa in self.mercado.getEmpresas():
+            if hasattr(empresa, 'precios') and empresa.precios:
+                for bien_nombre, precio_actual in empresa.precios.items():
+                    empresa.precios[bien_nombre] = precio_actual * factor_deflacion
+    
+    def _aplicar_limites_absolutos(self, precio):
+        """Aplica límites absolutos para evitar precios extremos"""
+        # Limitar precio máximo
+        if precio > self.precio_maximo_permitido:
+            return self.precio_maximo_permitido
+        
+        # Limitar precio mínimo
+        if precio < self.precio_minimo_permitido:
+            return self.precio_minimo_permitido
+        
+        return precio
+    
+    def _calcular_precio_promedio_actual(self):
+        """Calcula el precio promedio actual de todos los bienes"""
+        total_precios = 0
+        count_precios = 0
+        
+        for empresa in self.mercado.getEmpresas():
+            if hasattr(empresa, 'precios') and empresa.precios:
+                for precio in empresa.precios.values():
+                    total_precios += precio
+                    count_precios += 1
+        
+        return total_precios / max(1, count_precios)
         
         for empresa in self.mercado.getEmpresas():
             if hasattr(empresa, 'precios') and empresa.precios:

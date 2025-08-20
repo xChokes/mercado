@@ -61,7 +61,10 @@ class Consumidor(Persona):
         self.cantidad_consumida = {}
         self.satisfaccion_bien = {}
 
-        for bien in mercado.bienes.keys():
+        # Manejar bienes como diccionario o lista
+        bienes_lista = mercado.bienes if isinstance(mercado.bienes, list) else list(mercado.bienes.keys())
+        
+        for bien in bienes_lista:
             self.cantidad_consumida[bien] = 0
             self.satisfaccion_bien[bien] = random.uniform(0.3, 1.0)
             # Bienes básicos más importantes

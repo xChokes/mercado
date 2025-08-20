@@ -30,6 +30,27 @@ class GestorRescateEmpresarial:
         
         self.logger.log_sistema(f"Fondo de rescate empresarial inicializado: ${self.fondo_rescate:,.0f}")
     
+    def evaluar_rescate(self, empresa):
+        """Evalúa si una empresa específica puede ser rescatada"""
+        try:
+            # Verificar si la empresa cumple criterios básicos para rescate
+            if not self._empresa_en_problemas(empresa):
+                return False
+            
+            # Evaluar la decisión de rescate
+            decision = self._evaluar_rescate_vs_liquidacion(empresa)
+            
+            if decision == 'RESCATAR':
+                return self._ejecutar_rescate(empresa, 0)  # ciclo = 0 por defecto
+            elif decision == 'FUSIONAR':
+                return self._buscar_fusion_empresa(empresa, 0)
+            
+            return False
+            
+        except Exception as e:
+            self.logger.log_error(f"Error evaluando rescate para {empresa.nombre}: {e}")
+            return False
+
     def evaluar_y_rescatar_empresas(self, ciclo):
         """Evalúa todas las empresas y rescata las que cumplan criterios"""
         empresas_rescatadas_ciclo = 0
@@ -55,13 +76,50 @@ class GestorRescateEmpresarial:
             )
     
     def _empresa_en_problemas(self, empresa):
-        """Determina si una empresa está en problemas serios"""
-        # Criterios de problemas empresariales
-        dinero_negativo = hasattr(empresa, 'dinero') and empresa.dinero < -5000
-        sin_ventas = self._empresa_sin_ventas_recientes(empresa)
-        costos_insostenibles = self._costos_exceden_capacidad(empresa)
+        """Determina si una empresa está en problemas serios - CRITERIOS MÁS SENSIBLES"""
+        # CRITERIOS ULTRA PERMISIVOS para detectar empresas en riesgo temprano
         
-        return dinero_negativo or sin_ventas or costos_insostenibles
+        # Criterio 1: Dinero insuficiente para 2 ciclos (vs 5000 negativos antes)
+        dinero_insuficiente = False
+        if hasattr(empresa, 'dinero'):
+            if hasattr(empresa, '_calcular_costos_operativos'):
+                try:
+                    costos_estimados = empresa._calcular_costos_operativos()
+                    dinero_insuficiente = empresa.dinero < (costos_estimados * 2)  # 2 ciclos de supervivencia
+                except:
+                    dinero_insuficiente = empresa.dinero < 5000  # Fallback
+            else:
+                dinero_insuficiente = empresa.dinero < 5000
+        
+        # Criterio 2: Ciclos en crisis (más sensible)
+        en_crisis_prolongada = False
+        if hasattr(empresa, 'ciclos_crisis_financiera'):
+            en_crisis_prolongada = empresa.ciclos_crisis_financiera >= 2  # 2 vs 3+ anteriormente
+        elif hasattr(empresa, 'ciclos_sin_actividad'):
+            en_crisis_prolongada = empresa.ciclos_sin_actividad >= 2
+        
+        # Criterio 3: Sin empleados (empresas fantasma)
+        sin_empleados = False
+        if hasattr(empresa, 'empleados'):
+            sin_empleados = len(empresa.empleados) == 0
+        
+        # Criterio 4: Producción nula reciente
+        sin_produccion = False
+        if hasattr(empresa, 'produccion_actual'):
+            produccion_total = sum(empresa.produccion_actual.values())
+            sin_produccion = produccion_total == 0
+        
+        # Una empresa está en problemas si cumple CUALQUIERA de estos criterios
+        en_problemas = dinero_insuficiente or en_crisis_prolongada or (sin_empleados and sin_produccion)
+        
+        if en_problemas:
+            self.logger.log_debug(
+                f"Empresa {empresa.nombre} detectada en problemas: "
+                f"dinero_insuficiente={dinero_insuficiente}, crisis={en_crisis_prolongada}, "
+                f"sin_empleados={sin_empleados}, sin_produccion={sin_produccion}"
+            )
+        
+        return en_problemas
     
     def _empresa_sin_ventas_recientes(self, empresa):
         """Verifica si empresa no ha tenido ventas recientes"""
@@ -81,24 +139,34 @@ class GestorRescateEmpresarial:
         return False
     
     def _evaluar_rescate_vs_liquidacion(self, empresa):
-        """Decide si rescatar, liquidar o fusionar una empresa"""
-        # Criterio 1: Importancia sistémica
-        importancia_sistemica = self._calcular_importancia_sistemica(empresa)
-        
-        # Criterio 2: Viabilidad de rescate
+        """Evalúa si rescatar, fusionar o liquidar empresa - MÁS PERMISIVO"""
         viabilidad = self._evaluar_viabilidad_rescate(empresa)
-        
-        # Criterio 3: Disponibilidad de fondos
         costo_rescate = self._estimar_costo_rescate(empresa)
-        fondos_suficientes = costo_rescate <= self.fondo_rescate
         
-        # Decisión
-        if importancia_sistemica > 0.7 and viabilidad > 0.5 and fondos_suficientes:
-            return 'RESCATAR'
-        elif importancia_sistemica > 0.4 and viabilidad > 0.3:
+        # CRITERIOS MUY PERMISIVOS: Priorizar rescate sobre liquidación
+        
+        # Si tiene empleados o capacidad productiva, SIEMPRE intentar rescate primero
+        tiene_empleados = hasattr(empresa, 'empleados') and len(empresa.empleados) > 0
+        tiene_capacidad = hasattr(empresa, 'capacidad_produccion') and sum(empresa.capacidad_produccion.values()) > 0
+        
+        if tiene_empleados or tiene_capacidad:
+            # Con empleados o capacidad, rescatar si es remotamente viable
+            if viabilidad >= 0.15:  # Bajar de 0.4 a 0.15
+                return 'RESCATAR'
+            else:
+                return 'FUSIONAR'  # Intentar fusión antes de liquidar
+        
+        # Sin empleados ni capacidad, pero si es relativamente nueva o barata de rescatar
+        if costo_rescate < self.fondo_rescate * 0.3:  # Menos del 30% del fondo
+            if viabilidad >= 0.10:  # Muy permisivo para rescates baratos
+                return 'RESCATAR'
+        
+        # Última oportunidad: fusión
+        if viabilidad >= 0.05:  # Cualquier mínima viabilidad
             return 'FUSIONAR'
-        else:
-            return 'LIQUIDAR'
+        
+        # Solo liquidar como último recurso
+        return 'LIQUIDAR'
     
     def _calcular_importancia_sistemica(self, empresa):
         """Calcula importancia sistémica de la empresa"""
@@ -160,19 +228,76 @@ class GestorRescateEmpresarial:
         return deuda + capital_trabajo + costo_reestructuracion
     
     def _ejecutar_rescate(self, empresa, ciclo):
-        """Ejecuta el rescate de una empresa"""
+        """Ejecuta el rescate de una empresa - RESCATE MÁS GENEROSO"""
         costo_rescate = self._estimar_costo_rescate(empresa)
         
-        if costo_rescate > self.fondo_rescate:
+        # MEJORA: Rescatar incluso si excede el fondo (usar déficit temporal)
+        puede_rescatar = (costo_rescate <= self.fondo_rescate or 
+                         self.fondo_rescate >= 5000)  # Mínimo de emergencia
+        
+        if not puede_rescatar:
+            self.logger.log_debug(f"Rescate de {empresa.nombre} rechazado: fondos insuficientes")
             return False
         
-        # Aplicar rescate
+        # RESCATE INTEGRAL Y GENEROSO
         if hasattr(empresa, 'dinero'):
-            empresa.dinero = abs(empresa.dinero) * 0.1  # 10% de capital positivo
-        else:
-            empresa.dinero = 10000
+            # 1. Limpiar todas las deudas
+            deuda_actual = abs(min(0, empresa.dinero))
+            
+            # 2. Inyección de capital generosa (150K vs 75K anterior)
+            capital_rescate = max(150000, deuda_actual * 3)  # Triple de deuda o 150K mínimo
+            empresa.dinero = capital_rescate
+            
+            # 3. Resetear contadores de crisis
+            if hasattr(empresa, 'ciclos_crisis_financiera'):
+                empresa.ciclos_crisis_financiera = 0
+            if hasattr(empresa, 'ciclos_sin_actividad'):
+                empresa.ciclos_sin_actividad = 0
+            if hasattr(empresa, 'en_quiebra'):
+                empresa.en_quiebra = False
+            
+            # 4. Reestructuración de costos agresiva (50% reducción)
+            if hasattr(empresa, 'costos_fijos_mensuales'):
+                if not hasattr(empresa, 'costos_fijos_originales'):
+                    empresa.costos_fijos_originales = empresa.costos_fijos_mensuales
+                empresa.costos_fijos_mensuales *= 0.5  # 50% reducción vs 20% anterior
+            
+            # 5. Mejora temporal de eficiencia
+            if hasattr(empresa, 'eficiencia_produccion'):
+                empresa.eficiencia_produccion = min(1.0, empresa.eficiencia_produccion * 1.15)
+            
+            # 6. Garantizar empleados mínimos
+            if hasattr(empresa, 'empleados') and len(empresa.empleados) == 0:
+                # Nota: El sistema de contratación se encargará en el próximo ciclo
+                pass
         
-        # Reducir fondo de rescate
+        # Actualizar contabilidad del rescate
+        costo_real = min(costo_rescate, capital_rescate)
+        self.fondo_rescate -= costo_real
+        self.total_gastado += costo_real
+        self.empresas_rescatadas += 1
+        
+        self.logger.log_sistema(
+            f"RESCATE EXITOSO: {empresa.nombre} rescatada con ${capital_rescate:,.0f} "
+            f"(costo: ${costo_real:,.0f}, fondo restante: ${self.fondo_rescate:,.0f})"
+        )
+        
+        return True
+        else:
+            empresa.dinero = 75000  # Capital inicial más alto
+        
+        # MEJORA: Reestructuración de costos para viabilidad
+        if hasattr(empresa, 'costos_fijos_mensuales'):
+            empresa.costos_fijos_mensuales *= 0.7  # Reducir costos fijos 30%
+        
+        # Reset de contadores de crisis
+        if hasattr(empresa, 'ciclos_sin_actividad'):
+            empresa.ciclos_sin_actividad = 0
+        if hasattr(empresa, 'en_quiebra'):
+            empresa.en_quiebra = False
+        
+        # Reducir fondo de rescate (pero de forma más conservadora)
+        costo_real = min(costo_rescate, self.fondo_rescate * 0.3)  # Máximo 30% del fondo
         self.fondo_rescate -= costo_rescate
         
         # Condiciones del rescate

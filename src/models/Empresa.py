@@ -25,7 +25,10 @@ class Empresa(Persona):
         self.capacidad_empleo = random.randint(5, 30)
 
         # Inicializar precios y costos básicos
-        for bien in mercado.bienes.keys():
+        # Manejar bienes como diccionario o lista
+        bienes_lista = mercado.bienes if isinstance(mercado.bienes, list) else list(mercado.bienes.keys())
+        
+        for bien in bienes_lista:
             if bien not in self.precios:
                 self.precios[bien] = random.randint(10, 50)
             if bien not in self.costos_unitarios:

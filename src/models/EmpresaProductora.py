@@ -9,38 +9,49 @@ class EmpresaProductora(Empresa):
     def __init__(self, nombre, mercado, bienes={}):
         super().__init__(nombre=nombre, bienes=bienes, mercado=mercado)
 
-        # Características financieras mejoradas
-        self.dinero = random.randint(ConfigEconomica.DINERO_INICIAL_EMPRESA_PRODUCTORA_MIN,
-                                     ConfigEconomica.DINERO_INICIAL_EMPRESA_PRODUCTORA_MAX)
-
-        # Estado financiero y de quiebra
-        self.en_quiebra = False
-        self.ciclos_sin_actividad = 0
-        self.dinero_minimo_operacion = 5000  # Umbral mínimo para operar
+                # INICIALIZACIÓN MÁS ROBUSTA: 5x capital anterior
+        capital_base = random.randint(50000, 120000)  # 5x anterior (era 10K-24K)
+        capital_adicional = random.randint(30000, 80000)  # Buffer adicional
+        self.dinero = capital_base + capital_adicional  # Total: 80K-200K
+        
+        # Dinero mínimo para operaciones más realista
+        self.dinero_minimo_operacion = 15000  # 3x anterior (era 5K)
+        
+        # Costos más balanceados y realistas
+        self.costos_fijos_mensuales = random.randint(2000, 6000)  # Más bajo que antes (era 3K-8K)
+        self.costo_salarios = random.randint(8000, 18000)  # Rango más amplio pero controlado
+        
+        # ATRIBUTOS FALTANTES PARA MANEJO DE CRISIS
+        self.ciclos_sin_actividad = 0  # Contador de ciclos sin actividad económica
+        self.ciclos_crisis_financiera = 0  # Contador de ciclos en crisis financiera
+        self.en_quiebra = False  # Estado de quiebra
+        self.costos_fijos_originales = None  # Para guardar costos originales durante crisis
 
         # Capacidades de producción
         self.capacidad_produccion = {}
         self.produccion_actual = {}
-        self.eficiencia_produccion = random.uniform(0.7, 1.0)
+        self.eficiencia_produccion = random.uniform(0.8, 1.0)  # Mayor eficiencia inicial
 
         # Tecnología limpia
         self.factor_emisiones = 1.0  # 1.0 sin mejoras
 
-        # Costos de producción más realistas
+        # MEJORA: Costos de producción más realistas y escalables
         self.costos_unitarios = {}
-        self.costos_fijos_mensuales = random.randint(10000, 50000)
+        base_costos_fijos = random.randint(5000, 15000)  # Costos más moderados
+        self.costos_fijos_mensuales = base_costos_fijos
+        self.costos_fijos_originales = base_costos_fijos  # Para recuperación
         self.costos_variables = {}
 
         # Empleados y recursos humanos
         self.empleados = []
-        self.capacidad_empleo = random.randint(20, 100)
+        self.capacidad_empleo = random.randint(5, 25)  # Capacidad más realista
         self.costo_salarios = 0
 
-        # Estrategia empresarial
+        # MEJORA: Estrategia empresarial más balanceada
         self.estrategia_precios = random.choice(
             ['lider_costos', 'diferenciacion', 'nicho'])
-        self.aversion_riesgo_empresa = random.uniform(0.3, 0.8)
-        self.factor_expansion = random.uniform(0.05, 0.20)
+        self.aversion_riesgo_empresa = random.uniform(0.4, 0.7)  # Riesgo más balanceado
+        self.factor_expansion = random.uniform(0.03, 0.15)  # Expansión más conservadora
 
         # Inicializar capacidades para todos los bienes del mercado
         for bien in mercado.bienes.keys():
@@ -271,7 +282,8 @@ class EmpresaProductora(Empresa):
             if cantidad <= 0:
                 return 0
 
-            costo_unitario = max(0.01, self.costos_unitarios.get(bien, 1))
+            # CORRECCIÓN CRÍTICA: Evitar división por cero
+            costo_unitario = max(1.0, self.costos_unitarios.get(bien, 10.0))  # Mínimo más alto
 
             # Considerar eficiencia y economías de escala
             cantidad_efectiva = int(
@@ -281,10 +293,15 @@ class EmpresaProductora(Empresa):
                     ConfigEconomica, 'FACTOR_ECONOMIA_ESCALA', 1.1)
                 cantidad_efectiva = int(cantidad_efectiva * factor_escala)
 
-            # Limitar por disponibilidad de dinero
-            # Evitar división por cero
-            max_por_dinero = int(max(0, self.dinero) / costo_unitario)
+            # CORRECCIÓN: Limitar por disponibilidad de dinero de forma segura
+            dinero_disponible = max(0, self.dinero)
+            if dinero_disponible < costo_unitario:
+                # No hay suficiente dinero para producir ni una unidad
+                return 0
+            
+            max_por_dinero = int(dinero_disponible / costo_unitario)
             cantidad_efectiva = max(0, min(cantidad_efectiva, max_por_dinero))
+            
             if cantidad_efectiva <= 0:
                 return 0
 
@@ -540,87 +557,167 @@ class EmpresaProductora(Empresa):
                         self.dinero -= costo_expansion
 
     def pagar_costos_operativos(self):
-        """Paga costos fijos y salarios con opción de financiamiento bancario"""
+        """Paga los costos operativos con sistema de crisis progresiva mejorado"""
         try:
-            # Validar y corregir valores antes de usar
-            if not hasattr(self, 'costos_fijos_mensuales') or self.costos_fijos_mensuales <= 0:
-                self.costos_fijos_mensuales = 100.0  # Valor por defecto
+            costo_total = self._calcular_costos_operativos()
             
-            if not hasattr(self, 'costo_salarios') or self.costo_salarios < 0:
-                self.costo_salarios = 0
-                
-            costo_total = self.costos_fijos_mensuales + self.costo_salarios
-
+            # Validación de rango numérico para evitar overflow
+            if costo_total <= 0 or costo_total > 1e9:
+                logging.warning(f"{self.nombre}: Costo operativo inválido: {costo_total}")
+                costo_total = max(1000, min(costo_total, 50000))  # Normalizar entre límites seguros
+            
+            # Crisis progresiva: Intentar pagos múltiples antes de fallar
             if self.dinero >= costo_total:
-                self.dinero -= costo_total
+                self.dinero = max(0, self.dinero - costo_total)  # Evitar valores negativos
+                self.ciclos_crisis_financiera = 0  # Reset crisis
                 return True
-            else:
-                # Intentar obtener préstamo bancario antes de despedir
-                deficit = costo_total - self.dinero
-                if hasattr(self.mercado, 'sistema_bancario') and self.mercado.sistema_bancario.bancos:
-                    banco = self.mercado.sistema_bancario.bancos[0]
+            
+            # NIVEL 1: Préstamo de emergencia
+            if self.ciclos_crisis_financiera <= 1:
+                prestamo_necesario = min(costo_total - self.dinero + 5000, 100000)  # Limitar préstamo máximo
+                if self._solicitar_prestamo_emergencia(prestamo_necesario):
+                    self.dinero = max(0, self.dinero - costo_total)
+                    return True
+            
+            # NIVEL 2: Reducción de costos operativos (30% vs 20% anterior)
+            if self.ciclos_crisis_financiera <= 3:
+                costo_reducido = costo_total * 0.7  # Más agresivo: 30% reducción
+                if self.dinero >= costo_reducido:
+                    self.dinero = max(0, self.dinero - costo_reducido)
+                    self.eficiencia_produccion *= 0.97  # Menor penalización (0.97 vs 0.95)
+                    return True
+            
+            # NIVEL 3: Despidos graduales (reducir costos 40%)
+            if self.ciclos_crisis_financiera <= 4:
+                if self.empleados > 1:
+                    empleados_despedir = min(2, self.empleados // 3)
+                    self._despedir_empleados(empleados_despedir)
+                    costo_total = self._calcular_costos_operativos()  # Recalcular
                     
-                    # Cálculo seguro del ingreso estimado
-                    num_empleados = max(0, len(self.empleados)) if hasattr(self, 'empleados') else 0
-                    ingreso_estimado = num_empleados * 3000  # Estimación de ingresos
-                    
-                    prestamo_resultado = banco.otorgar_prestamo(
-                        self, deficit * 2, ingreso_estimado)
-
-                    # Corregir manejo del resultado (es una tupla)
-                    prestamo_aprobado = False
-                    if isinstance(prestamo_resultado, tuple) and prestamo_resultado[0]:
-                        prestamo_aprobado = True
-                    elif prestamo_resultado is True:  # Por compatibilidad
-                        prestamo_aprobado = True
-                        self.dinero += deficit * 2
-
-                    if prestamo_aprobado:
-                        # Registrar deuda (simplificado)
-                        if not hasattr(self, 'deuda_bancaria'):
-                            self.deuda_bancaria = 0
-                        self.deuda_bancaria += deficit * 2.2  # Con intereses
+                    if self.dinero >= costo_total:
+                        self.dinero = max(0, self.dinero - costo_total)
                         return True
-
-                # Crisis financiera - despedir empleados como último recurso
-                num_empleados = len(self.empleados) if hasattr(self, 'empleados') and self.empleados else 0
-                if num_empleados > 0:
-                    # Cálculo seguro para empleados a despedir
-                    empleados_a_despedir = min(num_empleados,
-                                               max(1, int((costo_total - self.dinero) / 3000)))  # Evitar 0
-                    for _ in range(empleados_a_despedir):
-                        if self.empleados:
-                            empleado = self.empleados.pop()
-                            if hasattr(empleado, 'perder_empleo'):
-                                empleado.perder_empleo()
-                            if hasattr(empleado, 'ingreso_mensual'):
-                                self.costo_salarios -= empleado.ingreso_mensual
-                return False
-                
-        except ZeroDivisionError as e:
-            logging.error(f"División por cero en pagar_costos_operativos de {self.nombre}: {e}")
-            # Aplicar valores de emergencia
-            self.costos_fijos_mensuales = max(100.0, getattr(self, 'costos_fijos_mensuales', 100.0))
-            self.costo_salarios = max(0, getattr(self, 'costo_salarios', 0))
+            
+            # NIVEL 4: Pago parcial como último recurso (más generoso)
+            if self.dinero > 0:
+                pago_parcial = min(self.dinero, costo_total * 0.7)  # 70% vs 60% anterior
+                self.dinero = max(0, self.dinero - pago_parcial)
+                self.eficiencia_produccion *= 0.95  # Menor penalización (0.95 vs 0.90)
+                return True
+            
+            return False
+            
+        except (OverflowError, ValueError, ArithmeticError) as e:
+            logging.error(f"Error numérico en pagar_costos_operativos de {self.nombre}: {e}")
+            # Fallback seguro: reset básico
+            self.dinero = max(0, self.dinero)
             return False
         except Exception as e:
-            logging.error(f"Error en pagar_costos_operativos de {self.nombre}: {e}")
+            logging.error(f"Error general en pagar_costos_operativos de {self.nombre}: {e}")
             return False
+
+    def _calcular_costos_operativos(self):
+        """Calcula costos operativos totales con protecciones contra overflow"""
+        try:
+            # Costos fijos básicos (rentas, servicios, etc.)
+            costos_fijos = max(100, min(self.costos_fijos_mensuales, 10000))  # Limitar entre 100-10K
+            
+            # Costos de salarios con protección contra números negativos
+            costo_salarios = 0
+            if hasattr(self, 'empleados') and self.empleados:
+                salario_promedio = max(800, min(3000, getattr(self, 'costo_salarios', 1500) / max(1, len(self.empleados))))
+                costo_salarios = len(self.empleados) * salario_promedio
+                costo_salarios = min(costo_salarios, 50000)  # Máximo 50K en salarios
+            
+            # Costos de mantenimiento (5% de capacidad de producción total)
+            mantenimiento = 0
+            if hasattr(self, 'capacidad_produccion'):
+                capacidad_total = sum(self.capacidad_produccion.values())
+                mantenimiento = max(50, min(capacidad_total * 0.05, 2000))  # Entre 50-2K
+            
+            # Costos de inventario (2% del valor del inventario)
+            costo_inventario = 0
+            if hasattr(self, 'bienes'):
+                for bien, items in self.bienes.items():
+                    if items:
+                        costo_promedio = self.costos_unitarios.get(bien, 10)
+                        costo_inventario += len(items) * costo_promedio * 0.02
+                costo_inventario = min(costo_inventario, 5000)  # Máximo 5K
+            
+            # Sumar todos los costos con límites de seguridad
+            total = costos_fijos + costo_salarios + mantenimiento + costo_inventario
+            
+            # Protección final contra overflow y valores extremos
+            total = max(200, min(total, 100000))  # Entre 200 y 100K
+            
+            return total
+            
+        except (OverflowError, ValueError, ArithmeticError) as e:
+            logging.error(f"Error numérico calculando costos operativos en {self.nombre}: {e}")
+            return 1000  # Costo de seguridad básico
+        except Exception as e:
+            logging.error(f"Error general calculando costos operativos en {self.nombre}: {e}")
+            return 1000
 
     def verificar_estado_financiero(self):
         """Verifica si la empresa está en quiebra o puede seguir operando"""
-        costos_totales = self.costos_fijos_mensuales + self.costo_salarios
+        costos_totales = max(100.0, self.costos_fijos_mensuales + self.costo_salarios)
 
-        # Marcar en quiebra si no puede cubrir costos básicos por 3 ciclos consecutivos
+        # MEJORA: Sistema más resiliente para evitar quiebras inmediatas
         if self.dinero < costos_totales:
             self.ciclos_sin_actividad += 1
-            if self.ciclos_sin_actividad >= 3:
+            
+            # Sistema de ayuda progresiva antes de la quiebra
+            if self.ciclos_sin_actividad == 1:
+                # Primer ciclo: Reducir costos operativos
+                if not hasattr(self, 'costos_fijos_originales'):
+                    self.costos_fijos_originales = self.costos_fijos_mensuales
+                self.costos_fijos_mensuales *= 0.8
+                logging.info(f"{self.nombre}: Reduciendo costos operativos por dificultades financieras")
+            
+            elif self.ciclos_sin_actividad == 2:
+                # Segundo ciclo: Buscar financiamiento de emergencia
+                if hasattr(self.mercado, 'sistema_bancario') and self.mercado.sistema_bancario.bancos:
+                    banco = self.mercado.sistema_bancario.bancos[0]
+                    prestamo_emergencia = costos_totales * 3  # 3 meses de supervivencia
+                    
+                    # Solicitar préstamo de emergencia con condiciones flexibles
+                    resultado = banco.otorgar_prestamo(self, prestamo_emergencia, self.dinero + 1000)
+                    if isinstance(resultado, tuple) and resultado[0]:
+                        self.dinero += prestamo_emergencia
+                        if not hasattr(self, 'deuda_bancaria'):
+                            self.deuda_bancaria = 0
+                        self.deuda_bancaria += prestamo_emergencia * 1.1
+                        self.ciclos_sin_actividad = 0  # Reset contador
+                        logging.info(f"{self.nombre}: Préstamo de emergencia obtenido - ${prestamo_emergencia:.2f}")
+                        return True
+            
+            elif self.ciclos_sin_actividad >= 5:  # Aumentado de 3 a 5 ciclos
+                # Última oportunidad: Rescate gubernamental o fusión
+                if hasattr(self.mercado, 'rescate_empresarial'):
+                    rescate_exitoso = self.mercado.rescate_empresarial.evaluar_rescate(self)
+                    if rescate_exitoso:
+                        self.ciclos_sin_actividad = 0
+                        logging.info(f"{self.nombre}: Rescatada por el gobierno")
+                        return True
+                
+                # Si no hay rescate, entonces quiebra
                 self.en_quiebra = True
                 logging.warning(
-                    f"{self.nombre}: EMPRESA EN QUIEBRA - Dinero: ${self.dinero:.2f}, Costos: ${costos_totales:.2f}")
+                    f"{self.nombre}: EMPRESA EN QUIEBRA después de 5 ciclos - Dinero: ${self.dinero:.2f}, Costos: ${costos_totales:.2f}")
                 return False
         else:
-            self.ciclos_sin_actividad = 0  # Resetear contador si tiene fondos
+            # Empresa estable, reset contador
+            self.ciclos_sin_actividad = max(0, self.ciclos_sin_actividad - 1)
+            
+            # MEJORA: Recuperación gradual de costos si la empresa se estabiliza
+            if self.ciclos_sin_actividad == 0 and hasattr(self, 'costos_fijos_originales'):
+                self.costos_fijos_mensuales = min(
+                    self.costos_fijos_originales,
+                    self.costos_fijos_mensuales * 1.05  # Recuperación gradual del 5%
+                )
+
+        return True
 
         # Verificar si tiene dinero mínimo para operaciones básicas
         if self.dinero < self.dinero_minimo_operacion:
@@ -823,3 +920,56 @@ class EmpresaProductora(Empresa):
             
         except Exception as e:
             logging.error(f"{self.nombre}: Error aplicando correcciones: {e}")
+
+    def _despedir_empleados(self, cantidad):
+        """Despide una cantidad específica de empleados para reducir costos"""
+        try:
+            if not hasattr(self, 'empleados') or not self.empleados:
+                return 0
+            
+            empleados_despedidos = 0
+            empleados_a_despedir = min(cantidad, len(self.empleados))
+            
+            for _ in range(empleados_a_despedir):
+                if self.empleados:
+                    empleado = self.empleados.pop()
+                    empleado.empleado = False  # Marcar como desempleado
+                    empleado.empresa = None
+                    empleados_despedidos += 1
+            
+            # Recalcular costo de salarios
+            if hasattr(self, 'costo_salarios') and len(self.empleados) > 0:
+                salario_promedio = self.costo_salarios / max(1, len(self.empleados) + empleados_despedidos)
+                self.costo_salarios = len(self.empleados) * salario_promedio
+            else:
+                self.costo_salarios = 0
+            
+            logging.info(f"{self.nombre}: Despidió {empleados_despedidos} empleados por crisis financiera")
+            return empleados_despedidos
+            
+        except Exception as e:
+            logging.error(f"Error despidiendo empleados en {self.nombre}: {e}")
+            return 0
+
+    def _solicitar_prestamo_emergencia(self, monto):
+        """Solicita un préstamo de emergencia al sistema bancario"""
+        try:
+            if not hasattr(self.mercado, 'sistema_bancario') or not self.mercado.sistema_bancario.bancos:
+                return False
+            
+            # Intentar con cada banco
+            for banco in self.mercado.sistema_bancario.bancos:
+                try:
+                    resultado = banco.solicitar_prestamo(self, monto, 24)  # 24 meses
+                    if isinstance(resultado, tuple) and resultado[0]:
+                        logging.info(f"{self.nombre}: Préstamo de emergencia aprobado - ${monto:,.2f}")
+                        return True
+                except Exception as e:
+                    logging.debug(f"Banco {banco.nombre} rechazó préstamo para {self.nombre}: {e}")
+                    continue
+            
+            return False
+            
+        except Exception as e:
+            logging.error(f"Error solicitando préstamo de emergencia para {self.nombre}: {e}")
+            return False

@@ -1,36 +1,12 @@
 """
-SIMULADOR ECONÓMICO AVANZADO v2.3 - HIPERREALISMO IMPLEMENTADO
-==============================================================
+SIMULADOR ECONÓMICO AVANZADO v3.0 - SISTEMA DE AGENTES IA HIPERREALISTAS
+=========================================================================
 
 Simulación económica hiperrealista con todas las mejoras implementadas:
 - ✅ Sistema ML con datos sintéticos garantizados
 - ✅ Sistema de precios dinámicos 
 - ✅ Configuración externa via JSON
--    # 4. GESTOR DE RESCATE EMPRESARIAL - Prevenir colapso
-    logger.log_configuracion("🚑 Configurando Sistema de Rescate Empresarial...")
-    mercado.gestor_rescate = GestorRescateEmpresarial(mercado)
-    logger.log_configuracion(f"   Fondo rescate: {mercado.gestor_rescate.fondo_rescate_porcentaje:.1%} del PIB")
-    
-    # 5. SISTEMA FISCAL AVANZADO - Impuestos y política fiscal
-    logger.log_configuracion("💰 Configurando Sistema Fiscal Avanzado...")
-    mercado.sistema_fiscal = SistemaFiscal(mercado)
-    logger.log_configuracion(f"   Escalas tributarias: {len(mercado.sistema_fiscal.escalas_renta)} tramos de renta")
-    logger.log_configuracion(f"   IVA diferenciado: {len(mercado.sistema_fiscal.iva_rates)} categorías")
-    
-    # 6. MERCADO DE CAPITALES - Bolsa de valores y inversión
-    logger.log_configuracion("📈 Configurando Mercado de Capitales...")
-    mercado.bolsa_valores = BolsaValores(mercado)
-    mercado.bolsa_valores.listar_empresas()
-    logger.log_configuracion(f"   Empresas listadas: {len(mercado.bolsa_valores.acciones)}")
-    logger.log_configuracion(f"   Fondos de inversión: {len(mercado.bolsa_valores.fondos_inversion)}")
-    
-    # 7. SISTEMA DE CLASES SOCIALES - Estratificación y movilidad social
-    logger.log_configuracion("👥 Configurando Sistema de Clases Sociales...")
-    mercado.sistema_clases = SistemaClasesSociales(mercado)
-    mercado.sistema_clases.asignar_clases_sociales()
-    logger.log_configuracion(f"   Clases sociales asignadas con coeficiente Gini inicial")
-    
-    logger.log_configuracion("🎯 HIPERREALISMO IMPLEMENTADO - Simulador transformado")hboard avanzado con múltiples métricas
+- ✅ Dashboard avanzado con múltiples métricas
 - ✅ Sistema de crisis mejorado
 - ✅ Mercado laboral activado
 - ✅ Sistema bancario completamente funcional
@@ -39,9 +15,16 @@ Simulación económica hiperrealista con todas las mejoras implementadas:
 - 🚀 NUEVO: Control de precios realista con inercia
 - 🚀 NUEVO: Ciclos económicos genuinos (4 fases)
 - 🚀 NUEVO: Sistema de rescate empresarial
+- 🤖 NUEVO v3.0: SISTEMA DE AGENTES IA HIPERREALISTAS
+  - 🧠 Motor de decisiones con redes neuronales
+  - 💾 Sistema de memoria avanzado para agentes
+  - 🌐 Protocolos de comunicación entre agentes
+  - 📱 Redes sociales virtuales y formación de coaliciones
+  - 🎯 Deep Learning para predicción y adaptación
+  - ⚡ Coordinación inteligente de mercado en tiempo real
 
 Autor: Simulador Económico Team
-Versión: 2.3 - Hiperrealismo Económico
+Versión: 3.0 - Agentes IA Hiperrealistas
 """
 
 from src.config.ConfiguradorSimulacion import ConfiguradorSimulacion
@@ -61,6 +44,8 @@ from src.systems.GestorRescateEmpresarial import GestorRescateEmpresarial
 from src.systems.SistemaFiscal import SistemaFiscal
 from src.systems.MercadoCapitales import BolsaValores
 from src.systems.ClasesSociales import SistemaClasesSociales
+# SISTEMA DE AGENTES IA HIPERREALISTAS v3.0
+from src.ai.IntegradorAgentesIA import IntegradorAgentesIA, ConfiguracionSistemaIA
 from src.models.Gobierno import Gobierno
 from src.models.EmpresaProductora import EmpresaProductora
 from src.models.Empresa import Empresa
@@ -351,19 +336,52 @@ def integrar_sistemas_avanzados(mercado, config):
     mercado.gestor_rescate = GestorRescateEmpresarial(mercado)
     logger.log_configuracion(f"   Fondo rescate: {mercado.gestor_rescate.fondo_rescate_porcentaje:.1%} del PIB")
     
+    # === SISTEMA DE AGENTES IA HIPERREALISTAS v3.0 ===
+    logger.log_configuracion("🤖 CONFIGURANDO SISTEMA DE AGENTES IA HIPERREALISTAS v3.0...")
+    ia_config = config.obtener_seccion('agentes_ia')
+    if ia_config.get('activar', True):
+        try:
+            # Configuración del sistema de IA
+            configuracion_ia = ConfiguracionSistemaIA(
+                num_consumidores_ia=ia_config.get('num_consumidores', 15),
+                num_empresas_ia=ia_config.get('num_empresas', 6),
+                activar_deep_learning=ia_config.get('deep_learning', True),
+                activar_redes_sociales=ia_config.get('redes_sociales', True),
+                activar_coaliciones=ia_config.get('coaliciones', True),
+                activar_logs_detallados=ia_config.get('logs_detallados', True),
+                duracion_simulacion_minutos=ia_config.get('duracion_minutos', 3)
+            )
+            
+            # Crear bienes para el sistema de IA
+            bienes_ia = list(mercado.bienes.keys())[:10]  # Usar los primeros 10 bienes
+            
+            # Inicializar sistema integrador de IA
+            mercado.sistema_ia = IntegradorAgentesIA(bienes_ia, configuracion_ia)
+            logger.log_configuracion(f"   ✅ Sistema IA creado con {configuracion_ia.num_consumidores_ia} consumidores y {configuracion_ia.num_empresas_ia} empresas")
+            logger.log_configuracion(f"   ✅ Deep Learning: {configuracion_ia.activar_deep_learning}")
+            logger.log_configuracion(f"   ✅ Redes Sociales: {configuracion_ia.activar_redes_sociales}")
+            logger.log_configuracion(f"   ✅ Coaliciones: {configuracion_ia.activar_coaliciones}")
+            
+        except Exception as e:
+            logger.log_error(f"   ❌ Error integrando sistema IA: {e}")
+            mercado.sistema_ia = None
+    else:
+        logger.log_configuracion("   🚫 Sistema de IA desactivado en configuración")
+        mercado.sistema_ia = None
+    
     logger.log_configuracion("🎯 HIPERREALISMO IMPLEMENTADO - Simulador transformado")
 
     logger.log_configuracion("Todos los sistemas avanzados integrados")
 
 
 def ejecutar_simulacion_completa(config):
-    """Ejecuta la simulación completa con todas las mejoras hiperrealistas v2.3"""
-    logger.log_inicio("INICIANDO SIMULACIÓN ECONÓMICA HIPERREALISTA v2.3")
+    """Ejecuta la simulación completa con todas las mejoras hiperrealistas v3.0"""
+    logger.log_inicio("INICIANDO SIMULACIÓN ECONÓMICA HIPERREALISTA v3.0")
     logger.log_inicio("=" * 70)
 
     # Inicializar sistema de logging (ya tenemos uno global, pero mantenemos el local para compatibilidad)
     local_logger = SimuladorLogger()
-    local_logger.log_inicio("Simulación Económica Hiperrealista v2.3 iniciada")
+    local_logger.log_inicio("Simulación Económica Hiperrealista v3.0 iniciada")
 
     tiempo_inicio = time.time()
 
@@ -408,9 +426,6 @@ def ejecutar_simulacion_completa(config):
         # Log inicio de ciclo
         local_logger.log_ciclo(f"=== INICIANDO CICLO {ciclo}/{num_ciclos} ===")
 
-        # Actualizar dashboard antes del ciclo
-        mercado.dashboard.actualizar_metricas(ciclo)
-
         # === SISTEMAS AUTOMÁTICOS ===
 
         # === SISTEMAS HIPERREALISTAS v2.3 (EJECUTAR PRIMERO) ===
@@ -431,7 +446,74 @@ def ejecutar_simulacion_completa(config):
                 local_logger.log_sistema(f"   Duración fase anterior: {cambio_fase['duracion_fase_anterior']} ciclos")
                 local_logger.log_sistema(f"   Efectos económicos aplicados: {cambio_fase['efectos_aplicados']}")
         
-        # 3. RESCATE EMPRESARIAL - Evaluar y rescatar empresas en crisis
+        # 3. SISTEMA DE AGENTES IA HIPERREALISTAS v3.0 - ALGORITMO AVANZADO COMPLETO
+        if hasattr(mercado, 'sistema_ia') and mercado.sistema_ia is not None:
+            try:
+                local_logger.log_sistema(f"🤖 Ejecutando IA Avanzada - Ciclo {ciclo}")
+                
+                # === FASE 1: ACTUALIZACIÓN DEL CONOCIMIENTO DEL MERCADO ===
+                # Sincronizar datos del mercado tradicional con los agentes IA
+                mercado.sistema_ia._sincronizar_estado_mercado(mercado, ciclo)
+                
+                # === FASE 2: EJECUCIÓN COORDINADA DE AGENTES IA ===
+                resultado_ia = mercado.sistema_ia.ejecutar_ciclo_coordinado(mercado, ciclo)
+                
+                # === FASE 3: ANÁLISIS INTELIGENTE Y TOMA DE DECISIONES ===
+                # Los agentes IA analizan el mercado y toman decisiones autónomas
+                decisiones_consumidores = mercado.sistema_ia._procesar_decisiones_consumidores_ia(ciclo)
+                decisiones_empresas = mercado.sistema_ia._procesar_decisiones_empresas_ia(ciclo)
+                
+                # === FASE 4: INTEGRACIÓN CON MERCADO TRADICIONAL ===
+                # Aplicar las decisiones de IA al mercado tradicional
+                transacciones_ia = mercado.sistema_ia._aplicar_decisiones_al_mercado(
+                    mercado, decisiones_consumidores, decisiones_empresas, ciclo
+                )
+                
+                # === FASE 5: APRENDIZAJE Y ADAPTACIÓN ===
+                # El sistema IA aprende de los resultados y se adapta
+                mercado.sistema_ia._actualizar_aprendizaje_global(resultado_ia, transacciones_ia, ciclo)
+                
+                # === REPORTE AVANZADO DE IA (cada 3 ciclos) ===
+                if ciclo % 3 == 0:
+                    stats_ia = mercado.sistema_ia._obtener_estadisticas_completas()
+                    local_logger.log_sistema(f"🤖 IA AVANZADA - Ciclo {ciclo}:")
+                    local_logger.log_sistema(f"   👥 Agentes Activos: {stats_ia['agentes_activos']}")
+                    local_logger.log_sistema(f"   💰 Transacciones IA: {stats_ia['transacciones_ia']}")
+                    local_logger.log_sistema(f"   🎯 Eficiencia Global: {stats_ia['eficiencia_global']:.3f}")
+                    local_logger.log_sistema(f"   🧠 Redes Neuronales: {stats_ia['redes_neuronales']}")
+                    local_logger.log_sistema(f"   🌐 Relaciones Sociales: {stats_ia['relaciones_sociales']}")
+                    local_logger.log_sistema(f"   🤝 Coaliciones Activas: {stats_ia['coaliciones_activas']}")
+                    local_logger.log_sistema(f"   📊 Predicciones Precisas: {stats_ia['precision_predicciones']:.1%}")
+                    local_logger.log_sistema(f"   🔄 Adaptaciones por Ciclo: {stats_ia['adaptaciones_ciclo']}")
+                
+                # === ANÁLISIS PREDICTIVO AVANZADO (cada 10 ciclos) ===
+                if ciclo % 10 == 0:
+                    predicciones = mercado.sistema_ia._generar_predicciones_mercado(ciclo, horizonte=5)
+                    local_logger.log_sistema(f"🔮 PREDICCIONES IA (próximos 5 ciclos):")
+                    local_logger.log_sistema(f"   📈 PIB Esperado: ${predicciones['pib_esperado']:,.0f}")
+                    local_logger.log_sistema(f"   💹 Tendencia Precios: {predicciones['tendencia_precios']}")
+                    local_logger.log_sistema(f"   � Nuevas Empresas IA: {predicciones['nuevas_empresas_ia']}")
+                    local_logger.log_sistema(f"   ⚡ Oportunidades Detectadas: {predicciones['oportunidades_detectadas']}")
+                
+                # === OPTIMIZACIÓN AUTOMÁTICA DEL SISTEMA ===
+                # El sistema se auto-optimiza basándose en métricas de rendimiento
+                if ciclo % 15 == 0:
+                    optimizaciones = mercado.sistema_ia._auto_optimizar_parametros(ciclo)
+                    if optimizaciones['cambios_realizados'] > 0:
+                        local_logger.log_sistema(f"⚡ AUTO-OPTIMIZACIÓN IA:")
+                        local_logger.log_sistema(f"   🔧 Parámetros ajustados: {optimizaciones['cambios_realizados']}")
+                        local_logger.log_sistema(f"   📊 Mejora rendimiento: +{optimizaciones['mejora_rendimiento']:.1%}")
+                
+            except Exception as e:
+                local_logger.log_error(f"   ❌ Error en IA avanzada (ciclo {ciclo}): {e}")
+                # Sistema de recuperación automática
+                try:
+                    mercado.sistema_ia._recuperacion_automatica(e, ciclo)
+                    local_logger.log_sistema(f"   🔄 Recuperación automática IA activada")
+                except:
+                    local_logger.log_error(f"   ⚠️ Sistema IA en modo degradado")
+        
+        # 4. RESCATE EMPRESARIAL - Evaluar y rescatar empresas en crisis
         if hasattr(mercado, 'gestor_rescate'):
             mercado.gestor_rescate.evaluar_y_rescatar_empresas(ciclo)
             mercado.gestor_rescate.procesar_liquidaciones_programadas(ciclo)
@@ -444,7 +526,7 @@ def ejecutar_simulacion_completa(config):
                                        f"Fusiones={stats_rescate['fusiones_totales']}, "
                                        f"Liquidaciones={stats_rescate['liquidaciones_totales']}")
 
-        # 4. SISTEMA FISCAL AVANZADO - Recaudación, gasto y política fiscal
+        # 5. SISTEMA FISCAL AVANZADO - Recaudación, gasto y política fiscal
         if hasattr(mercado, 'sistema_fiscal'):
             reporte_fiscal = mercado.sistema_fiscal.ejecutar_ciclo_fiscal(ciclo)
             
@@ -457,7 +539,7 @@ def ejecutar_simulacion_completa(config):
                 local_logger.log_sistema(f"   Déficit/PIB: {reporte_fiscal['deficit_pib_ratio']:.1%}, "
                                        f"Deuda/PIB: {reporte_fiscal['deuda_pib_ratio']:.1%}")
 
-        # 5. MERCADO DE CAPITALES - Trading y burbujas bursátiles
+        # 6. MERCADO DE CAPITALES - Trading y burbujas bursátiles
         if hasattr(mercado, 'bolsa_valores'):
             reporte_bursatil = mercado.bolsa_valores.ejecutar_ciclo_bursatil(ciclo)
             
@@ -570,6 +652,9 @@ def ejecutar_simulacion_completa(config):
             f"Ciclo {ciclo}: Ejecutando ciclo económico principal")
         mercado.ejecutar_ciclo(ciclo)
 
+        # Actualizar dashboard después del ciclo (cuando ya se calculó PIB)
+        mercado.dashboard.actualizar_metricas(ciclo)
+
         # Log métricas básicas del ciclo
         pib_actual = mercado.pib_historico[-1] if mercado.pib_historico else 0
         inflacion_actual = mercado.inflacion_historica[-1] if mercado.inflacion_historica else 0
@@ -677,13 +762,22 @@ REPORTE HIPERREALISTA v2.3 - CICLO {ciclo}/{num_ciclos}:
     logger.log_fin(f"Tiempo total: {tiempo_total:.2f} segundos")
     logger.log_fin(f"Velocidad: {tiempo_total/num_ciclos:.3f} segundos/ciclo")
 
+    # === FINALIZACIÓN DEL SISTEMA DE IA ===
+    if hasattr(mercado, 'sistema_ia') and mercado.sistema_ia is not None:
+        try:
+            local_logger.log_sistema("🤖 Finalizando Sistema de Agentes IA...")
+            mercado.sistema_ia.finalizar()
+            local_logger.log_sistema("   ✅ Sistema IA finalizado correctamente")
+        except Exception as e:
+            local_logger.log_error(f"   ❌ Error finalizando sistema IA: {e}")
+
     # === RESULTADOS FINALES ===
     local_logger.log_sistema("Generando resultados finales de la simulación")
     generar_resultados_finales(mercado, tiempo_total, num_ciclos)
 
     # Log final de cierre
     local_logger.log_fin(
-        "Simulación Económica Avanzada v2.2 completada exitosamente")
+        "Simulación Económica Avanzada v3.0 completada exitosamente")
 
     return mercado
 
@@ -793,8 +887,8 @@ def generar_resultados_finales(mercado, tiempo_total, num_ciclos):
 
 
 def main():
-    """Función principal mejorada v2.3"""
-    logger.log_inicio("SIMULADOR ECONÓMICO HIPERREALISTA v2.3")
+    """Función principal mejorada v3.0"""
+    logger.log_inicio("SIMULADOR ECONÓMICO HIPERREALISTA v3.0")
     logger.log_inicio("==========================================")
     logger.log_inicio("✅ Sistema ML con garantía de entrenamiento")
     logger.log_inicio("✅ Precios dinámicos implementados")
@@ -808,6 +902,7 @@ def main():
     logger.log_inicio("🚀 NUEVO: Control de precios realista")  
     logger.log_inicio("🚀 NUEVO: Ciclos económicos genuinos")
     logger.log_inicio("🚀 NUEVO: Sistema de rescate empresarial")
+    logger.log_inicio("🤖 NUEVO v3.0: SISTEMA DE AGENTES IA HIPERREALISTAS")
     logger.log_inicio("=" * 70)
 
     try:
@@ -821,9 +916,9 @@ def main():
         mercado = ejecutar_simulacion_completa(configurador)
 
         logger.log_fin(
-            "Simulación exitosa - HIPERREALISMO IMPLEMENTADO correctamente")
+            "Simulación exitosa - SISTEMA DE AGENTES IA IMPLEMENTADO correctamente")
         logger.log_fin(
-            "🎯 SIMULACIÓN ECONÓMICA HIPERREALISTA v2.3 COMPLETADA EXITOSAMENTE")
+            "🎯 SIMULACIÓN ECONÓMICA HIPERREALISTA v3.0 COMPLETADA EXITOSAMENTE")
 
     except KeyboardInterrupt:
         logger.log_error(

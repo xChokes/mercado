@@ -255,8 +255,8 @@ class DashboardEconomico:
         else:
             crecimiento_pib = 0.0
 
-        desempleo_promedio = np.mean(self.metricas_historicas['desempleo']) * 100  # Convertir a %
-        inflacion_promedio = np.mean(self.metricas_historicas['inflacion']) * 100  # Convertir a %
+        desempleo_promedio = np.mean(self.metricas_historicas['desempleo'])  # Ya está en %
+        inflacion_promedio = np.mean(self.metricas_historicas['inflacion'])  # Ya está en %
 
         reporte.append(f"💰 PIB Final: ${pib_final:,.2f}")
         reporte.append(f"📈 Crecimiento PIB: {crecimiento_pib:+.2f}%")

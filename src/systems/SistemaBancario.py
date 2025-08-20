@@ -114,9 +114,27 @@ class Banco:
                 f"Préstamo rechazado para {nombre_solicitante}: Insuficiente liquidez")
             return False, f"Insuficiente liquidez bancaria (${fondos_disponibles:,.0f} disponibles)"
 
-        # Evaluar riesgo con criterios más flexibles
+        # Evaluar riesgo con criterios más flexibles para empresas
         riesgo = self.evaluar_riesgo_crediticio(solicitante)
-        if riesgo < 0.15:  # Aún más flexible
+        
+        # CRITERIOS ULTRA FLEXIBLES para empresas productoras en dificultades
+        from src.models.EmpresaProductora import EmpresaProductora
+        if isinstance(solicitante, EmpresaProductora):
+            # Para empresas productoras, ser mucho más permisivo
+            limite_riesgo = 0.05  # Bajar de 0.15 a 0.05 (súper permisivo)
+            
+            # Si la empresa tiene empleados y capacidad productiva, darle una oportunidad
+            if (hasattr(solicitante, 'empleados') and len(solicitante.empleados) > 0 and
+                hasattr(solicitante, 'capacidad_produccion') and solicitante.capacidad_produccion):
+                limite_riesgo = 0.02  # Aún más permisivo para empresas operativas
+                
+            # Para préstamos de emergencia pequeños (supervivencia), ser extremadamente flexible
+            if monto <= 30000:  # Préstamos pequeños de supervivencia
+                limite_riesgo = 0.01  # Casi automático
+        else:
+            limite_riesgo = 0.15  # Mantener estándar original para consumidores
+            
+        if riesgo < limite_riesgo:
             # Solo log a nivel WARNING para rechazos por riesgo
             logging.warning(
                 f"Préstamo rechazado para {nombre_solicitante}: Riesgo muy alto ({riesgo:.2f})")
