@@ -1,0 +1,152 @@
+{
+  "simulacion": {
+    "num_ciclos": 60,
+    "num_consumidores": 250,
+    "num_empresas_productoras": 5,
+    "num_empresas_comerciales": 8,
+    "frecuencia_reportes": 5,
+    "activar_crisis": true,
+    "tiempo_maximo_crisis": 15
+  },
+  "economia": {
+    "pib_inicial": 100000,
+    "tasa_desempleo_inicial": 0.055,
+    "tasa_inflacion_objetivo": 0.025,
+    "crecimiento_pib_objetivo": 0.025,
+    "productividad_inicial": 1.0,
+    "volatilidad_economica": 0.05,
+    "salario_base_minimo": 2000,
+    "productividad_maxima": 1.05,
+    "productividad_minima": 0.90,
+    "limite_crecimiento_productividad": 0.02,
+    "degeneracion_productividad": 0.995,
+    "capital_inicial_empresas": {
+      "min": 100000,
+      "max": 1500000
+    },
+    "dinero_inicial_consumidores": {
+      "min": 5000,
+      "max": 15000
+    }
+  },
+  "mercado_laboral": {
+    "probabilidad_contratacion_base": 0.03,
+    "habilidad_minima_base": 0.55,
+    "capacidad_empleo_factor": 0.50,
+    "subsidio_contratacion_crisis": 0.05,
+    "tasa_participacion": 0.65,
+    "movilidad_laboral": 0.03,
+    "rigidez_salarios": 0.95,
+    "tasa_despido_natural": 0.15,
+    "competencia_empleo": 0.95,
+    "friccion_laboral": 0.25,
+    "rotacion_natural": 0.18,
+    "busqueda_empleo_ciclos": 8,
+    "factor_desempleo_estructural": 0.08,
+    "productividad_sectorial": {
+      "agricultura": 0.35,
+      "manufactura": 0.95,
+      "servicios": 0.75,
+      "tecnologia": 1.05
+    }
+  },
+  "sistema_bancario": {
+    "activar": true,
+    "num_bancos": 3,
+    "capital_inicial_bancos": 3000000,
+    "tasa_interes_base": 0.035,
+    "ratio_capital_minimo": 0.12,
+    "spread_bancario": 0.035,
+    "provision_riesgo": 0.025,
+    "ratio_prestamo_ingreso": 4.5
+  },
+  "machine_learning": {
+    "activar": true,
+    "generar_datos_sinteticos": true,
+    "num_datos_sinteticos": 25,
+    "reentrenar_cada_ciclos": 8
+  },
+  "precios": {
+    "ajuste_maximo_por_ciclo": 0.04,
+    "margen_minimo": 0.03,
+    "margen_maximo": 1.2,
+    "sensibilidad_competencia": 0.12,
+    "sensibilidad_stock": 0.08,
+    "elasticidad_precio_base": -0.8,
+    "elasticidad_ingreso_base": 0.9,
+    "sensibilidad_realista": true,
+    "control_precios": {
+      "precio_minimo_global": 0.5,
+      "precio_maximo_global": 2000,
+      "factor_aumento_maximo": 1.08,
+      "factor_reduccion_maximo": 0.92,
+      "volatilidad_maxima": 0.03,
+      "control_por_categoria": {
+        "alimentos_basicos": {"min": 1, "max": 50},
+        "alimentos_lujo": {"min": 10, "max": 150},
+        "bienes_duraderos": {"min": 50, "max": 2000},
+        "servicios": {"min": 10, "max": 300},
+        "tecnologia": {"min": 100, "max": 1500},
+        "servicios_lujo": {"min": 30, "max": 800},
+        "capital": {"min": 500, "max": 15000},
+        "intermedio": {"min": 5, "max": 200}
+      }
+    }
+  },
+  "psicologia_economica": {
+    "activar": true,
+    "factor_irracionalidad": 0.25,
+    "influencia_social": 0.18,
+    "variabilidad_perfiles": 0.4
+  },
+  "agentes_ia": {
+    "activar": true,
+    "num_consumidores": 15,
+    "num_empresas": 6,
+    "deep_learning": true,
+    "redes_sociales": true,
+    "coaliciones": true,
+    "logs_detallados": true,
+    "duracion_minutos": 3
+  },
+  "validacion_economica": {
+    "activar": true,
+    "usar_rangos_estrictos": true,
+    "reportar_cada_ciclos": 8,
+    "alertas_criticas": true
+  },
+  "banco_central_avanzado": {
+    "activar": true,
+    "usar_modelos_avanzados": true,
+    "reunion_cada_ciclos": 4,
+    "tasa_neutral": 0.03,
+    "inflacion_objetivo": 0.025,
+    "peso_inflacion": 1.2,
+    "peso_producto": 0.3,
+    "suavizamiento": 0.85
+  },
+  "modelos_economicos": {
+    "dsge": {
+      "activar": true,
+      "beta": 0.99,
+      "sigma": 2.0,
+      "phi": 1.0,
+      "alpha": 0.35,
+      "delta": 0.025,
+      "rho_a": 0.95,
+      "sigma_a": 0.007
+    },
+    "islm": {
+      "activar": true,
+      "sensibilidad_inversion": 0.6,
+      "sensibilidad_consumo": 0.75,
+      "sensibilidad_demanda_dinero": 1.4
+    },
+    "phillips": {
+      "activar": true,
+      "coeficiente_phillips": 0.08,
+      "inflacion_esperada_peso": 0.65,
+      "nairu": 0.045
+    }
+  }
+}

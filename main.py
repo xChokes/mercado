@@ -36,7 +36,7 @@ from src.systems.CrisisFinanciera import evaluar_recuperacion_crisis, aplicar_me
 from src.systems.MercadoLaboral import MercadoLaboral
 from src.systems.AnalyticsML import SistemaAnalyticsML
 from src.systems.SistemaBancario import SistemaBancario, Banco
-# NUEVOS SISTEMAS HIPERREALISTAS v2.3
+# NUEVOS SISTEMAS HIPERREALISTAS v3.0
 from src.systems.BancoCentral import BancoCentral
 from src.systems.ControlPreciosRealista import ControladorPreciosRealista
 from src.systems.CicloEconomicoRealista import CicloEconomicoRealista
@@ -44,6 +44,16 @@ from src.systems.GestorRescateEmpresarial import GestorRescateEmpresarial
 from src.systems.SistemaFiscal import SistemaFiscal
 from src.systems.MercadoCapitales import BolsaValores
 from src.systems.ClasesSociales import SistemaClasesSociales
+# NUEVOS SISTEMAS DE VALIDACIÓN Y ESTABILIZACIÓN v3.1
+from src.systems.ValidadorEconomico import ValidadorEconomico
+from src.systems.BancoCentralAvanzado import BancoCentralAvanzado
+# NUEVOS SISTEMAS ECONÓMICOS AVANZADOS v3.2 - FASE 2
+try:
+    from src.systems.ModelosEconomicosAvanzados import IntegradorModelosEconomicos, ParametrosEconomicos
+    from src.config.DatosEconomicosReales import CalibradorEconomicoRealista
+    MODELOS_ECONOMICOS_DISPONIBLES = True
+except ImportError:
+    MODELOS_ECONOMICOS_DISPONIBLES = False
 # SISTEMA DE AGENTES IA HIPERREALISTAS v3.0
 from src.ai.IntegradorAgentesIA import IntegradorAgentesIA, ConfiguracionSistemaIA
 from src.models.Gobierno import Gobierno
@@ -257,6 +267,35 @@ def integrar_sistemas_avanzados(mercado, config):
     """Integra todos los sistemas avanzados"""
     logger.log_configuracion("Integrando sistemas avanzados...")
 
+    # === NUEVO: SISTEMA DE VALIDACIÓN ECONÓMICA ===
+    logger.log_configuracion("Activando sistema de validación económica...")
+    mercado.validador_economico = ValidadorEconomico()
+    
+    # === NUEVO: BANCO CENTRAL AVANZADO ===
+    logger.log_configuracion("Activando Banco Central Avanzado con Taylor Rule...")
+    mercado.banco_central_avanzado = BancoCentralAvanzado(mercado)
+    
+    # === NUEVOS: MODELOS ECONÓMICOS AVANZADOS - FASE 2 ===
+    if MODELOS_ECONOMICOS_DISPONIBLES:
+        logger.log_configuracion("🧮 Activando modelos económicos avanzados (DSGE, IS-LM)...")
+        mercado.integrador_modelos = IntegradorModelosEconomicos()
+        mercado.calibrador_economico = CalibradorEconomicoRealista()
+        
+        # Calibrar configuración con datos reales
+        config_dict = config.config
+        config_calibrada = mercado.calibrador_economico.calibrar_configuracion_base(config_dict)
+        
+        # Actualizar configuración del mercado con parámetros calibrados
+        if 'economia' in config_calibrada:
+            eco_config = config_calibrada['economia']
+            mercado.tasa_inflacion_objetivo = eco_config.get('tasa_inflacion_objetivo', 0.025)
+            mercado.crecimiento_pib_objetivo = eco_config.get('crecimiento_pib_objetivo', 0.025)
+            mercado.volatilidad_economica = eco_config.get('volatilidad_economica', 0.15)
+        
+        logger.log_configuracion("✅ Modelos económicos profesionales ACTIVADOS")
+    else:
+        logger.log_configuracion("⚠️  Modelos económicos avanzados NO DISPONIBLES")
+
     # === MACHINE LEARNING ===
     ml_config = config.obtener_seccion('machine_learning')
     if ml_config.get('activar', True):
@@ -313,8 +352,8 @@ def integrar_sistemas_avanzados(mercado, config):
     logger.log_configuracion("Configurando dashboard avanzado...")
     mercado.dashboard = DashboardEconomico(mercado)
 
-    # === SISTEMAS HIPERREALISTAS v2.3 ===
-    logger.log_configuracion("🚀 INTEGRANDO SISTEMAS HIPERREALISTAS v2.3...")
+    # === SISTEMAS HIPERREALISTAS v3.0 ===
+    logger.log_configuracion("🚀 INTEGRANDO SISTEMAS HIPERREALISTAS v3.0...")
     
     # 1. BANCO CENTRAL - Política monetaria automática
     logger.log_configuracion("🏦 Configurando Banco Central...")
@@ -428,7 +467,7 @@ def ejecutar_simulacion_completa(config):
 
         # === SISTEMAS AUTOMÁTICOS ===
 
-        # === SISTEMAS HIPERREALISTAS v2.3 (EJECUTAR PRIMERO) ===
+        # === SISTEMAS HIPERREALISTAS v3.0 (EJECUTAR PRIMERO) ===
         
         # 1. BANCO CENTRAL - Política monetaria automática cada ciclo
         if hasattr(mercado, 'banco_central'):
@@ -652,6 +691,80 @@ def ejecutar_simulacion_completa(config):
             f"Ciclo {ciclo}: Ejecutando ciclo económico principal")
         mercado.ejecutar_ciclo(ciclo)
 
+        # === NUEVO: VALIDACIÓN ECONÓMICA POST-CICLO ===
+        if hasattr(mercado, 'validador_economico'):
+            alertas = mercado.validador_economico.validar_indicadores_macroeconomicos(mercado, ciclo)
+            alertas_precios = mercado.validador_economico.detectar_anomalias_precios(mercado, ciclo)
+            
+            # Log alertas críticas inmediatamente
+            alertas_criticas = [a for a in alertas + alertas_precios if a.tipo.value == "CRITICA"]
+            if alertas_criticas:
+                for alerta in alertas_criticas:
+                    local_logger.log_error(f"🚨 ALERTA CRÍTICA: {alerta.mensaje}")
+            
+            # Log reporte de validación cada 10 ciclos
+            if ciclo % 10 == 0:
+                # Usar reporte avanzado si hay modelos disponibles
+                if MODELOS_ECONOMICOS_DISPONIBLES and hasattr(mercado, 'validador_economico'):
+                    reporte_validacion = mercado.validador_economico.generar_reporte_avanzado(mercado, ciclo)
+                    local_logger.log_sistema("📊 REPORTE AVANZADO DE VALIDACIÓN ECONÓMICA:")
+                else:
+                    reporte_validacion = mercado.validador_economico.generar_reporte_validacion(mercado, ciclo)
+                    local_logger.log_sistema("📊 REPORTE DE VALIDACIÓN ECONÓMICA:")
+                
+                for linea in reporte_validacion.split('\n'):
+                    if linea.strip():
+                        local_logger.log_sistema(f"   {linea}")
+                
+                # Análisis con modelos económicos avanzados cada 15 ciclos
+                if MODELOS_ECONOMICOS_DISPONIBLES and hasattr(mercado, 'integrador_modelos') and ciclo % 15 == 0:
+                    try:
+                        # Obtener todas las empresas
+                        todas_empresas = []
+                        if hasattr(mercado, 'empresas_productoras'):
+                            todas_empresas.extend(mercado.empresas_productoras)
+                        if hasattr(mercado, 'empresas_comerciales'):
+                            todas_empresas.extend(mercado.empresas_comerciales)
+                        
+                        estado_economico = {
+                            'inflacion': getattr(mercado, 'inflacion_anual', 0.02),
+                            'desempleo': getattr(mercado, 'tasa_desempleo', 0.05),
+                            'crecimiento_pib': getattr(mercado, 'crecimiento_pib', 0.02),
+                            'productividad': getattr(mercado, 'productividad_promedio', 1.0),
+                            'pib': getattr(mercado, 'pib_total', 1000000),
+                            'capital': sum(getattr(emp, 'capital', 0) for emp in todas_empresas),
+                            'trabajo': len([c for c in mercado.consumidores if getattr(c, 'empleado', False)])
+                        }
+                        
+                        analisis_completo = mercado.integrador_modelos.analisis_completo(estado_economico)
+                        
+                        local_logger.log_sistema("🧮 ANÁLISIS MODELOS ECONÓMICOS AVANZADOS:")
+                        if 'sintesis' in analisis_completo:
+                            sintesis = analisis_completo['sintesis']
+                            local_logger.log_sistema(f"   📈 PIB Consenso: {sintesis.get('pib_consenso', 'N/A')}")
+                            local_logger.log_sistema(f"   💰 Tasa Consenso: {sintesis.get('tasa_consenso', 'N/A'):.3f}%")
+                            local_logger.log_sistema(f"   🎯 Consistencia: {sintesis.get('consistencia_modelos', 0):.1%}")
+                        
+                        # Detectar régimen económico
+                        if hasattr(mercado, 'calibrador_economico'):
+                            regimen = mercado.calibrador_economico.detectar_regimen_economico(estado_economico)
+                            local_logger.log_sistema(f"   📊 Régimen Económico: {regimen}")
+                            
+                    except Exception as e:
+                        local_logger.log_sistema(f"   ⚠️  Error en análisis avanzado: {e}")
+
+        # === NUEVO: POLÍTICA MONETARIA AVANZADA ===
+        if hasattr(mercado, 'banco_central_avanzado'):
+            decision_monetaria = mercado.banco_central_avanzado.ejecutar_politica_monetaria(ciclo)
+            if decision_monetaria:
+                local_logger.log_sistema(f"🏦 POLÍTICA MONETARIA: {decision_monetaria.justificacion}")
+                if abs(decision_monetaria.tasa_nueva - decision_monetaria.tasa_anterior) > 0.002:
+                    comunicado = mercado.banco_central_avanzado.generar_comunicado_monetario(decision_monetaria)
+                    local_logger.log_sistema("📢 COMUNICADO BANCO CENTRAL:")
+                    for linea in comunicado.split('\n'):
+                        if linea.strip() and not linea.startswith('='):
+                            local_logger.log_sistema(f"   {linea}")
+
         # Actualizar dashboard después del ciclo (cuando ya se calculó PIB)
         mercado.dashboard.actualizar_metricas(ciclo)
 
@@ -694,7 +807,7 @@ def ejecutar_simulacion_completa(config):
                     prestamos_totales += sum([p['monto']
                                              for p in banco.prestamos.values()])
 
-            # === MÉTRICAS HIPERREALISTAS v2.3 ===
+            # === MÉTRICAS HIPERREALISTAS v3.0 ===
             # Banco Central
             tasa_bc = 0.0
             politica_bc = "N/A"
@@ -716,7 +829,7 @@ def ejecutar_simulacion_completa(config):
                 liquidaciones = stats_rescate['liquidaciones_totales']
 
             local_logger.log_reporte(f"""
-REPORTE HIPERREALISTA v2.3 - CICLO {ciclo}/{num_ciclos}:
+REPORTE HIPERREALISTA v3.0 - CICLO {ciclo}/{num_ciclos}:
 ═══════════════════════════════════════════════════════════
 📊 MÉTRICAS PRINCIPALES:
    PIB: ${pib_actual:,.2f} | Inflación: {inflacion_actual*100:.2f}%
@@ -800,7 +913,7 @@ def generar_resultados_finales(mercado, tiempo_total, num_ciclos):
     )
 
     # === ESTADÍSTICAS ADICIONALES ===
-    logger.log_sistema("ESTADÍSTICAS TÉCNICAS v2.3:")
+    logger.log_sistema("ESTADÍSTICAS TÉCNICAS v3.0:")
     logger.log_sistema(f"   Tiempo total: {tiempo_total:.2f}s")
     logger.log_sistema(
         f"   Velocidad promedio: {tiempo_total/num_ciclos:.3f}s/ciclo")

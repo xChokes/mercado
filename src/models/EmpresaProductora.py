@@ -27,10 +27,13 @@ class EmpresaProductora(Empresa):
         self.en_quiebra = False  # Estado de quiebra
         self.costos_fijos_originales = None  # Para guardar costos originales durante crisis
 
-        # Capacidades de producción
+        # Capacidades de producción con límites realistas más estrictos
         self.capacidad_produccion = {}
         self.produccion_actual = {}
-        self.eficiencia_produccion = random.uniform(0.8, 1.0)  # Mayor eficiencia inicial
+        self.eficiencia_produccion = random.uniform(0.95, 1.0)  # Eficiencia base ultra conservadora
+        self.eficiencia_maxima = 1.05  # Límite superior ultra estricto (era 1.15)
+        self.eficiencia_minima = 0.85  # Límite inferior ultra conservador (era 0.80)
+        self.degeneracion_factor = 0.995  # Factor de degeneración más agresivo (era 0.999)
 
         # Tecnología limpia
         self.factor_emisiones = 1.0  # 1.0 sin mejoras
@@ -288,6 +291,14 @@ class EmpresaProductora(Empresa):
             # Considerar eficiencia y economías de escala
             cantidad_efectiva = int(
                 cantidad * max(0.1, self.eficiencia_produccion))
+                
+            # NUEVA: Aplicar degeneración por sobreproducción
+            if cantidad_efectiva > 30:  # Umbral de sobreproducción
+                self.eficiencia_produccion *= self.degeneracion_factor
+                # Aplicar límites de eficiencia
+                self.eficiencia_produccion = max(self.eficiencia_minima, 
+                                               min(self.eficiencia_maxima, self.eficiencia_produccion))
+                
             if cantidad_efectiva > 50:  # Economías de escala
                 factor_escala = getattr(
                     ConfigEconomica, 'FACTOR_ECONOMIA_ESCALA', 1.1)
@@ -585,6 +596,9 @@ class EmpresaProductora(Empresa):
                 if self.dinero >= costo_reducido:
                     self.dinero = max(0, self.dinero - costo_reducido)
                     self.eficiencia_produccion *= 0.97  # Menor penalización (0.97 vs 0.95)
+                    # Aplicar límites de eficiencia
+                    self.eficiencia_produccion = max(self.eficiencia_minima, 
+                                                   min(self.eficiencia_maxima, self.eficiencia_produccion))
                     return True
             
             # NIVEL 3: Despidos graduales (reducir costos 40%)
@@ -603,6 +617,9 @@ class EmpresaProductora(Empresa):
                 pago_parcial = min(self.dinero, costo_total * 0.7)  # 70% vs 60% anterior
                 self.dinero = max(0, self.dinero - pago_parcial)
                 self.eficiencia_produccion *= 0.95  # Menor penalización (0.95 vs 0.90)
+                # Aplicar límites de eficiencia
+                self.eficiencia_produccion = max(self.eficiencia_minima, 
+                                               min(self.eficiencia_maxima, self.eficiencia_produccion))
                 return True
             
             return False

@@ -16,7 +16,17 @@ class SistemaPreciosDinamicos:
         self.precios_base = {}  # Precios de referencia inicial
         self.elasticidades = {}  # Elasticidad precio-demanda por bien
         self.competencia_cache = {}  # Cache de análisis de competencia
-        self.volatilidad_mercado = 0.1  # Factor de volatilidad base
+        self.volatilidad_mercado = 0.03  # Factor de volatilidad ultra reducido (era 0.05)
+
+        # Control de precios categórico emergente - Límites absolutos
+        self.techos_precios = {
+            "harina": 25, "azucar": 15, "arroz": 20, "leche": 8,
+            "combustible": 150, "electricidad": 50,
+            "cafe": 35, "cerveza": 30, "vino": 80, "carne": 120
+        }
+        
+        # Factor de reseteo automático cuando precio excede 5x valor base
+        self.factor_reseteo_precio = 5.0
 
         # Inicializar elasticidades por categoría
         self.elasticidades_categoria = {
@@ -73,30 +83,36 @@ class SistemaPreciosDinamicos:
         # Factor 3: Condiciones macroeconómicas
         factor_macro = self._calcular_factor_macroeconomico()
 
-        # Factor 4: Control de inflación
-        factor_control_inflacion = self._calcular_control_inflacion(
-            self.mercado)
+        # Factor 4: Control de inflación (usar método existente)
+        factor_control_inflacion = self._calcular_factor_inflacionario()
 
         # Factor 5: Volatilidad reducida
         factor_volatilidad = random.uniform(
-            0.98, 1.02)  # ±2% de ruido (reducido)
+            0.99, 1.01)  # ±1% de ruido (más reducido)
+
+        # Factor 6: Control por categoría (temporal - simplificado)
+        factor_categoria = 1.0  # Temporalmente desactivado para evitar errores
 
         # Combinar todos los factores con pesos balanceados
         multiplicador_total = (
-            factor_stock * 0.25 +
-            factor_demanda * 0.25 +
+            factor_stock * 0.20 +
+            factor_demanda * 0.20 +
             factor_competencia * 0.20 +
             factor_macro * 0.10 +
             factor_control_inflacion * 0.15 +
+            factor_categoria * 0.10 +
             factor_volatilidad * 0.05
         )
 
-        # Aplicar cambio controlado (máximo 8% por ciclo para controlar inflación)
-        max_cambio = 0.08  # Reducido de 25% a 8%
+        # Aplicar cambio más controlado (máximo 2% por ciclo)
+        max_cambio = 0.02  # Ultra reducido: de 4% a 2%
         cambio_propuesto = (multiplicador_total - 1.0)
         cambio_final = max(-max_cambio, min(max_cambio, cambio_propuesto))
 
         nuevo_precio = precio_actual * (1 + cambio_final)
+
+        # Control de techos de precios y reseteo automático (temporalmente comentado)
+        # nuevo_precio = self._aplicar_control_precios_emergente(bien_nombre, nuevo_precio)
 
         # Asegurar precio mínimo viable
         precio_minimo = self._calcular_precio_minimo(empresa, bien_nombre)
@@ -105,37 +121,37 @@ class SistemaPreciosDinamicos:
         return nuevo_precio
 
     def _calcular_factor_stock_agresivo(self, inventario_actual):
-        """Factor de stock más agresivo para crear volatilidad"""
+        """Factor de stock más conservador para evitar volatilidad extrema"""
         if inventario_actual == 0:
-            return 1.3  # Subir precio 30% si no hay stock
+            return 1.15  # Subir precio 15% si no hay stock (reducido de 30%)
         elif inventario_actual < 5:
-            return 1.15  # Subir precio 15% si stock bajo
+            return 1.08  # Subir precio 8% si stock bajo (reducido de 15%)
         elif inventario_actual > 20:
-            return 0.85  # Bajar precio 15% si mucho stock
+            return 0.92  # Bajar precio 8% si mucho stock (reducido de 15%)
         else:
             return 1.0
 
     def _calcular_factor_demanda_agresivo(self, demanda_reciente):
-        """Factor de demanda más sensible"""
+        """Factor de demanda más moderado"""
         if demanda_reciente > 15:
-            return 1.2  # Alta demanda: subir precio 20%
+            return 1.12  # Alta demanda: subir precio 12% (reducido de 20%)
         elif demanda_reciente > 10:
-            return 1.1  # Demanda media-alta: subir precio 10%
+            return 1.06  # Demanda media-alta: subir precio 6% (reducido de 10%)
         elif demanda_reciente < 3:
-            return 0.9  # Baja demanda: bajar precio 10%
+            return 0.94  # Baja demanda: bajar precio 6% (reducido de 10%)
         else:
             return 1.0
 
     def _calcular_factor_inflacionario(self):
-        """Nuevo factor que añade presión inflacionaria"""
-        # Presión inflacionaria base del 2% anual (aproximadamente 0.15% por ciclo)
+        """Factor inflacionario más conservador"""
+        # Presión inflacionaria más realista (2% anual = ~0.03% por ciclo)
         if hasattr(self.mercado, 'fase_ciclo_economico'):
             if self.mercado.fase_ciclo_economico == 'expansion':
-                return 1.003  # 0.3% por ciclo durante expansión
+                return 1.0015  # 0.15% por ciclo durante expansión (reducido)
             elif self.mercado.fase_ciclo_economico == 'recesion':
-                return 0.998  # -0.2% por ciclo durante recesión
+                return 0.9995  # -0.05% por ciclo durante recesión (reducido)
 
-        return 1.001  # 0.1% base
+        return 1.0005  # 0.05% base (reducido)
 
         # Agregar volatilidad aleatoria
         volatilidad = random.uniform(-self.volatilidad_mercado,
@@ -401,26 +417,78 @@ def _calcular_factor_demanda_moderado(self, demanda_reciente):
     else:
         return 0.99  # Reducción mínima
 
+    def _aplicar_control_categoria(self, empresa, bien_nombre, precio_actual):
+        """Aplica control de precios por categoría para evitar precios extremos"""
+        try:
+            # Obtener categoría del bien
+            categoria = None
+            if hasattr(self.mercado, 'bienes') and bien_nombre in self.mercado.bienes:
+                categoria = getattr(self.mercado.bienes[bien_nombre], 'categoria', 'intermedio')
+            else:
+                categoria = 'intermedio'  # Por defecto
+            
+            # Límites por categoría (más conservadores)
+            limites_categoria = {
+                'alimentos_basicos': {'min': 1, 'max': 50},
+                'alimentos_lujo': {'min': 10, 'max': 150},
+                'bienes_duraderos': {'min': 50, 'max': 2000},
+                'servicios': {'min': 10, 'max': 300},
+                'tecnologia': {'min': 100, 'max': 1500},
+                'servicios_lujo': {'min': 30, 'max': 800},
+                'capital': {'min': 500, 'max': 15000},
+                'intermedio': {'min': 5, 'max': 200}
+            }
+            
+            limites = limites_categoria.get(categoria, {'min': 5, 'max': 200})
+            
+            # Si precio está fuera de rango, aplicar corrección
+            if precio_actual > limites['max']:
+                return 0.85  # Reducir precio agresivamente
+            elif precio_actual < limites['min']:
+                return 1.15  # Aumentar precio para viabilidad
+            elif precio_actual > limites['max'] * 0.8:
+                return 0.95  # Reducir suavemente si se acerca al límite
+            elif precio_actual < limites['min'] * 1.2:
+                return 1.05  # Aumentar suavemente si está muy bajo
+            else:
+                return 1.0  # Precio dentro del rango aceptable
+                
+        except Exception as e:
+            return 1.0  # En caso de error, no aplicar corrección
 
-def _calcular_control_inflacion(self, mercado):
-    """Factor para controlar inflación excesiva"""
-    if not mercado.inflacion_historica:
-        return 1.0
+    def _calcular_control_inflacion(self, mercado):
+        """Factor para controlar inflación excesiva"""
+        if not mercado.inflacion_historica:
+            return 1.0
 
-    inflacion_reciente = mercado.inflacion_historica[-1]
+        inflacion_reciente = mercado.inflacion_historica[-1]
 
-    # Si inflación es muy alta, aplicar presión deflacionaria
-    if inflacion_reciente > 0.15:  # Más de 15%
-        return 0.95  # Presión para bajar precios
-    elif inflacion_reciente > 0.08:  # Más de 8%
-        return 0.98  # Presión suave para bajar
-    elif inflacion_reciente < -0.02:  # Deflación
-        return 1.02  # Presión suave para subir
-    else:
-        return 1.0  # Estable
+        # Si inflación es muy alta, aplicar presión deflacionaria
+        if inflacion_reciente > 0.15:  # Más de 15%
+            return 0.95  # Presión para bajar precios
+        elif inflacion_reciente > 0.08:  # Más de 8%
+            return 0.98  # Presión suave para bajar
+        elif inflacion_reciente < -0.02:  # Deflación
+            return 1.02  # Presión suave para subir
+        else:
+            return 1.0  # Estable
+
+    def _aplicar_control_precios_emergente(self, bien_nombre, precio_propuesto):
+        """Aplica control de precios categórico con reseteo automático"""
+        if bien_nombre in self.techos_precios:
+            techo = self.techos_precios[bien_nombre]
+            if precio_propuesto > techo:
+                return techo  # Aplicar techo máximo
+        
+        # Reseteo automático si precio excede 5x el valor base
+        if bien_nombre in self.precios_base:
+            precio_base = self.precios_base[bien_nombre]
+            if precio_propuesto > precio_base * self.factor_reseteo_precio:
+                return precio_base  # Resetear al precio base
+        
+        return precio_propuesto
 
 
 # Agregar métodos a la clase
 SistemaPreciosDinamicos._calcular_factor_stock_moderado = _calcular_factor_stock_moderado
 SistemaPreciosDinamicos._calcular_factor_demanda_moderado = _calcular_factor_demanda_moderado
-SistemaPreciosDinamicos._calcular_control_inflacion = _calcular_control_inflacion
