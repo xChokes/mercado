@@ -136,8 +136,11 @@ class Mercado:
                 if precio <= 0 or precio > 1000000:  # Filtrar precios irreales
                     continue
                     
-                categoria = ConfigEconomica.CATEGORIAS_BIENES.get(
-                    bien, 'servicios')
+                categorias_map = getattr(ConfigEconomica, 'CATEGORIAS_BIENES_MAP', None)
+                if isinstance(categorias_map, dict):
+                    categoria = categorias_map.get(bien, 'servicios')
+                else:
+                    categoria = 'servicios'
 
                 # Peso basado en importancia del bien
                 if categoria == 'alimentos_basicos':

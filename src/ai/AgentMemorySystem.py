@@ -70,22 +70,26 @@ class AgentMemorySystem:
     def __init__(self, agente_id: str, capacidad_memoria_corta: int = 1000):
         self.agente_id = agente_id
         self.capacidad_memoria_corta = capacidad_memoria_corta
-        
+
         # Memoria a corto plazo - decisiones recientes
-        self.memoria_corta: deque = deque(maxlen=capacidad_memoria_corta)
-        
+        self.memoria_corta = deque(maxlen=self.capacidad_memoria_corta)
+        # Alias solicitado por tests: memoria de trabajo (temporal)
+        self.memoria_trabajo = {}
+
         # Memoria a largo plazo - patrones y estrategias
-        self.historial_decisiones: List[Decision] = []
-        self.matriz_recompensas: Dict[str, float] = {}
-        self.estrategias_exitosas: Dict[str, Strategy] = {}
+        self.historial_decisiones = []
+        # Alias solicitado por tests para memoria a largo plazo
+        self.memoria_largo_plazo = {}
+        self.matriz_recompensas = {}
+        self.estrategias_exitosas = {}
         self.conocimiento_mercado = MarketKnowledge()
-        
+
         # Métricas de aprendizaje
         self.experiencia_total = 0
         self.tasa_exito = 0.0
         self.recompensa_total = 0.0
-        self.decision_count_by_type: Dict[str, int] = {}
-        
+        self.decision_count_by_type = {}
+
         # Configuración de aprendizaje
         self.factor_descuento = 0.95  # Gamma para recompensas futuras
         self.tasa_aprendizaje = 0.1   # Alpha para actualización
@@ -107,6 +111,27 @@ class AgentMemorySystem:
         # Si hay resultado, actualizar recompensas
         if decision.resultado is not None:
             self._actualizar_sistema_recompensas(decision)
+
+    # Métodos y alias mínimos esperados por tests
+    def almacenar_decision(self, decision: Decision):
+        """Alias para agregar_decision, usado por tests."""
+        return self.agregar_decision(decision)
+
+    @property
+    def decisiones_historicas(self) -> List[Decision]:
+        """Alias a historial_decisiones solicitado por tests."""
+        return self.historial_decisiones
+
+    def obtener_decisiones_por_tipo(self, tipo: str) -> List[Decision]:
+        """Devuelve decisiones del histórico filtradas por tipo."""
+        return [d for d in self.historial_decisiones if d.tipo_decision == tipo]
+
+    def calcular_rendimiento_promedio(self, tipo: str) -> float:
+        """Calcula el promedio de recompensas para un tipo de decisión."""
+        decisiones = [d for d in self.historial_decisiones if d.tipo_decision == tipo]
+        if not decisiones:
+            return 0.0
+        return float(sum(d.recompensa for d in decisiones) / len(decisiones))
     
     def _actualizar_sistema_recompensas(self, decision: Decision):
         """Actualiza el sistema de recompensas basado en el resultado"""

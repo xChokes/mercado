@@ -10,7 +10,7 @@ class Gobierno:
     def __init__(self, mercado):
         self.nombre = "Gobierno Nacional"  # Agregar nombre para transacciones
         self.mercado = mercado
-        self.presupuesto = 0
+        self.presupuesto = ConfigEconomica.PRESUPUESTO_GOBIERNO_BASE
         self.deuda_publica = 0
         self.tasa_impuestos = ConfigEconomica.TASA_IMPUESTOS
         self.tasa_interes_referencia = ConfigEconomica.TASA_INTERES_BASE
@@ -183,8 +183,9 @@ class Gobierno:
         """Implementa regulación de precios para bienes esenciales"""
         for empresa in self.mercado.getEmpresas():
             for bien, precio in empresa.precios.items():
-                if bien in ConfigEconomica.CATEGORIAS_BIENES:
-                    categoria = ConfigEconomica.CATEGORIAS_BIENES[bien]
+                categorias_map = getattr(ConfigEconomica, 'CATEGORIAS_BIENES_MAP', None) or getattr(ConfigEconomica, 'categorias_bienes_map', None)
+                if isinstance(categorias_map, dict) and bien in categorias_map:
+                    categoria = categorias_map[bien]
 
                     # Controlar precios de alimentos básicos en crisis
                     if categoria == 'alimentos_basicos' and self.inflacion_mensual > 0.05:

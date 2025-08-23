@@ -485,7 +485,8 @@ class BancoCentralAvanzado:
             # Efectividad inflación: qué tan cerca del objetivo
             if inflaciones_post_decision:
                 desviaciones_inflacion = [abs(inf - self.inflacion_objetivo) for inf in inflaciones_post_decision]
-                efectividad_inflacion = max(0, 1 - sum(desviaciones_inflacion) / len(desviaciones_inflacion) * 10)
+                # Menos punitivo: factor 8 en lugar de 10 para mapear a [0,1]
+                efectividad_inflacion = max(0, 1 - (sum(desviaciones_inflacion) / len(desviaciones_inflacion)) * 8)
             else:
                 efectividad_inflacion = 0.5
             

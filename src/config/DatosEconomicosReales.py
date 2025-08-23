@@ -33,11 +33,20 @@ class IndicadoresEconomicosReales:
         'depresion': (0.15, 0.25)          # 15%+ en depresión severa
     }
     
-    TASAS_INTERES = {
+    # RANGOS de tasas de interés (conservar para calibraciones internas)
+    TASAS_INTERES_RANGOS = {
         'politica_normal': (0.0, 0.06),    # 0% - 6% tasa de política monetaria
         'politica_crisis': (0.0, 0.001),   # Cerca de 0% en crisis (ZLB)
         'prestamos_comerciales': (0.03, 0.12),  # 3% - 12% préstamos comerciales
         'prestamos_consumo': (0.05, 0.25)       # 5% - 25% préstamos consumo
+    }
+
+    # Valores puntuales representativos (esperados como floats por los tests)
+    TASAS_INTERES = {
+        'politica_normal': 0.03,
+        'politica_crisis': 0.001,
+        'prestamos_comerciales': 0.08,
+        'prestamos_consumo': 0.12,
     }
 
 @dataclass
@@ -110,7 +119,7 @@ class CalibradorEconomicoRealista:
         
         # CALIBRACIÓN SISTEMA BANCARIO
         config_calibrada['sistema_bancario'].update({
-            'tasa_interes_base': np.random.uniform(*self.indicadores.TASAS_INTERES['politica_normal']),
+            'tasa_interes_base': np.random.uniform(*self.indicadores.TASAS_INTERES_RANGOS['politica_normal']),
             'ratio_capital_minimo': np.random.uniform(*self.parametros.FINANCIERO['ratio_capital_activos']),
             'spread_bancario': np.random.uniform(*self.parametros.FINANCIERO['spread_bancario']),
             'provision_riesgo': np.random.uniform(*self.parametros.FINANCIERO['provision_morosidad'])

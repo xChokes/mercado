@@ -353,7 +353,11 @@ MIT License - Libre para uso académico y comercial
 - [ ] Dashboard interactivo
 - [ ] API REST para simulaciones
 
-## 📚 Casos de Uso
+## � Estado de Implementación
+
+- Resumen actualizado del avance, cambios recientes y backlog: ver `docs/ESTADO_IMPLEMENTACION.md`.
+
+## �📚 Casos de Uso
 
 ### Investigación Académica
 

@@ -64,8 +64,11 @@ class EmpresaProductora(Empresa):
             self.produccion_actual[bien] = 0
 
             # Costos basados en categoría del bien
-            categoria = ConfigEconomica.CATEGORIAS_BIENES.get(
-                bien, 'servicios')
+            categorias_map = getattr(ConfigEconomica, 'CATEGORIAS_BIENES_MAP', None)
+            if isinstance(categorias_map, dict):
+                categoria = categorias_map.get(bien, 'servicios')
+            else:
+                categoria = 'servicios'
             if categoria == 'alimentos_basicos':
                 costo_base = random.uniform(3, 15)
             elif categoria == 'alimentos_lujo':

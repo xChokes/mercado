@@ -84,9 +84,56 @@ class ConfiguradorSimulacion:
                 "margen_maximo": 3.0,
                 "sensibilidad_competencia": 0.1,
                 "sensibilidad_stock": 0.15
+            },
+            "agentes_ia": {
+                "activar": True,
+                "num_consumidores": 15,
+                "num_empresas": 6,
+                "deep_learning": True,
+                "redes_sociales": True,
+                "coaliciones": True,
+                "logs_detallados": True,
+                "duracion_minutos": 3
             }
         }
 
+    # Métodos utilitarios requeridos por tests
+    def cargar_desde_archivo(self, ruta_archivo):
+        """Carga la configuración desde una ruta absoluta o relativa.
+        Retorna True si carga exitosa, False en caso de error.
+        """
+        try:
+            ruta = ruta_archivo
+            if not os.path.isabs(ruta_archivo):
+                ruta = os.path.join(os.getcwd(), ruta_archivo)
+            with open(ruta, 'r', encoding='utf-8') as f:
+                self.config = json.load(f)
+            return True
+        except Exception:
+            return False
+
+    def obtener_parametro(self, seccion, clave, default=None):
+        """Obtiene un parámetro específico dentro de una sección con default."""
+        try:
+            return self.config.get(seccion, {}).get(clave, default)
+        except Exception:
+            return default
+
+    # Validación simple opcional (usada condicionalmente en tests)
+    def validar(self):
+        cfg = self.config or {}
+        if not isinstance(cfg, dict):
+            return False
+        # Validaciones básicas no estrictas
+        sim = cfg.get('simulacion', {})
+        eco = cfg.get('economia', {})
+        if sim and isinstance(sim, dict):
+            if sim.get('num_ciclos', 1) <= 0:
+                return False
+        if eco and isinstance(eco, dict):
+            if eco.get('pib_inicial', 1) <= 0:
+                return False
+        return True
     def obtener(self, seccion, clave, valor_por_defecto=None):
         """Obtiene un valor de configuración específico"""
         try:

@@ -6,6 +6,7 @@ Implementa ajustes de precios realistas basados en oferta, demanda y competencia
 import random
 import math
 from collections import defaultdict
+from ..config.ConfigEconomica import ConfigEconomica
 
 
 class SistemaPreciosDinamicos:
@@ -55,7 +56,16 @@ class SistemaPreciosDinamicos:
                 'intermedio': (10, 100)
             }
 
-            categoria = bien.categoria
+            # Obtener categoría de forma robusta
+            if hasattr(bien, 'categoria'):
+                categoria = bien.categoria
+            else:
+                categorias_map = getattr(ConfigEconomica, 'CATEGORIAS_BIENES_MAP', None) or getattr(ConfigEconomica, 'categorias_bienes_map', None)
+                if isinstance(categorias_map, dict):
+                    categoria = categorias_map.get(bien_nombre, 'intermedio')
+                else:
+                    categoria = 'intermedio'
+
             rango = precios_categoria.get(categoria, (10, 50))
             precio_base = random.uniform(rango[0], rango[1])
 
@@ -314,7 +324,13 @@ class SistemaPreciosDinamicos:
 
         # Aplicar shock a precios base
         for bien_nombre, bien in self.mercado.bienes.items():
-            if bien.categoria in categorias_afectadas:
+            # Obtener categoría de forma robusta
+            if hasattr(bien, 'categoria'):
+                categoria = bien.categoria
+            else:
+                categoria = ConfigEconomica.CATEGORIAS_BIENES.get(bien_nombre, 'intermedio')
+
+            if categoria in categorias_afectadas:
                 factor_shock = 1 + \
                     random.uniform(-abs(intensidad), abs(intensidad))
                 self.precios_base[bien_nombre] *= factor_shock
@@ -423,7 +439,11 @@ def _calcular_factor_demanda_moderado(self, demanda_reciente):
             # Obtener categoría del bien
             categoria = None
             if hasattr(self.mercado, 'bienes') and bien_nombre in self.mercado.bienes:
-                categoria = getattr(self.mercado.bienes[bien_nombre], 'categoria', 'intermedio')
+                valor_bien = self.mercado.bienes[bien_nombre]
+                if hasattr(valor_bien, 'categoria'):
+                    categoria = valor_bien.categoria
+                else:
+                    categoria = ConfigEconomica.CATEGORIAS_BIENES.get(bien_nombre, 'intermedio')
             else:
                 categoria = 'intermedio'  # Por defecto
             

@@ -48,6 +48,9 @@ class ValidadorEconomico:
     
     def __init__(self):
         self.logger = logging.getLogger('ValidadorEconomico')
+        # Compatibilidad con tests básicos
+        self.alertas: List[AlertaEconomica] = []
+        self.indicadores: Dict[str, List[float]] = {}
         self.alertas_historicas = []
         
         # Inicializar calibrador si está disponible
@@ -61,6 +64,51 @@ class ValidadorEconomico:
         # Histórico para análisis de tendencias
         self.historico_indicadores = []
         self.regimen_economico_actual = "NORMAL"
+
+    # --- Métodos de compatibilidad con tests unitarios básicos ---
+    def validar_inflacion(self, inflacion: float) -> Dict:
+        """Valida inflación simple para tests básicos.
+        Retorna {'estado': 'normal'|'alerta', 'alertas': [...?]}
+        """
+        estado = 'normal'
+        alertas = []
+        # Rango razonable de inflación anual (0% - 10%)
+        if inflacion < -0.01 or inflacion > 0.10:
+            estado = 'alerta'
+            alertas.append(f"Inflación fuera de rango: {inflacion:.3f}")
+        return {'estado': estado, 'alertas': alertas}
+
+    def validar_desempleo(self, desempleo: float) -> Dict:
+        """Valida desempleo simple para tests básicos.
+        Estados: normal (<10%), alerta (10-15%), critico (>=15%).
+        """
+        if desempleo >= 0.15:
+            estado = 'critico'
+        elif desempleo >= 0.10:
+            estado = 'alerta'
+        else:
+            estado = 'normal'
+        alertas = [] if estado == 'normal' else [f"Desempleo elevado: {desempleo:.3f}"]
+        return {'estado': estado, 'alertas': alertas}
+
+    def generar_reporte_estabilidad(self) -> Dict:
+        """Genera reporte mínimo de estabilidad para tests básicos.
+        Usa self.indicadores si están disponibles.
+        """
+        resumen = {}
+        if self.indicadores:
+            try:
+                inflaciones = self.indicadores.get('inflacion', [])
+                desempleos = self.indicadores.get('desempleo', [])
+                pib = self.indicadores.get('pib', [])
+                resumen = {
+                    'inflacion_promedio': sum(inflaciones)/len(inflaciones) if inflaciones else 0.0,
+                    'desempleo_promedio': sum(desempleos)/len(desempleos) if desempleos else 0.0,
+                    'crecimiento_pib': ((pib[-1]-pib[0])/pib[0]) if pib and len(pib) > 1 else 0.0
+                }
+            except Exception:
+                resumen = {}
+        return {'resumen': resumen, 'indicadores': self.indicadores}
         
     def _definir_rangos_normales(self) -> Dict[str, Tuple[float, float]]:
         """Define rangos normales para indicadores económicos clave (fallback)"""
@@ -198,12 +246,25 @@ class ValidadorEconomico:
         
         return alertas
     
-    def calcular_indice_estabilidad(self, mercado, ventana_ciclos: int = 10) -> float:
+    def calcular_indice_estabilidad(self, datos, ventana_ciclos: int = 10) -> float:
         """
         Calcula un índice de estabilidad económica (0-1)
         1 = Muy estable, 0 = Muy inestable
         """
         try:
+            # Compatibilidad: si se pasa un dict de métricas simples
+            if isinstance(datos, dict):
+                inflacion = float(datos.get('inflacion', 0.02))
+                desempleo = float(datos.get('desempleo', 0.06))
+                crecimiento = float(datos.get('crecimiento_pib', 0.02))
+                # Índice heurístico: penaliza alta inflación y desempleo, premia crecimiento
+                score = 1.0
+                score -= max(0.0, inflacion) * 2.0  # penalización
+                score -= max(0.0, desempleo - 0.04) * 2.5
+                score += max(0.0, crecimiento) * 1.5
+                return max(0.0, min(1.0, score))
+
+            mercado = datos
             factores_estabilidad = []
             
             # 1. Estabilidad de inflación

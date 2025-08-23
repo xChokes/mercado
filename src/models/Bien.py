@@ -4,11 +4,19 @@ from ..config.ConfigEconomica import ConfigEconomica
 class Bien:
     def __init__(self, nombre, categoria=None):
         self.nombre = nombre
-        self.categoria = categoria or ConfigEconomica.CATEGORIAS_BIENES.get(nombre, 'servicios')
+        categorias_map = (
+            getattr(ConfigEconomica, 'CATEGORIAS_BIENES_MAP', None)
+            or getattr(ConfigEconomica, 'categorias_bienes_map', None)
+        )
+        if not categoria and isinstance(categorias_map, dict):
+            categoria = categorias_map.get(nombre, 'servicios')
+        self.categoria = categoria or 'servicios'
         
         # Elasticidades basadas en la categoría del bien
-        self.elasticidad_precio = ConfigEconomica.ELASTICIDADES_PRECIO[self.categoria]
-        self.elasticidad_ingreso = ConfigEconomica.ELASTICIDADES_INGRESO[self.categoria]
+        mapa_precio = getattr(ConfigEconomica, 'elasticidades_precio_map', {})
+        mapa_ingreso = getattr(ConfigEconomica, 'elasticidades_ingreso_map', {})
+        self.elasticidad_precio = mapa_precio.get(self.categoria, -0.8)
+        self.elasticidad_ingreso = mapa_ingreso.get(self.categoria, 1.0)
         
         # Características del bien
         self.es_bien_basico = self.categoria in ['alimentos_basicos', 'combustibles']

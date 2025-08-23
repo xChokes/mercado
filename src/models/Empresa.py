@@ -7,7 +7,22 @@ class Empresa(Persona):
     def __init__(self, nombre, mercado, bienes={}):
         super().__init__(mercado=mercado)
         self.nombre = nombre
-        self.bienes = bienes if bienes else {}
+        # Inicializar bienes sin compartir referencia con mercado.bienes
+        self.bienes = {}
+        if bienes and isinstance(bienes, dict):
+            try:
+                # Si los valores parecen objetos Bien (tienen 'categoria'), solo tomar las claves
+                if any(hasattr(v, 'categoria') for v in bienes.values()):
+                    for nombre_bien in bienes.keys():
+                        self.bienes[nombre_bien] = []
+                else:
+                    # Si ya es inventario (listas), copiar de forma segura
+                    for nombre_bien, valor in bienes.items():
+                        self.bienes[nombre_bien] = list(valor) if isinstance(valor, list) else []
+            except Exception:
+                # Fallback conservador
+                for nombre_bien in list(bienes.keys()):
+                    self.bienes[nombre_bien] = []
         self.dinero = random.randint(ConfigEconomica.DINERO_INICIAL_EMPRESA_MIN,
                                      ConfigEconomica.DINERO_INICIAL_EMPRESA_MAX)
         self.acciones_emitidas = 0

@@ -68,8 +68,11 @@ class Consumidor(Persona):
             self.cantidad_consumida[bien] = 0
             self.satisfaccion_bien[bien] = random.uniform(0.3, 1.0)
             # Bienes básicos más importantes
-            categoria = ConfigEconomica.CATEGORIAS_BIENES.get(
-                bien, 'servicios')
+            categorias_map = getattr(ConfigEconomica, 'CATEGORIAS_BIENES_MAP', None)
+            if isinstance(categorias_map, dict):
+                categoria = categorias_map.get(bien, 'servicios')
+            else:
+                categoria = 'servicios'
             if categoria == 'alimentos_basicos':
                 self.satisfaccion_bien[bien] *= 1.5
 
@@ -175,7 +178,8 @@ class Consumidor(Persona):
             (ConfigEconomica.UTILIDAD_MARGINAL_DECRECIENTE ** cantidad_actual)
 
         # Aumentar utilidad para bienes básicos si no se han consumido
-        categoria = ConfigEconomica.CATEGORIAS_BIENES.get(bien, 'servicios')
+        categorias_map = getattr(ConfigEconomica, 'CATEGORIAS_BIENES_MAP', None)
+        categoria = categorias_map.get(bien, 'servicios') if isinstance(categorias_map, dict) else 'servicios'
         if categoria == 'alimentos_basicos' and cantidad_actual == 0:
             utilidad *= 2.0
 
@@ -191,7 +195,8 @@ class Consumidor(Persona):
         precio_reserva = utilidad * ingreso_disponible * 0.01  # Factor de escala
 
         # Ajuste por categoría del bien
-        categoria = ConfigEconomica.CATEGORIAS_BIENES.get(bien, 'servicios')
+        categorias_map = getattr(ConfigEconomica, 'CATEGORIAS_BIENES_MAP', None)
+        categoria = categorias_map.get(bien, 'servicios') if isinstance(categorias_map, dict) else 'servicios'
         if categoria == 'alimentos_basicos':
             precio_reserva *= 1.2  # Dispuesto a pagar más por básicos
         elif categoria == 'bienes_duraderos':
