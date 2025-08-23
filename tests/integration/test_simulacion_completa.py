@@ -164,16 +164,16 @@ class TestIntegracionCompleta(unittest.TestCase):
         
         # Añadir agentes
         for i in range(self.config_test['simulacion']['num_consumidores']):
-            consumidor = Consumidor(mercado)
-            mercado.addPersona(consumidor)
+            consumidor = Consumidor(f"consumidor_{i}", mercado)
+            mercado.agregar_persona(consumidor)
         
         for i in range(self.config_test['simulacion']['num_empresas_productoras']):
             empresa = EmpresaProductora(f"Productora_{i}", mercado, bienes_test)
-            mercado.addPersona(empresa)
+            mercado.agregar_persona(empresa)
         
         for i in range(self.config_test['simulacion']['num_empresas_comerciales']):
-            empresa = Empresa(f"Comercial_{i}", mercado, bienes_test)
-            mercado.addPersona(empresa)
+            empresa = Empresa(f"Comercial_{i}", mercado, {})
+            mercado.agregar_persona(empresa)
         
         # Integrar sistemas
         integrar_sistemas_avanzados(mercado, self.configurador)
@@ -244,18 +244,18 @@ class TestBenchmarkPerformance(unittest.TestCase):
         # Crear mercado minimal
         bienes = {
             "comida": Bien("comida", "alimentos_basicos"),
-            "ropa": Bien("ropa", "manufacturados"),
-            "casa": Bien("casa", "servicios")
+            "ropa": Bien("ropa", "alimentos_lujo"),  # Use existing category
+            "casa": Bien("casa", "tecnologia")       # Use existing category
         }
         
         mercado = Mercado(bienes)
         
         # Añadir pocos agentes para acelerar
         for i in range(20):
-            mercado.addPersona(Consumidor(mercado))
+            mercado.agregar_persona(Consumidor(f"consumidor_{i}", mercado))
         
         for i in range(5):
-            mercado.addPersona(Empresa(f"Empresa_{i}", mercado, bienes))
+            mercado.agregar_persona(Empresa(f"Empresa_{i}", mercado, {}))
         
         # Ejecutar ciclos básicos
         for ciclo in range(1, num_ciclos + 1):
