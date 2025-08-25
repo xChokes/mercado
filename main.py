@@ -998,6 +998,24 @@ def generar_resultados_finales(mercado, tiempo_total, num_ciclos):
     logger.log_sistema(f"   Configuración JSON: {json_file}")
     logger.log_sistema(f"   Reporte: {reporte_file}")
 
+    # --- Persistencia ML: guardar modelos y registrar experimento ---
+    try:
+        if hasattr(mercado, 'analytics_ml'):
+            resumen = mercado.analytics_ml.guardar_modelos('results/ml_models')
+            run_path = mercado.analytics_ml.registrar_experimento(
+                nombre='simulacion_completa',
+                detalles={
+                    'tiempo_total': tiempo_total,
+                    'num_ciclos': num_ciclos,
+                    'pib_final': mercado.pib_historico[-1] if mercado.pib_historico else 0.0
+                },
+                base_dir='results/ml_runs'
+            )
+            logger.log_sistema(f"Modelos ML guardados: {resumen.get('modelos_guardados', 0)} en results/ml_models/")
+            logger.log_sistema(f"Experimento registrado: {run_path}")
+    except Exception as e:
+        logger.log_sistema(f"Advertencia: No se pudo guardar modelos ML: {e}")
+
 
 def main():
     """Función principal mejorada v3.0"""

@@ -64,6 +64,12 @@ class ValidadorEconomico:
         # Histórico para análisis de tendencias
         self.historico_indicadores = []
         self.regimen_economico_actual = "NORMAL"
+        # Configuración para validaciones sectoriales
+        self.rangos_sectoriales = {
+            'energia': {'precio_max': 5_000.0, 'participacion_pib_max': 0.25},
+            'tecnologia': {'precio_max': 50_000.0, 'participacion_pib_max': 0.40},
+            'alimentos': {'precio_max': 2_000.0, 'participacion_pib_max': 0.35},
+        }
 
     # --- Métodos de compatibilidad con tests unitarios básicos ---
     def validar_inflacion(self, inflacion: float) -> Dict:
@@ -244,6 +250,55 @@ class ValidadorEconomico:
         except Exception as e:
             self.logger.warning(f"Error detectando anomalías de precios: {e}")
         
+        return alertas
+
+    def validar_sectorial(self, mercado, ciclo: int) -> List[AlertaEconomica]:
+        """Validaciones sectoriales básicas (energía, tecnología, alimentos)"""
+        alertas: List[AlertaEconomica] = []
+        try:
+            # Requiere que el mercado tenga un sistema de precios y bienes con categorías
+            categorias = {}
+            if hasattr(mercado, 'bienes'):
+                for nombre, bien in mercado.bienes.items():
+                    categorias[nombre] = getattr(bien, 'categoria', '')
+
+            # Construir precios promedio por categoría
+            precios_cat: Dict[str, list] = {}
+            for persona in getattr(mercado, 'personas', []):
+                if hasattr(persona, 'precios'):
+                    for bien, precio in persona.precios.items():
+                        cat = categorias.get(bien, '')
+                        if not cat:
+                            continue
+                        precios_cat.setdefault(cat, []).append(precio)
+
+            # Reglas simples por macro-categoría
+            for cat, precios in precios_cat.items():
+                if not precios:
+                    continue
+                prom = sum(precios) / len(precios)
+                # Mapear categorías a los grupos normativos definidos
+                grupo = None
+                if 'energia' in cat.lower() or 'combust' in cat.lower():
+                    grupo = 'energia'
+                elif 'tecno' in cat.lower() or 'electron' in cat.lower() or 'software' in cat.lower():
+                    grupo = 'tecnologia'
+                elif 'alimento' in cat.lower() or 'agric' in cat.lower():
+                    grupo = 'alimentos'
+
+                if grupo and grupo in self.rangos_sectoriales:
+                    limite = self.rangos_sectoriales[grupo]['precio_max']
+                    if prom > limite:
+                        alertas.append(AlertaEconomica(
+                            TipoAlerta.ADVERTENCIA,
+                            f"precio_promedio_{grupo}",
+                            prom,
+                            (0.0, limite),
+                            f"Precio promedio sector {grupo} anómalo: {prom:.2f} > {limite:.2f}",
+                            ciclo
+                        ))
+        except Exception as e:
+            self.logger.warning(f"Error en validación sectorial: {e}")
         return alertas
     
     def calcular_indice_estabilidad(self, datos, ventana_ciclos: int = 10) -> float:
