@@ -721,9 +721,21 @@ class OrquestadorAgentesIA:
         """Resuelve concentración excesiva promoviendo diversidad"""
         print("[ORQUESTADOR] Resolviendo concentración excesiva...")
         
-        # Incentivar entrada de nuevos agentes (simulado)
-        # En implementación real, esto podría crear nuevos agentes
-        pass
+        # Incentivar entrada de nuevos agentes y diversificar estrategias
+        if hasattr(self, 'agentes_registrados') and len(self.agentes_registrados) > 0:
+            # Identificar agentes con estrategias similares
+            agentes_diversos = []
+            for agente_id in list(self.agentes_registrados.keys())[:5]:  # Tomar muestra pequeña
+                agente = self.agentes_registrados[agente_id]
+                if hasattr(agente, 'diversificar_estrategia'):
+                    try:
+                        agente.diversificar_estrategia()
+                        agentes_diversos.append(agente_id)
+                    except AttributeError:
+                        # Si no tiene el método, continuar sin error
+                        continue
+            
+            print(f"[ORQUESTADOR] Diversificadas estrategias de {len(agentes_diversos)} agentes")
     
     def _resolver_asimetria_informacion(self):
         """Resuelve asimetría de información promoviendo transparencia"""

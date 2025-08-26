@@ -1016,11 +1016,19 @@ class IntegradorAgentesIA:
             # Limpiar recursos
             if hasattr(self, 'sistema_deep_learning'):
                 # Finalizar deep learning si existe
-                pass
+                try:
+                    if hasattr(self.sistema_deep_learning, 'finalizar'):
+                        self.sistema_deep_learning.finalizar()
+                except Exception as e:
+                    self.logger.log_error(f"Error finalizando deep learning: {e}")
                 
             if hasattr(self, 'red_social_manager'):
                 # Finalizar red social si existe
-                pass
+                try:
+                    if hasattr(self.red_social_manager, 'finalizar'):
+                        self.red_social_manager.finalizar()
+                except Exception as e:
+                    self.logger.log_error(f"Error finalizando red social: {e}")
                 
             return True
         except Exception as e:
