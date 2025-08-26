@@ -63,9 +63,17 @@ Cada ejecución crea automáticamente en `results/`:
 - 📊 **Reportes comparativos** entre escenarios (batch)
 
 ### 📚 Documentación Completa
+
+#### 📖 **Documentación de Usuario**
 - **Guía de Usuario**: `docs/GUIA_USUARIO.md` - Manual completo con casos de uso
 - **Foco y Hoja de Ruta**: `docs/FOCO_Y_HOJA_DE_RUTA.md` - Objetivos y estado del MVP
 - **Estado de Implementación**: `docs/ESTADO_IMPLEMENTACION.md` - Funcionalidades y cobertura
+
+#### 🔧 **Documentación Técnica**
+- **📋 Índice de Documentación**: `docs/INDICE_DOCUMENTACION.md` - Guía completa de documentación técnica
+- **🏗️ Documentación Técnica Principal**: `docs/DOCUMENTACION_TECNICA.md` - Arquitectura y sistemas
+- **🤖 Guía de Agentes IA**: `docs/GUIA_AGENTES_IA.md` - Comportamientos y decisiones de agentes
+- **🔗 Patrones de Integración**: `docs/PATRONES_INTEGRACION.md` - Comunicación y flujos de datos
 
 ---
 
