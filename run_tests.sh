@@ -147,6 +147,47 @@ fi
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
 # === RESUMEN FINAL ===
+# === VALIDACIÓN DE ESCENARIOS ===
+echo ""
+echo "=============================================="
+print_status "🎯 VALIDACIÓN DE ESCENARIOS"
+echo "=============================================="
+
+print_status "Validando escenarios predefinidos..."
+
+# Ejecutar validación de KPIs si existe el script
+if [[ -f "scripts/validar_kpis.py" ]]; then
+    print_status "Ejecutando validación automática de KPIs..."
+    
+    # Crear archivo temporal para capturar salida
+    VALIDATION_LOG="test_reports/validation_kpis.log"
+    
+    if timeout 300 python3 scripts/validar_kpis.py --escenarios base shock_inflacion --solo-csv > "$VALIDATION_LOG" 2>&1; then
+        print_success "Validación de KPIs completada exitosamente"
+        PASSED_TESTS=$((PASSED_TESTS + 1))
+    else
+        print_warning "Validación de KPIs falló o no se pudo completar"
+        FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    
+    # Verificar que run_escenarios.py funcione
+    print_status "Probando ejecución batch de escenarios..."
+    
+    BATCH_LOG="test_reports/batch_escenarios.log"
+    if timeout 180 python3 run_escenarios.py --escenarios base --seed 42 > "$BATCH_LOG" 2>&1; then
+        print_success "Script batch de escenarios funciona correctamente"
+        PASSED_TESTS=$((PASSED_TESTS + 1))
+    else
+        print_warning "Script batch de escenarios falló"
+        FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    
+else
+    print_warning "Script de validación de KPIs no encontrado"
+fi
+
 echo ""
 echo "=============================================="
 print_status "📊 RESUMEN DE RESULTADOS"

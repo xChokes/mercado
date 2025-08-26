@@ -69,6 +69,8 @@ import time
 import random
 import logging
 import matplotlib.pyplot as plt
+import argparse
+import json
 
 # Añadir src al path de Python
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -413,7 +415,7 @@ def integrar_sistemas_avanzados(mercado, config):
     logger.log_configuracion("Todos los sistemas avanzados integrados")
 
 
-def ejecutar_simulacion_completa(config):
+def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
     """Ejecuta la simulación completa con todas las mejoras hiperrealistas v3.0"""
     logger.log_inicio("INICIANDO SIMULACIÓN ECONÓMICA HIPERREALISTA v3.0")
     logger.log_inicio("=" * 70)
@@ -886,7 +888,7 @@ REPORTE HIPERREALISTA v3.0 - CICLO {ciclo}/{num_ciclos}:
 
     # === RESULTADOS FINALES ===
     local_logger.log_sistema("Generando resultados finales de la simulación")
-    generar_resultados_finales(mercado, tiempo_total, num_ciclos)
+    generar_resultados_finales(mercado, tiempo_total, num_ciclos, prefijo_resultados=prefijo_resultados)
 
     # Log final de cierre
     local_logger.log_fin(
@@ -895,21 +897,22 @@ REPORTE HIPERREALISTA v3.0 - CICLO {ciclo}/{num_ciclos}:
     return mercado
 
 
-def generar_resultados_finales(mercado, tiempo_total, num_ciclos):
+def generar_resultados_finales(mercado, tiempo_total, num_ciclos, prefijo_resultados: str | None = None):
     """Genera y guarda todos los resultados finales"""
     logger.log_sistema("GENERANDO RESULTADOS FINALES...")
 
     # === DASHBOARD COMPLETO ===
     mercado.dashboard.crear_dashboard_completo(
-        num_ciclos, guardar_archivo=True)
+        num_ciclos, guardar_archivo=True, prefijo=prefijo_resultados)
 
     # === REPORTE TEXTUAL ===
     logger.log_reporte("Reporte textual generado:")
     logger.log_reporte(mercado.dashboard.generar_reporte_textual())
 
     # === EXPORTAR DATOS ===
+    prefijo = prefijo_resultados or "simulacion_v2_1"
     csv_file, json_file, reporte_file = exportar_resultados_completos(
-        mercado.dashboard, prefijo="simulacion_v2_1"
+        mercado.dashboard, prefijo=prefijo
     )
 
     # === ESTADÍSTICAS ADICIONALES ===
@@ -1037,14 +1040,64 @@ def main():
     logger.log_inicio("=" * 70)
 
     try:
+        # CLI: argumentos de escenario y semilla
+        parser = argparse.ArgumentParser(description="Simulador de Mercado Hiperrealista v3.0")
+        parser.add_argument("--escenario", type=str, default=None, help="Ruta a archivo JSON de escenario o nombre en carpeta 'escenarios/'")
+        parser.add_argument("--seed", type=int, default=None, help="Semilla para aleatoriedad")
+        args, unknown = parser.parse_known_args()
+
+        # Semilla determinista opcional
+        if args.seed is not None:
+            try:
+                random.seed(args.seed)
+                import numpy as _np
+                _np.random.seed(args.seed)
+            except Exception:
+                pass
+
         # Cargar configuración
         logger.log_configuracion("Cargando configuración...")
         logger.log_inicio("Cargando configuración del simulador")
         configurador = ConfiguradorSimulacion()
 
+        # Si se especifica un escenario, intentar cargarlo
+        escenario_nombre = None
+        if args.escenario:
+            def _deep_merge(base, overlay):
+                if not isinstance(base, dict) or not isinstance(overlay, dict):
+                    return overlay
+                result = dict(base)
+                for k, v in overlay.items():
+                    if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+                        result[k] = _deep_merge(result[k], v)
+                    else:
+                        result[k] = v
+                return result
+            ruta = args.escenario
+            if not os.path.isabs(ruta) and not os.path.exists(ruta):
+                ruta = os.path.join(os.path.dirname(__file__), "escenarios", args.escenario if args.escenario.endswith('.json') else f"{args.escenario}.json")
+            if os.path.exists(ruta):
+                try:
+                    with open(ruta, 'r', encoding='utf-8') as f:
+                        escenario_cfg = json.load(f)
+                    # Merge profundo sobre config base ya cargada
+                    configurador.config = _deep_merge(configurador.config, escenario_cfg)
+                    escenario_nombre = os.path.splitext(os.path.basename(ruta))[0]
+                    logger.log_configuracion(f"✅ Escenario cargado: {ruta}")
+                except Exception as e:
+                    logger.log_configuracion(f"⚠️  No se pudo cargar el escenario '{ruta}': {e}. Se usará configuración por defecto.")
+            else:
+                logger.log_configuracion(f"⚠️  Escenario no encontrado: {ruta}. Se usará configuración por defecto.")
+
         # Ejecutar simulación
         logger.log_inicio("Iniciando ejecución de simulación hiperrealista")
-        mercado = ejecutar_simulacion_completa(configurador)
+        prefijo_resultados = None
+        if escenario_nombre:
+            prefijo_resultados = f"esc_{escenario_nombre}"
+            if args.seed is not None:
+                prefijo_resultados += f"_seed{args.seed}"
+
+        mercado = ejecutar_simulacion_completa(configurador, prefijo_resultados=prefijo_resultados)
 
         logger.log_fin(
             "Simulación exitosa - SISTEMA DE AGENTES IA IMPLEMENTADO correctamente")

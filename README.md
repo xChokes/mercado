@@ -1,6 +1,73 @@
 # 🤖 Simulación de Mercado con Agentes IA Hiperrealistas
 
-Este proyecto implementa una simulación avanzada de mercado económico con **agentes de inteligencia artificial hiperrealistas** que aprenden, se adaptan, forman coaliciones y evolcionan estratégicamente.
+Este proyecto implementa una simulación avanzada de mercado económico con **agentes de inteligencia artificial hiperrealistas** que aprenden, se adaptan, forman coaliciones y evolución estratégicamente.
+
+> **🎯 MVP Actual: PriceLab-Mercado** - Simulador ligero de estrategia de precios y shocks macro optimizado para análisis comercial (consulta `docs/FOCO_Y_HOJA_DE_RUTA.md`)
+
+## 🚀 Inicio Rápido - PriceLab
+
+### Instalación y Configuración
+```bash
+# 1. Verificar Python 3.12+
+python3 --version
+
+# 2. Instalar dependencias (5-10 minutos)
+python3 -m pip install -r requirements.txt
+
+# 3. Ejecutar simulación base
+python3 main.py --escenario base --seed 42
+```
+
+### Escenarios Predefinidos para Análisis de Pricing
+```bash
+# Escenario Base (línea base estable)
+python3 main.py --escenario base --seed 42
+
+# Shock de Inflación + Política Monetaria  
+python3 main.py --escenario shock_inflacion --seed 42
+
+# Subsidio a Demanda + Restricción de Oferta
+python3 main.py --escenario subsidio_y_restriccion_oferta --seed 42
+
+# Ejecutar todos los escenarios y generar reporte comparativo
+python3 run_escenarios.py --escenarios base shock_inflacion subsidio_y_restriccion_oferta --seed 42
+```
+
+### Demo Comparativo Interactivo
+```bash
+# Análisis completo Base vs Shock de Inflación con gráficas
+python3 demo_comparativo.py --seed 42
+
+# Versión rápida (25 ciclos)
+python3 demo_comparativo.py --ciclos 25 --seed 42
+```
+
+### Validación y Quality Assurance
+```bash
+# Validar KPIs automáticamente
+python3 scripts/validar_kpis.py --escenarios base shock_inflacion
+
+# Suite completa de tests (incluye validación de escenarios)
+./run_tests.sh
+
+# Solo validar archivos CSV existentes
+python3 scripts/validar_kpis.py --solo-csv
+```
+
+### Resultados Generados
+Cada ejecución crea automáticamente en `results/`:
+- 📊 **Dashboard visual** con gráficas de PIB, inflación, precios por categoría
+- 📈 **Datos CSV** con series temporales completas 
+- 📋 **Reporte ejecutivo** con KPIs y insights automáticos
+- ⚙️ **Configuración** usada para reproducibilidad
+- 📊 **Reportes comparativos** entre escenarios (batch)
+
+### 📚 Documentación Completa
+- **Guía de Usuario**: `docs/GUIA_USUARIO.md` - Manual completo con casos de uso
+- **Foco y Hoja de Ruta**: `docs/FOCO_Y_HOJA_DE_RUTA.md` - Objetivos y estado del MVP
+- **Estado de Implementación**: `docs/ESTADO_IMPLEMENTACION.md` - Funcionalidades y cobertura
+
+---
 
 ## 🚀 Características Revolucionarias
 
@@ -59,6 +126,16 @@ src/systems/                     # Sistemas económicos
 ### Ejecutar Ejemplo Completo
 ```bash
 python ejemplo_uso_completo.py
+```
+
+### Ejecutar escenarios (MVP PriceLab)
+```bash
+python main.py --escenario base --seed 42
+python main.py --escenario shock_inflacion --seed 42
+python main.py --escenario subsidio_y_restriccion_oferta --seed 42
+
+# Batch y comparativo
+python run_escenarios.py --escenarios base shock_inflacion subsidio_y_restriccion_oferta --seed 42
 ```
 
 ### Implementación Básica
@@ -356,6 +433,7 @@ MIT License - Libre para uso académico y comercial
 ## � Estado de Implementación
 
 - Resumen actualizado del avance, cambios recientes y backlog: ver `docs/ESTADO_IMPLEMENTACION.md`.
+- Objetivo, KPIs y hoja de ruta: ver `docs/FOCO_Y_HOJA_DE_RUTA.md`.
 
 ## �📚 Casos de Uso
 

@@ -287,8 +287,12 @@ class PredictorDemanda:
 
         try:
             caracteristicas = self.extraer_caracteristicas(mercado, bien)
-            X_scaled = self.scaler.transform([caracteristicas])
-            demanda_predicha = self.modelo.predict(X_scaled)[0]
+            # Usar datos sin escalar para modelos de árboles; escalar solo para fallback lineal
+            if str(getattr(self, 'modelo_tipo', '')).startswith('LinearRegression'):
+                X_in = self.scaler.transform([caracteristicas])
+            else:
+                X_in = [caracteristicas]
+            demanda_predicha = self.modelo.predict(X_in)[0]
 
             # Asegurar que sea positiva y razonable
             return max(1, min(1000, int(demanda_predicha)))
@@ -600,6 +604,10 @@ class SistemaAnalyticsML:
         # Configuración ML
         self.config_ml = configurador.obtener_seccion('machine_learning') or {}
         self.frecuencia_analisis_ml = int(self.config_ml.get('reentrenar_cada_ciclos', 10) or 10)
+        self.save_every_cycles = int(self.config_ml.get('guardar_cada_ciclos', 20) or 20)
+        self.retrain_on_regime_change = bool(self.config_ml.get('reentrenar_al_cambio_regimen', True))
+        self._ultimo_regimen = getattr(self.mercado, 'fase_ciclo_economico', None)
+        self._ultimo_guardado_ciclo = 0
         # Logger
         self._logger = get_simulador_logger()
 
@@ -607,10 +615,15 @@ class SistemaAnalyticsML:
         """Ejecuta ciclo de análisis y optimización"""
         self.ciclo_analisis += 1
 
-        # Solo hacer análisis cada N ciclos (configurable)
-        if self.frecuencia_analisis_ml <= 0:
-            return
-        if self.ciclo_analisis % self.frecuencia_analisis_ml != 0:
+        # Decidir si ejecutar análisis por cadencia o por cambio de régimen
+        regimen_actual = getattr(self.mercado, 'fase_ciclo_economico', None)
+        cambio_regimen = (regimen_actual != self._ultimo_regimen)
+
+        ejecutar_por_cadencia = (self.frecuencia_analisis_ml > 0 and 
+                                  self.ciclo_analisis % self.frecuencia_analisis_ml == 0)
+        ejecutar_por_regimen = (self.retrain_on_regime_change and cambio_regimen)
+
+        if not (ejecutar_por_cadencia or ejecutar_por_regimen):
             return
 
         # Entrenar predictores de demanda
@@ -633,14 +646,37 @@ class SistemaAnalyticsML:
                 mae_vals.append(m['mae_cv'])
         mape_avg = float(np.mean(mape_vals)) if mape_vals else None
         mae_avg = float(np.mean(mae_vals)) if mae_vals else None
-        self._logger.log_ml(
-            f"Analytics ciclo {self.ciclo_analisis}: modelos entrenados={entrenados}, MAPE_cv_prom={mape_avg}, MAE_cv_prom={mae_avg}"
-        )
+        mensaje_metrics = (f"Analytics ciclo {self.ciclo_analisis}: modelos entrenados={entrenados}, "
+                           f"MAPE_cv_prom={mape_avg}, MAE_cv_prom={mae_avg}, "
+                           f"motivo={'regimen' if ejecutar_por_regimen and not ejecutar_por_cadencia else 'cadencia'}")
+        self._logger.log_ml(mensaje_metrics)
+
+        # Registrar experimento ligero con métricas
+        try:
+            self.registrar_experimento(
+                nombre=f"analytics_ciclo_{self.ciclo_analisis}",
+                detalles={'mape_cv_prom': mape_avg, 'mae_cv_prom': mae_avg, 'entrenados': entrenados,
+                          'regimen': regimen_actual, 'cambio_regimen': cambio_regimen}
+            )
+        except Exception:
+            pass
         # Clusterizar consumidores con menor frecuencia
         freq_cluster = max(2 * self.frecuencia_analisis_ml, 10)
         if self.ciclo_analisis % freq_cluster == 0:
             clusters = self.clusterizador.clusterizar_consumidores(self.mercado)
             self.analisis_clusters = self.clusterizador.analizar_clusters(clusters)
+
+        # Guardado automático de modelos
+        if self.save_every_cycles > 0:
+            debe_guardar = (self.ciclo_analisis % self.save_every_cycles == 0) or ejecutar_por_regimen
+            if debe_guardar and self.ciclo_analisis != self._ultimo_guardado_ciclo:
+                resumen = self.guardar_modelos('results/ml_models')
+                self._logger.log_ml(f"Modelos guardados: {resumen.get('modelos_guardados', 0)}/" 
+                                    f"{resumen.get('total_bienes', 0)} (ciclo {self.ciclo_analisis})")
+                self._ultimo_guardado_ciclo = self.ciclo_analisis
+
+        # Actualizar régimen observado
+        self._ultimo_regimen = regimen_actual
 
     def obtener_prediccion_demanda(self, bien, *args, **kwargs):
         """Obtiene predicción de demanda para un bien.

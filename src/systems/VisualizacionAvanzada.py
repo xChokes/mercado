@@ -96,7 +96,7 @@ class DashboardEconomico:
             depositos_totales)
         self.metricas_historicas['prestamos_totales'].append(prestamos_totales)
 
-    def crear_dashboard_completo(self, ciclo_actual, guardar_archivo=True):
+    def crear_dashboard_completo(self, ciclo_actual, guardar_archivo=True, prefijo=None):
         """Crea un dashboard completo con múltiples gráficos"""
         fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)
               ) = plt.subplots(3, 2, figsize=(16, 12))
@@ -169,7 +169,8 @@ class DashboardEconomico:
 
         if guardar_archivo:
             timestamp = int(datetime.now().timestamp())
-            filename = f'results/dashboard_economico_completo_{timestamp}.png'
+            prefix = f"{prefijo}_" if prefijo else ""
+            filename = f'results/{prefix}dashboard_economico_completo_{timestamp}.png'
             os.makedirs('results', exist_ok=True)
             plt.savefig(filename, dpi=300, bbox_inches='tight')
             print(f"📊 Dashboard guardado: {filename}")
