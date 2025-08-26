@@ -417,8 +417,21 @@ class CicloEconomicoRealista:
     def _aplicar_euforia_especulativa(self):
         """Aplica efectos de euforia especulativa durante transición a pico"""
         print("💰 EUFORIA ESPECULATIVA: Mercados en máximos históricos")
-        # Aquí se aplicarían efectos de burbuja especulativa si fuera necesario
-        pass
+        
+        # Efectos de burbuja especulativa en el mercado
+        if hasattr(self.mercado, 'factor_especulativo'):
+            # Incrementar factor especulativo durante euforia
+            self.mercado.factor_especulativo = min(1.5, self.mercado.factor_especulativo * 1.1)
+        
+        # Inflacionar precios durante euforia (simulando burbuja)
+        if hasattr(self.mercado, 'aplicar_factor_precio'):
+            self.mercado.aplicar_factor_precio(1.02)  # 2% de inflación especulativa
+        elif hasattr(self.mercado, 'getEmpresas'):
+            # Fallback: aplicar directamente a empresas
+            for empresa in self.mercado.getEmpresas():
+                if hasattr(empresa, 'precios'):
+                    for bien in empresa.precios:
+                        empresa.precios[bien] *= 1.02
     
     def _evaluar_shocks_externos(self, ciclo):
         """Evalúa y aplica shocks económicos externos"""

@@ -82,7 +82,8 @@ class RelacionAgente:
             self.tipo = TipoRelacion.NEUTRAL
         else:
             # Mantener tipo actual o asignar por contexto
-            pass
+            # Si no hay cambios significativos, mantener relación existente
+            return
 
 
 @dataclass

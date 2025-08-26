@@ -48,8 +48,8 @@ class BaseAgent:
             with open(self._decision_log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record, ensure_ascii=False) + "\n")
         except Exception:
-            # Logging best-effort, no romper simulación
-            pass
+            # Logging best-effort, no romper simulación si falla el logging
+            return
 
     # Normalización y clamps
     @staticmethod
@@ -69,9 +69,28 @@ class BaseAgent:
 
     # Persistencia (stubs)
     def save_state(self, path: str) -> None:
-        # implementaciones concretas pueden sobrescribir
-        pass
+        """Guarda el estado del agente a un archivo (implementación base)"""
+        try:
+            state = {
+                'agent_id': self._agent_id,
+                'decision_log_enabled': self._decision_log_enabled,
+                'decision_log_path': self._decision_log_path
+            }
+            import json
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(state, f, ensure_ascii=False, indent=2)
+        except Exception:
+            # Logging best-effort, no romper simulación
+            return
 
     def load_state(self, path: str) -> None:
-        # implementaciones concretas pueden sobrescribir
-        pass
+        """Carga el estado del agente desde un archivo (implementación base)"""
+        try:
+            import json
+            with open(path, 'r', encoding='utf-8') as f:
+                state = json.load(f)
+            self._decision_log_enabled = state.get('decision_log_enabled', False)
+            self._decision_log_path = state.get('decision_log_path')
+        except Exception:
+            # Logging best-effort, no romper simulación
+            return

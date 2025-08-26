@@ -269,39 +269,21 @@ class GestorRescateEmpresarial:
             # 6. Garantizar empleados mínimos
             if hasattr(empresa, 'empleados') and len(empresa.empleados) == 0:
                 # Nota: El sistema de contratación se encargará en el próximo ciclo
-                pass
+                # Marcar para priorización en contratación
+                if not hasattr(empresa, '_necesita_contratacion_urgente'):
+                    empresa._necesita_contratacion_urgente = True
         
         # Actualizar contabilidad del rescate
         costo_real = min(costo_rescate, capital_rescate)
         self.fondo_rescate -= costo_real
+        
+        # Inicializar contador de empresas rescatadas si no existe
+        if not hasattr(self, 'total_gastado'):
+            self.total_gastado = 0
+        if not hasattr(self, 'empresas_rescatadas'):
+            self.empresas_rescatadas = []
+            
         self.total_gastado += costo_real
-        self.empresas_rescatadas += 1
-        
-        self.logger.log_sistema(
-            f"RESCATE EXITOSO: {empresa.nombre} rescatada con ${capital_rescate:,.0f} "
-            f"(costo: ${costo_real:,.0f}, fondo restante: ${self.fondo_rescate:,.0f})"
-        )
-        
-        return True
-        else:
-            empresa.dinero = 75000  # Capital inicial más alto
-        
-        # MEJORA: Reestructuración de costos para viabilidad
-        if hasattr(empresa, 'costos_fijos_mensuales'):
-            empresa.costos_fijos_mensuales *= 0.7  # Reducir costos fijos 30%
-        
-        # Reset de contadores de crisis
-        if hasattr(empresa, 'ciclos_sin_actividad'):
-            empresa.ciclos_sin_actividad = 0
-        if hasattr(empresa, 'en_quiebra'):
-            empresa.en_quiebra = False
-        
-        # Reducir fondo de rescate (pero de forma más conservadora)
-        costo_real = min(costo_rescate, self.fondo_rescate * 0.3)  # Máximo 30% del fondo
-        self.fondo_rescate -= costo_rescate
-        
-        # Condiciones del rescate
-        self._aplicar_condiciones_rescate(empresa)
         
         # Registrar rescate
         self.empresas_rescatadas.append({
@@ -312,7 +294,8 @@ class GestorRescateEmpresarial:
         })
         
         self.logger.log_sistema(
-            f"🚑 RESCATE: {empresa.nombre} rescatada por ${costo_rescate:,.0f} en ciclo {ciclo}"
+            f"RESCATE EXITOSO: {empresa.nombre} rescatada con ${capital_rescate:,.0f} "
+            f"(costo: ${costo_real:,.0f}, fondo restante: ${self.fondo_rescate:,.0f})"
         )
         
         return True

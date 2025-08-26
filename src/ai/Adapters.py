@@ -40,8 +40,10 @@ class ConsumidorAdapter(BaseAgent, IAgent):
         if hasattr(self._wrapped, "ciclo_persona") and mercado is not None:
             try:
                 self._wrapped.ciclo_persona(ciclo, mercado)
-            except Exception:
-                pass
+            except Exception as e:
+                # Log del error pero no interrumpir el flujo del agente
+                import logging
+                logging.getLogger(__name__).debug(f"Error en ciclo_persona de {self.agent_id}: {e}")
         return {"status": "ok"}
 
     def learn(self, feedback: Dict[str, Any]) -> None:
@@ -77,8 +79,10 @@ class EmpresaAdapter(BaseAgent, IAgent):
         if hasattr(self._wrapped, "ciclo_persona") and mercado is not None:
             try:
                 self._wrapped.ciclo_persona(ciclo, mercado)
-            except Exception:
-                pass
+            except Exception as e:
+                # Log del error pero no interrumpir el flujo del agente
+                import logging
+                logging.getLogger(__name__).debug(f"Error en ciclo_persona empresa de {self.agent_id}: {e}")
         return {"status": "ok"}
 
     def learn(self, feedback: Dict[str, Any]) -> None:

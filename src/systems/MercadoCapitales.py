@@ -515,8 +515,16 @@ class BolsaValores:
                 accion.volumen_diario += cantidad
                 
         elif self.sentimiento_mercado < 0.3 and random.random() < 0.6:  # Vender en pánico
-            # Simular venta (no trackeo cartera retail individual por simplicidad)
-            pass
+            # Simular venta durante pánico del mercado
+            acciones_para_vender = [a for a in self.acciones.values() if a.precio > a.precio_inicial * 0.5]
+            if acciones_para_vender:
+                accion_venta = random.choice(acciones_para_vender)
+                cantidad_venta = random.randint(1, 20)
+                
+                # Reducir precio por presión de venta
+                factor_venta = 0.98  # 2% reducción por venta
+                accion_venta.precio *= factor_venta
+                accion_venta.volumen_diario += cantidad_venta
     
     def _actualizar_metricas_mercado(self):
         """Actualiza métricas generales del mercado"""

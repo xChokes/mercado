@@ -565,8 +565,20 @@ class AgentCommunicationProtocol:
         info = mensaje.contenido
         
         # Actualizar conocimiento del mercado basándose en información recibida
-        # (Esto se integraría con el sistema de memoria del agente)
-        pass
+        # Almacenar información básica para futuras decisiones
+        if 'precios' in info:
+            # Actualizar conocimiento de precios del mercado
+            for bien, precio in info['precios'].items():
+                if bien not in hasattr(self, '_precios_conocidos') and not hasattr(self, '_precios_conocidos'):
+                    self._precios_conocidos = {}
+                self._precios_conocidos[bien] = precio
+        
+        # Procesar alertas importantes
+        if info.get('tipo') == 'alerta' and info.get('urgencia', 0) > 0.7:
+            # Las alertas importantes podrían afectar estrategias futuras
+            if not hasattr(self, '_alertas_recientes'):
+                self._alertas_recientes = []
+            self._alertas_recientes.append(info)
     
     def _handle_coordinacion_compra(self, mensaje: Mensaje):
         """Maneja propuestas de coordinación de compra"""
@@ -648,13 +660,43 @@ class AgentCommunicationProtocol:
     
     def _procesar_señal_mercado(self, señal: SeñalMercado):
         """Procesa una señal de mercado para tomar decisiones"""
-        # Esta lógica se integraría con el motor de decisiones IA del agente
+        # Procesar señales para influir en futuras decisiones del agente
+        if not hasattr(self, '_señales_procesadas'):
+            self._señales_procesadas = []
+        
         if señal.tipo_señal == "precio_alto" and señal.confianza > 0.7:
-            # Considerar venta si tenemos el bien
-            pass
+            # Registrar oportunidad de venta para bien específico
+            self._registrar_oportunidad('venta', señal.bien, señal.intensidad)
         elif señal.tipo_señal == "demanda_baja" and señal.confianza > 0.6:
-            # Considerar reducir producción
-            pass
+            # Registrar necesidad de reducir inversión en el bien
+            self._registrar_oportunidad('reducir_produccion', señal.bien, señal.intensidad)
+        elif señal.tipo_señal == "oportunidad" and señal.confianza > 0.5:
+            # Registrar nueva oportunidad de negocio
+            self._registrar_oportunidad('expansion', señal.bien, señal.intensidad)
+            
+        # Mantener historial limitado de señales
+        self._señales_procesadas.append({
+            'señal': señal,
+            'timestamp': señal.timestamp
+        })
+        if len(self._señales_procesadas) > 50:
+            self._señales_procesadas.pop(0)
+    
+    def _registrar_oportunidad(self, tipo: str, bien: str, intensidad: float):
+        """Registra una oportunidad identificada por señales de mercado"""
+        if not hasattr(self, '_oportunidades'):
+            self._oportunidades = []
+        
+        self._oportunidades.append({
+            'tipo': tipo,
+            'bien': bien,
+            'intensidad': intensidad,
+            'timestamp': datetime.now()
+        })
+        
+        # Mantener solo las 20 oportunidades más recientes
+        if len(self._oportunidades) > 20:
+            self._oportunidades.pop(0)
     
     def _generar_respuesta_negociacion(self, negociacion: Negociacion, 
                                      contenido: Dict[str, Any]) -> Dict[str, Any]:

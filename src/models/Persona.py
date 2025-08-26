@@ -15,7 +15,9 @@ class Persona:
         
     def decidir_compra(self, mercado, ciclo):
         """Método básico de decisión de compra - se sobrescribe en subclases"""
-        pass
+        # Implementación base: no tomar decisiones específicas, 
+        # las subclases implementarán la lógica específica
+        return []
         
     def comprar_bien(self, empresa, bien, cantidad, mercado, ciclo):
         """Método básico de compra - se sobrescribe en subclases"""
@@ -35,7 +37,9 @@ class Persona:
 
     def actualizar_ingresos(self):
         """Método básico de actualización de ingresos"""
-        pass
+        # Implementación base: sin cambios en ingresos
+        # Las subclases implementarán lógica específica (empleados, empresarios, etc.)
+        return
     
     def getPreferencias(self):
         return self.preferencias

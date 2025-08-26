@@ -658,8 +658,9 @@ class SistemaAnalyticsML:
                 detalles={'mape_cv_prom': mape_avg, 'mae_cv_prom': mae_avg, 'entrenados': entrenados,
                           'regimen': regimen_actual, 'cambio_regimen': cambio_regimen}
             )
-        except Exception:
-            pass
+        except Exception as e:
+            # Si falla el registro, continuar sin interrumpir el análisis
+            self._logger.log_debug(f"Error registrando experimento: {e}")
         # Clusterizar consumidores con menor frecuencia
         freq_cluster = max(2 * self.frecuencia_analisis_ml, 10)
         if self.ciclo_analisis % freq_cluster == 0:
@@ -785,8 +786,9 @@ class SistemaAnalyticsML:
         try:
             with open(os.path.join(base_dir, 'resumen.json'), 'w', encoding='utf-8') as f:
                 json.dump(resumen, f, ensure_ascii=False, indent=2)
-        except Exception:
-            pass
+        except Exception as e:
+            # Si falla guardar resumen, no es crítico, continuar
+            self._logger.log_debug(f"Error guardando resumen de modelos: {e}")
         return resumen
 
     def cargar_modelos(self, base_dir: str = 'results/ml_models') -> int:
@@ -821,6 +823,7 @@ class SistemaAnalyticsML:
         try:
             with open(ruta, 'w', encoding='utf-8') as f:
                 json.dump(registro, f, ensure_ascii=False, indent=2)
-        except Exception:
-            pass
+        except Exception as e:
+            # Si falla guardar experimento, no es crítico, continuar
+            self._logger.log_debug(f"Error guardando experimento: {e}")
         return ruta
