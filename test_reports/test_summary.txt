@@ -1,6 +1,6 @@
 REPORTE DE TESTS - SIMULADOR DE MERCADO HIPERREALISTA
 =====================================================
-Fecha: Wed Aug 27 08:37:22 UTC 2025
+Fecha: Wed Aug 27 09:00:29 UTC 2025
 Tests ejecutados: 11
 Tests pasados: 10  
 Tests fallidos: 1
