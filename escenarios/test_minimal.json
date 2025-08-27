@@ -1,0 +1,44 @@
+{
+  "simulacion": {
+    "num_ciclos": 5,
+    "num_consumidores": 20,
+    "num_empresas_productoras": 2,
+    "num_empresas_comerciales": 2,
+    "frecuencia_reportes": 5,
+    "activar_crisis": false,
+    "tiempo_maximo_crisis": 5
+  },
+  "economia": {
+    "pib_inicial": 50000,
+    "tasa_desempleo_inicial": 0.15,
+    "tasa_inflacion_objetivo": 0.02,
+    "salario_base_minimo": 2000,
+    "capital_inicial_empresas": { "min": 50000, "max": 200000 },
+    "dinero_inicial_consumidores": { "min": 3000, "max": 8000 }
+  },
+  "sistema_bancario": {
+    "activar": true,
+    "num_bancos": 1,
+    "capital_inicial_bancos": 1000000,
+    "tasa_interes_base": 0.05,
+    "ratio_prestamo_ingreso": 5.0
+  },
+  "precios": {
+    "ajuste_maximo_por_ciclo": 0.15,
+    "margen_minimo": 0.05,
+    "margen_maximo": 3.0,
+    "sensibilidad_competencia": 0.1,
+    "sensibilidad_stock": 0.15
+  },
+  "agentes_ia": {
+    "activar": false,
+    "num_consumidores": 2,
+    "num_empresas": 1,
+    "deep_learning": false,
+    "redes_sociales": false,
+    "coaliciones": false,
+    "logs_detallados": false,
+    "duracion_minutos": 1
+  },
+  "machine_learning": { "activar": false, "generar_datos_sinteticos": false, "num_datos_sinteticos": 5, "reentrenar_cada_ciclos": 10 }
+}
