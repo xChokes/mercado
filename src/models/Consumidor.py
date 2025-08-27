@@ -554,6 +554,30 @@ class Consumidor(Persona):
         # 10% de probabilidad si tiene liquidez
         return self.dinero > self.ingreso_mensual * 3 and random.random() < 0.1
 
+    def comprar(self, producto, cantidad):
+        """Método simplificado de compra para compatibilidad con tests"""
+        # Buscar empresas que vendan este producto
+        empresas_disponibles = []
+        for empresa in self.mercado.getEmpresas():
+            if producto in empresa.precios and empresa.precios[producto] > 0:
+                # Verificar si la empresa tiene stock (si usa inventario)
+                if hasattr(empresa, 'bienes') and producto in empresa.bienes:
+                    stock = len(empresa.bienes[producto]) if isinstance(empresa.bienes[producto], list) else empresa.bienes[producto]
+                    if stock > 0:
+                        empresas_disponibles.append(empresa)
+                else:
+                    # Si no maneja inventario, asumir que puede vender
+                    empresas_disponibles.append(empresa)
+        
+        if not empresas_disponibles:
+            return False
+        
+        # Elegir la empresa con el precio más bajo
+        empresa_elegida = min(empresas_disponibles, key=lambda e: e.precios[producto])
+        
+        # Intentar comprar usando el método mejorado
+        return self.comprar_bien_mejorado(empresa_elegida, producto, cantidad, self.mercado, 0)
+
     def __str__(self):
         empleado_str = "Empleado" if self.empleado else "Desempleado"
         return f"{self.nombre} - Dinero: ${self.dinero:.2f} - {empleado_str} - Ingreso: ${self.ingreso_mensual:.2f}"

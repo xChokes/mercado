@@ -64,13 +64,13 @@ class TestRobustezSistema(unittest.TestCase):
         for i in range(10):
             consumidor = Consumidor(f"Consumidor_{i}", mercado)
             consumidores.append(consumidor)
-            mercado.agregar_consumidor(consumidor)
+            mercado.agregar_persona(consumidor)
         
         empresas = []
         for i in range(5):
             empresa = Empresa(f"Empresa_{i}", mercado)
             empresas.append(empresa)
-            mercado.agregar_empresa_productora(empresa)
+            mercado.agregar_persona(empresa)
         
         # Simular operaciones concurrentes
         for i in range(100):
@@ -78,7 +78,7 @@ class TestRobustezSistema(unittest.TestCase):
             if i % 3 == 0:
                 # Agregar más consumidores
                 nuevo_consumidor = Consumidor(f"NuevoConsumidor_{i}", mercado)
-                mercado.agregar_consumidor(nuevo_consumidor)
+                mercado.agregar_persona(nuevo_consumidor)
             elif i % 3 == 1:
                 # Cambiar precios
                 if empresas:
@@ -93,7 +93,7 @@ class TestRobustezSistema(unittest.TestCase):
                         consumidor.comprar(bien_nombre, 1)
         
         # El mercado debería mantenerse consistente
-        self.assertGreater(len(mercado.consumidores), 10)
+        self.assertGreater(len(mercado.getConsumidores()), 10)
         self.assertEqual(len(mercado.empresas_productoras), 5)
     
     def test_validador_economico_datos_inconsistentes(self):
@@ -127,7 +127,7 @@ class TestRobustezSistema(unittest.TestCase):
                 mercado = Mercado()
                 for j in range(10):
                     consumidor = Consumidor(f"C_{i}_{j}", mercado)
-                    mercado.agregar_consumidor(consumidor)
+                    mercado.agregar_persona(consumidor)
                 objetos.append(mercado)
             
             # El sistema debería seguir funcionando
@@ -219,18 +219,19 @@ class TestRecuperacionErrores(unittest.TestCase):
         
         # Añadir datos normales
         consumidor = Consumidor("Normal", mercado)
-        mercado.agregar_consumidor(consumidor)
+        mercado.agregar_persona(consumidor)
         
-        # Simular error corrupted state
-        mercado.consumidores = None  # Estado corrupto
+        # NOTE: The original test tried to corrupt 'consumidores' attribute but 
+        # Mercado class doesn't have this attribute (uses 'personas' instead)
+        # Simulating corruption by clearing personas list instead
+        mercado.personas = []
         
         # Recuperar
-        mercado.consumidores = []
-        mercado.agregar_consumidor(Consumidor("Recuperado", mercado))
+        mercado.agregar_persona(Consumidor("Recuperado", mercado))
         
         # Debería funcionar después de la recuperación
-        self.assertEqual(len(mercado.consumidores), 1)
-        self.assertEqual(mercado.consumidores[0].nombre, "Recuperado")
+        self.assertEqual(len(mercado.getConsumidores()), 1)
+        self.assertEqual(mercado.getConsumidores()[0].nombre, "Recuperado")
     
     @patch('builtins.open', side_effect=IOError("Simulated IO Error"))
     def test_manejo_error_io(self, mock_open):

@@ -534,6 +534,12 @@ class Mercado:
             [t for t in self.transacciones if t.get('ciclo') == self.ciclo_actual])
         self.volumen_transacciones.append(transacciones_ciclo)
 
+    def calcular_pib_total(self):
+        """Calcula y retorna el PIB total actual"""
+        # Always do a fresh calculation to reflect current state
+        self.registrar_estadisticas()
+        return self.pib_historico[-1] if self.pib_historico else 0
+
     def ejecutar_ciclo(self, ciclo):
         """Ejecuta un ciclo completo del mercado con todos los efectos macroeconómicos"""
         self.ciclo_actual = ciclo
