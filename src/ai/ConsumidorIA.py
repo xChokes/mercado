@@ -8,6 +8,7 @@ adapta comportamientos, negocia precios y forma alianzas estratégicas.
 
 import numpy as np
 import random
+import logging
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -51,6 +52,9 @@ class ConsumidorIA(Consumidor):
     
     def __init__(self, nombre, mercado, bienes={}):
         super().__init__(nombre, mercado, bienes)
+        
+        # Initialize logger for this consumer
+        self.logger = logging.getLogger(f"ConsumidorIA.{nombre}")
         
         # Generar perfil único de personalidad hiperrealista
         self.perfil_personalidad_completo = GeneradorPerfilesPersonalidad.generar_perfil_unico()
@@ -1604,6 +1608,8 @@ class ConsumidorIA(Consumidor):
         reporte.append("")
         reporte.append("=" * 50)
         
+        return "\n".join(reporte)
+        
     def validar_perfil_hiperrealista(self) -> Dict[str, bool]:
         """Valida que el perfil hiperrealista esté correctamente configurado"""
         
@@ -1649,8 +1655,8 @@ class ConsumidorIA(Consumidor):
         # Validar métodos de decisión
         try:
             validaciones['metodo_decision_hiperrealista'] = hasattr(self, 'tomar_decision_compra_hiperrealista')
-            validaciones['metodo_exploracion_mercado'] = hasattr(self, 'explorar_mercado_avanzado')
-            validaciones['metodo_aprendizaje_social'] = hasattr(self, 'aprender_de_red_social')
+            validaciones['metodo_exploracion_mercado'] = hasattr(self, 'explorar_y_aprender_mercado')
+            validaciones['metodo_aprendizaje_social'] = hasattr(self, '_actualizar_red_social_dinamica')
         except Exception as e:
             self.logger.error(f"Error validando métodos: {e}")
             validaciones['metodo_decision_hiperrealista'] = False
