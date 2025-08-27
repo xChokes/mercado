@@ -45,7 +45,7 @@ class TestEscenariosReales(unittest.TestCase):
         for i in range(num_consumidores):
             consumidor = Consumidor(f"Consumidor_{i}", self.mercado)
             consumidor.dinero = 1000 + (i * 50)  # Distribución gradual
-            self.mercado.agregar_consumidor(consumidor)
+            self.mercado.agregar_persona(consumidor)
         
         # Crear empresas con productos diversos
         productos = ["Alimentos", "Ropa", "Electronica", "Hogar", "Transporte"]
@@ -59,7 +59,7 @@ class TestEscenariosReales(unittest.TestCase):
                     precio_base = 50 + (j * 20)
                     empresa.establecer_precio(f"{producto}_{i}", precio_base)
             
-            self.mercado.agregar_empresa_productora(empresa)
+            self.mercado.agregar_persona(empresa)
         
         # Simular múltiples ciclos económicos
         pib_inicial = self.mercado.calcular_pib_total()
@@ -68,10 +68,12 @@ class TestEscenariosReales(unittest.TestCase):
             # Simular actividad económica
             for _ in range(20):  # 20 transacciones por ciclo
                 # Seleccionar consumidor y producto aleatorio
-                consumidor = self.mercado.consumidores[ciclo % len(self.mercado.consumidores)]
-                if self.mercado.bienes:
-                    bien_nombre = list(self.mercado.bienes.keys())[ciclo % len(self.mercado.bienes)]
-                    consumidor.comprar(bien_nombre, 1)
+                consumidores = self.mercado.getConsumidores()
+                if consumidores:
+                    consumidor = consumidores[ciclo % len(consumidores)]
+                    if self.mercado.bienes:
+                        bien_nombre = list(self.mercado.bienes.keys())[ciclo % len(self.mercado.bienes)]
+                        consumidor.comprar(bien_nombre, 1)
             
             # Calcular PIB después de cada ciclo
             pib_actual = self.mercado.calcular_pib_total()
@@ -79,8 +81,8 @@ class TestEscenariosReales(unittest.TestCase):
         
         # Verificar que el sistema mantiene consistencia
         self.assertGreater(len(self.mercado.pib_historico), 0)
-        self.assertEqual(len(self.mercado.consumidores), num_consumidores)
-        self.assertEqual(len(self.mercado.empresas_productoras), num_empresas)
+        self.assertEqual(len(self.mercado.getConsumidores()), num_consumidores)
+        self.assertEqual(len(self.mercado.getEmpresas()), num_empresas)
     
     def test_escenario_crisis_economica(self):
         """Test escenario de crisis económica simulada"""
@@ -88,23 +90,23 @@ class TestEscenariosReales(unittest.TestCase):
         for i in range(30):
             consumidor = Consumidor(f"C_{i}", self.mercado)
             consumidor.dinero = 2000
-            self.mercado.agregar_consumidor(consumidor)
+            self.mercado.agregar_persona(consumidor)
         
         for i in range(10):
             empresa = Empresa(f"E_{i}", self.mercado)
             empresa.dinero = 20000
             empresa.establecer_precio(f"Producto_{i}", 100)
-            self.mercado.agregar_empresa_productora(empresa)
+            self.mercado.agregar_persona(empresa)
         
         pib_pre_crisis = self.mercado.calcular_pib_total()
         
         # Simular crisis: reducir dinero de todos
         factor_crisis = 0.5  # 50% de reducción
         
-        for consumidor in self.mercado.consumidores:
+        for consumidor in self.mercado.getConsumidores():
             consumidor.dinero *= factor_crisis
         
-        for empresa in self.mercado.empresas_productoras:
+        for empresa in self.mercado.getEmpresas():
             empresa.dinero *= factor_crisis
             # Aumentar precios debido a la crisis
             for producto in empresa.precios:
@@ -117,10 +119,10 @@ class TestEscenariosReales(unittest.TestCase):
         
         # Simular recuperación gradual
         for ciclo in range(5):
-            for consumidor in self.mercado.consumidores:
+            for consumidor in self.mercado.getConsumidores():
                 consumidor.dinero *= 1.1  # 10% de crecimiento por ciclo
             
-            for empresa in self.mercado.empresas_productoras:
+            for empresa in self.mercado.getEmpresas():
                 empresa.dinero *= 1.05  # 5% de crecimiento para empresas
         
         pib_recuperacion = self.mercado.calcular_pib_total()
@@ -141,13 +143,13 @@ class TestEscenariosReales(unittest.TestCase):
             precio_inicial = 500 + (i * 50)  # Precios entre 500 y 700
             empresa.establecer_precio(producto_comun, precio_inicial)
             empresas_competidoras.append(empresa)
-            self.mercado.agregar_empresa_productora(empresa)
+            self.mercado.agregar_persona(empresa)
         
         # Crear consumidores con preferencias de precio
         for i in range(40):
             consumidor = Consumidor(f"Buyer_{i}", self.mercado)
             consumidor.dinero = 1000
-            self.mercado.agregar_consumidor(consumidor)
+            self.mercado.agregar_persona(consumidor)
         
         # Simular competencia de precios
         for ronda in range(10):
@@ -166,8 +168,10 @@ class TestEscenariosReales(unittest.TestCase):
             
             # Simular compras de consumidores
             for _ in range(10):
-                consumidor = self.mercado.consumidores[ronda % len(self.mercado.consumidores)]
-                consumidor.comprar(producto_comun, 1)
+                consumidores = self.mercado.getConsumidores()
+                if consumidores:
+                    consumidor = consumidores[ronda % len(consumidores)]
+                    consumidor.comprar(producto_comun, 1)
         
         # Verificar que los precios convergieron hacia abajo
         precios_finales = [e.precios.get(producto_comun, 0) for e in empresas_competidoras]
@@ -208,13 +212,13 @@ class TestIntegracionSistemasCompletos(unittest.TestCase):
         for i in range(min(num_consumidores, 20)):  # Limitar para test rápido
             consumidor = Consumidor(f"C_{i}", mercado)
             consumidor.dinero = pib_inicial // (num_consumidores * 2)
-            mercado.agregar_consumidor(consumidor)
+            mercado.agregar_persona(consumidor)
         
         for i in range(min(num_empresas, 5)):  # Limitar para test rápido
             empresa = Empresa(f"E_{i}", mercado)
             empresa.dinero = pib_inicial // (num_empresas * 1.5)
             empresa.establecer_precio(f"Producto_{i}", 50 + i * 10)
-            mercado.agregar_empresa_productora(empresa)
+            mercado.agregar_persona(empresa)
         
         # Verificar que el mercado funciona con la configuración
         pib_calculado = mercado.calcular_pib_total()
@@ -237,13 +241,13 @@ class TestIntegracionSistemasCompletos(unittest.TestCase):
         for i in range(20):
             consumidor = Consumidor(f"C_{i}", mercado)
             consumidor.dinero = 1000 + i * 100
-            mercado.agregar_consumidor(consumidor)
+            mercado.agregar_persona(consumidor)
         
         for i in range(5):
             empresa = Empresa(f"E_{i}", mercado)
             empresa.dinero = 10000 + i * 2000
             empresa.establecer_precio(f"P_{i}", 50 + i * 20)
-            mercado.agregar_empresa_productora(empresa)
+            mercado.agregar_persona(empresa)
         
         # Simular varios ciclos y validar
         for ciclo in range(5):
@@ -291,7 +295,7 @@ class TestIntegracionSistemasCompletos(unittest.TestCase):
         for i in range(num_consumidores):
             consumidor = Consumidor(f"Consumidor_{i}", mercado)
             consumidor.dinero = 800 + (i * 40)
-            mercado.agregar_consumidor(consumidor)
+            mercado.agregar_persona(consumidor)
         
         productos = ["Comida", "Ropa", "Vivienda", "Transporte", "Entretenimiento"]
         for i in range(num_empresas):
@@ -303,7 +307,7 @@ class TestIntegracionSistemasCompletos(unittest.TestCase):
             precio = 40 + (i * 15)
             empresa.establecer_precio(f"{producto}_{i}", precio)
             
-            mercado.agregar_empresa_productora(empresa)
+            mercado.agregar_persona(empresa)
         
         # Simular 15 ciclos económicos
         metricas_ciclos = []
@@ -315,12 +319,14 @@ class TestIntegracionSistemasCompletos(unittest.TestCase):
             transacciones_exitosas = 0
             
             for transaccion in range(50):  # 50 transacciones por ciclo
-                consumidor = mercado.consumidores[transaccion % len(mercado.consumidores)]
-                
-                if mercado.bienes:
-                    bien_nombre = list(mercado.bienes.keys())[transaccion % len(mercado.bienes)]
-                    if consumidor.comprar(bien_nombre, 1):
-                        transacciones_exitosas += 1
+                consumidores = mercado.getConsumidores()
+                if consumidores:
+                    consumidor = consumidores[transaccion % len(consumidores)]
+                    
+                    if mercado.bienes:
+                        bien_nombre = list(mercado.bienes.keys())[transaccion % len(mercado.bienes)]
+                        if consumidor.comprar(bien_nombre, 1):
+                            transacciones_exitosas += 1
             
             # Calcular métricas del ciclo
             pib_ciclo = mercado.calcular_pib_total()
@@ -328,7 +334,7 @@ class TestIntegracionSistemasCompletos(unittest.TestCase):
             
             # Simular cambios económicos
             if ciclo % 3 == 0:  # Cada 3 ciclos, ajustar precios
-                for empresa in mercado.empresas_productoras:
+                for empresa in mercado.getEmpresas():
                     for producto in empresa.precios:
                         # Pequeño ajuste de precios
                         ajuste = 1.0 + ((ciclo % 2) * 0.02 - 0.01)  # ±1%
@@ -380,19 +386,19 @@ class TestEscalarabilidad(unittest.TestCase):
             # Crear participantes
             for i in range(tamaño):
                 consumidor = Consumidor(f"C_{i}", mercado)
-                mercado.agregar_consumidor(consumidor)
+                mercado.agregar_persona(consumidor)
                 
                 if i < tamaño // 5:  # 20% son empresas
                     empresa = Empresa(f"E_{i}", mercado)
                     empresa.establecer_precio(f"P_{i}", 50)
-                    mercado.agregar_empresa_productora(empresa)
+                    mercado.agregar_persona(empresa)
             
             tiempo_total = time.time() - inicio
             tiempos_creacion.append((tamaño, tiempo_total))
             
             # Verificar que se crearon correctamente
-            self.assertEqual(len(mercado.consumidores), tamaño)
-            self.assertEqual(len(mercado.empresas_productoras), tamaño // 5)
+            self.assertEqual(len(mercado.getConsumidores()), tamaño)
+            self.assertEqual(len(mercado.getEmpresas()), tamaño // 5)
         
         # Verificar que el tiempo crece de forma razonable (sub-cuadrática)
         for i in range(1, len(tiempos_creacion)):

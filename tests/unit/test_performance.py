@@ -40,14 +40,14 @@ class TestPerformanceBasico(unittest.TestCase):
         # Crear muchos consumidores
         for i in range(500):
             consumidor = Consumidor(f"Consumidor_{i}", mercado)
-            mercado.agregar_consumidor(consumidor)
+            mercado.agregar_persona(consumidor)
         
         tiempo_total = time.time() - inicio
         
         # Debería completarse en tiempo razonable (menos de 5 segundos)
         self.assertLess(tiempo_total, 5.0, 
                        f"Creación de 500 consumidores tomó {tiempo_total:.2f}s")
-        self.assertEqual(len(mercado.consumidores), 500)
+        self.assertEqual(len(mercado.getConsumidores()), 500)
     
     def test_creacion_masiva_empresas(self):
         """Test creación masiva de empresas - performance"""
@@ -63,7 +63,7 @@ class TestPerformanceBasico(unittest.TestCase):
         # Crear muchas empresas
         for i in range(200):
             empresa = Empresa(f"Empresa_{i}", mercado)
-            mercado.agregar_empresa_productora(empresa)
+            mercado.agregar_persona(empresa)
         
         tiempo_total = time.time() - inicio
         
@@ -84,11 +84,11 @@ class TestPerformanceBasico(unittest.TestCase):
         # Preparar mercado con algunos participantes
         for i in range(10):
             consumidor = Consumidor(f"C_{i}", mercado)
-            mercado.agregar_consumidor(consumidor)
+            mercado.agregar_persona(consumidor)
             
             empresa = Empresa(f"E_{i}", mercado)
             empresa.establecer_precio(f"Producto_{i}", 10.0 + i)
-            mercado.agregar_empresa_productora(empresa)
+            mercado.agregar_persona(empresa)
         
         inicio = time.time()
         
@@ -106,7 +106,7 @@ class TestPerformanceBasico(unittest.TestCase):
             else:
                 # Simular compras
                 if mercado.consumidores and mercado.bienes:
-                    consumidor = mercado.consumidores[i % len(mercado.consumidores)]
+                    consumidor = mercado.getConsumidores()[i % len(mercado.getConsumidores())]
                     bien_nombre = list(mercado.bienes.keys())[0]
                     consumidor.comprar(bien_nombre, 1)
         
@@ -153,7 +153,7 @@ class TestStressSistema(unittest.TestCase):
         # Añadir consumidores
         for i in range(num_consumidores):
             consumidor = Consumidor(f"Consumidor_{i}", mercado)
-            mercado.agregar_consumidor(consumidor)
+            mercado.agregar_persona(consumidor)
         
         # Añadir empresas con productos
         for i in range(num_empresas):
@@ -162,10 +162,10 @@ class TestStressSistema(unittest.TestCase):
             for j in range(num_bienes // num_empresas + 1):
                 producto = f"Producto_{i}_{j}"
                 empresa.establecer_precio(producto, 10.0 + i + j)
-            mercado.agregar_empresa_productora(empresa)
+            mercado.agregar_persona(empresa)
         
         # Verificar que el mercado funciona con muchos participantes
-        self.assertEqual(len(mercado.consumidores), num_consumidores)
+        self.assertEqual(len(mercado.getConsumidores()), num_consumidores)
         self.assertEqual(len(mercado.empresas_productoras), num_empresas)
         self.assertGreater(len(mercado.bienes), 0)
         
@@ -200,10 +200,10 @@ class TestStressSistema(unittest.TestCase):
             # Llenar el mercado
             for j in range(20):
                 consumidor = Consumidor(f"C_{i}_{j}", mercado)
-                mercado.agregar_consumidor(consumidor)
+                mercado.agregar_persona(consumidor)
                 
                 empresa = Empresa(f"E_{i}_{j}", mercado)
-                mercado.agregar_empresa_productora(empresa)
+                mercado.agregar_persona(empresa)
             
             mercados.append(mercado)
             
@@ -230,14 +230,14 @@ class TestStressSistema(unittest.TestCase):
         for i in range(50):
             consumidor = Consumidor(f"C_{i}", mercado)
             consumidores.append(consumidor)
-            mercado.agregar_consumidor(consumidor)
+            mercado.agregar_persona(consumidor)
         
         empresas = []
         for i in range(25):
             empresa = Empresa(f"E_{i}", mercado)
             empresas.append(empresa)
             empresa.establecer_precio(f"Producto_{i}", 10.0 + i)
-            mercado.agregar_empresa_productora(empresa)
+            mercado.agregar_persona(empresa)
         
         inicio = time.time()
         
@@ -266,7 +266,7 @@ class TestStressSistema(unittest.TestCase):
                 # Añadir nuevo participante
                 if operacion % 20 == 0:  # Solo cada 20 operaciones
                     nuevo_consumidor = Consumidor(f"Nuevo_{operacion}", mercado)
-                    mercado.agregar_consumidor(nuevo_consumidor)
+                    mercado.agregar_persona(nuevo_consumidor)
         
         tiempo_total = time.time() - inicio
         
@@ -293,7 +293,7 @@ class TestLimitesRendimiento(unittest.TestCase):
         # Crear hasta el límite razonable
         for i in range(limite_razonable):
             consumidor = Consumidor(f"C_{i}", mercado)
-            mercado.agregar_consumidor(consumidor)
+            mercado.agregar_persona(consumidor)
             
             # Verificar tiempo cada 500 consumidores
             if i % 500 == 499:
@@ -305,7 +305,7 @@ class TestLimitesRendimiento(unittest.TestCase):
         tiempo_total = time.time() - inicio
         
         # Verificar que se crearon todos
-        self.assertEqual(len(mercado.consumidores), limite_razonable)
+        self.assertEqual(len(mercado.getConsumidores()), limite_razonable)
         
         # El tiempo total debería ser razonable
         self.assertLess(tiempo_total, 20.0, 
@@ -324,11 +324,11 @@ class TestLimitesRendimiento(unittest.TestCase):
         for i in range(100):
             consumidor = Consumidor(f"C_{i}", mercado)
             consumidor.dinero = 1000 + i * 10
-            mercado.agregar_consumidor(consumidor)
+            mercado.agregar_persona(consumidor)
             
             empresa = Empresa(f"E_{i}", mercado)
             empresa.dinero = 10000 + i * 100
-            mercado.agregar_empresa_productora(empresa)
+            mercado.agregar_persona(empresa)
         
         # Medir tiempo de cálculo de PIB
         inicio = time.time()

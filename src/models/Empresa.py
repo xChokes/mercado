@@ -74,6 +74,13 @@ class Empresa(Persona):
             return True
         return False
 
+    def establecer_precio(self, producto, precio):
+        """Establece el precio de un producto específico"""
+        if precio > 0:  # Ensure price is positive
+            self.precios[producto] = precio
+        else:
+            raise ValueError("El precio debe ser mayor que cero")
+
     def ajustar_precio_bien(self, mercado, nombre_bien):
         if nombre_bien not in self.precios:
             self.precios[nombre_bien] = random.randint(10, 50)
