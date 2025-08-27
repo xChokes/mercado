@@ -363,8 +363,16 @@ class Consumidor(Persona):
         gastado = 0
         for opcion in opciones_compra[:5]:  # Máximo 5 compras por ciclo
             if gastado + opcion['precio'] <= presupuesto_consumo:
-                if self.comprar_bien_mejorado(opcion['empresa'], opcion['bien'], 1, mercado, ciclo):
-                    gastado += opcion['precio']
+                if getattr(mercado, 'order_book_habilitado', False):
+                    # Enviar orden de compra (bid) al order book
+                    try:
+                        mercado.enviar_orden('bid', opcion['bien'], opcion['precio'], 1, self.nombre)
+                        gastado += opcion['precio']
+                    except Exception:
+                        pass
+                else:
+                    if self.comprar_bien_mejorado(opcion['empresa'], opcion['bien'], 1, mercado, ciclo):
+                        gastado += opcion['precio']
 
     def comprar_bien_mejorado(self, empresa, bien, cantidad, mercado, ciclo):
         """Versión mejorada del método de compra con IVA incluido"""

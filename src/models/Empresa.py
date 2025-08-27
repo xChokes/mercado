@@ -161,6 +161,15 @@ class Empresa(Persona):
         for bien in self.bienes:
             if bien in mercado.bienes:
                 self.ajustar_precio_bien(mercado, bien)
+                # Publicar órdenes de venta (ask) en el order book si hay stock
+                if getattr(mercado, 'order_book_habilitado', False):
+                    stock = len(self.bienes.get(bien, []))
+                    if stock > 0:
+                        precio = self.precios.get(bien, 0)
+                        if precio > 0:
+                            # vender una parte del stock para no inundar el libro
+                            qty = max(1, min(5, stock // 10))
+                            mercado.enviar_orden('ask', bien, precio, qty, self.nombre)
 
     @classmethod
     def crear_con_acciones(cls, nombre, mercado, cantidad_acciones, bienes={}):

@@ -1046,19 +1046,15 @@ def main():
         parser.add_argument("--seed", type=int, default=None, help="Semilla para aleatoriedad")
         args, unknown = parser.parse_known_args()
 
-        # Semilla determinista opcional
-        if args.seed is not None:
-            try:
-                random.seed(args.seed)
-                import numpy as _np
-                _np.random.seed(args.seed)
-            except Exception:
-                pass
+        # Semilla determinista opcional (CLI tiene prioridad)
+        cli_seed = args.seed
 
         # Cargar configuración
         logger.log_configuracion("Cargando configuración...")
         logger.log_inicio("Cargando configuración del simulador")
         configurador = ConfiguradorSimulacion()
+        # Aplicar seed global desde config o CLI
+        configurador.aplicar_seed_global(cli_seed)
 
         # Si se especifica un escenario, intentar cargarlo
         escenario_nombre = None

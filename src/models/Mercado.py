@@ -21,6 +21,9 @@ from ..systems.CrisisFinanciera import (
 )
 from ..systems.MercadoLaboral import MercadoLaboral
 from ..systems.EstimuloEconomico import ciclo_estimulo_economico
+from ..systems.OrderBook import OrderBookManager
+from ..utils.EventBus import EventBus
+from ..utils.SimulacionReport import SimulacionReport
 
 
 class Mercado:
@@ -31,6 +34,12 @@ class Mercado:
         self.mercado_financiero = MercadoFinanciero()
         self.transacciones = []
         self.gobierno = Gobierno(self)
+
+        # Sistema de eventos, reporte y order book
+        self.event_bus = EventBus()
+        self.reporte = SimulacionReport()
+        self.order_books = OrderBookManager()
+        self.order_book_habilitado = True
 
         # Sistemas avanzados
         self.sistema_bancario = SistemaBancario(self)
@@ -72,6 +81,76 @@ class Mercado:
         # Inicializar precios históricos
         for bien in self.bienes:
             self.precios_historicos[bien] = []
+
+    # --- ORDER BOOK API ---
+    def enviar_orden(self, side: str, bien: str, price: float, qty: int, agente_nombre: str):
+        """Publica una orden al libro y emite evento."""
+        try:
+            orden = self.order_books.submit(bien, side, price, qty, agente_nombre)
+            self.event_bus.publish('orden', side=side, bien=bien, price=price, qty=qty, agente=agente_nombre,
+                                   ciclo=self.ciclo_actual)
+            return orden
+        except Exception as e:
+            self.event_bus.publish('orden_error', side=side, bien=bien, price=price, qty=qty,
+                                   agente=agente_nombre, error=str(e), ciclo=self.ciclo_actual)
+            return None
+
+    def _buscar_agente_por_nombre(self, nombre):
+        for p in self.personas:
+            if getattr(p, 'nombre', None) == nombre:
+                return p
+        return None
+
+    def ejecutar_matching(self):
+        """Ejecuta el matching de todos los libros y liquida trades."""
+        resultados = self.order_books.match_all()
+        for bien, trades in resultados.items():
+            for t in trades:
+                buyer = self._buscar_agente_por_nombre(t['buyer'])
+                seller = self._buscar_agente_por_nombre(t['seller'])
+                qty = int(t['qty'])
+                price = float(t['price'])
+                costo_total = price * qty
+
+                if not buyer or not seller:
+                    self.event_bus.publish('trade_error', motivo='agente_no_encontrado', trade=t,
+                                           ciclo=self.ciclo_actual)
+                    continue
+
+                # Verificar fondos e inventario mínimos
+                if getattr(buyer, 'dinero', 0) < costo_total:
+                    self.event_bus.publish('trade_error', motivo='fondos_insuficientes', trade=t,
+                                           ciclo=self.ciclo_actual)
+                    continue
+                inventario_seller = getattr(seller, 'bienes', {}).get(bien, [])
+                stock = len(inventario_seller) if isinstance(inventario_seller, list) else int(inventario_seller or 0)
+                if stock < qty:
+                    self.event_bus.publish('trade_error', motivo='stock_insuficiente', trade=t,
+                                           ciclo=self.ciclo_actual, stock=stock)
+                    continue
+
+                # Liquidación simple: transferir dinero y unidades
+                buyer.dinero -= costo_total
+                seller.dinero += costo_total
+                # Actualizar inventarios
+                if isinstance(inventario_seller, list):
+                    for _ in range(qty):
+                        if seller.bienes[bien]:
+                            seller.bienes[bien].pop(0)
+                else:
+                    seller.bienes[bien] = max(0, int(seller.bienes.get(bien, 0)) - qty)
+
+                if not hasattr(buyer, 'bienes'):
+                    buyer.bienes = {}
+                # Para el comprador siempre representamos como contador entero
+                if bien not in buyer.bienes or isinstance(buyer.bienes.get(bien), list):
+                    buyer.bienes[bien] = int(buyer.bienes.get(bien, 0)) if not isinstance(buyer.bienes.get(bien), list) else 0
+                buyer.bienes[bien] = int(buyer.bienes.get(bien, 0)) + qty
+
+                # Registrar evento y transacción
+                self.event_bus.publish('trade', bien=bien, price=price, qty=qty,
+                                       buyer=buyer.nombre, seller=seller.nombre, ciclo=self.ciclo_actual)
+                self.registrar_transaccion(buyer, bien, qty, costo_total, self.ciclo_actual)
 
     def agregar_persona(self, persona):
         self.personas.append(persona)
@@ -426,6 +505,11 @@ class Mercado:
 
         # Desempleo
         self.desempleo_historico.append(self.gobierno.tasa_desempleo)
+        # Actualizar reporte estructurado
+        if hasattr(self, 'reporte') and self.reporte:
+            self.reporte.pib.append(pib_ciclo)
+            self.reporte.inflacion.append(inflacion)
+            self.reporte.desempleo.append(self.gobierno.tasa_desempleo)
 
         # Precios por bien
         # Primero, recopilar todos los bienes que las empresas manejan actualmente
@@ -517,7 +601,7 @@ class Mercado:
         # 6.5. Ejecutar sistema de estímulo económico
         ciclo_estimulo_economico(self)
 
-        # 7. Ciclos individuales de cada persona
+        # 7. Ciclos individuales de cada persona (generan órdenes y decisiones)
         personas_ordenadas = self.personas[:]
         random.shuffle(personas_ordenadas)  # Orden aleatorio para fairness
 
@@ -539,10 +623,14 @@ class Mercado:
                 print(
                     f"Error en ciclo de {getattr(persona, 'nombre', 'Persona desconocida')}: {e}")
 
-        # 7. Registrar estadísticas
+        # 7.5. Matching del order book y liquidación de trades
+        if self.order_book_habilitado:
+            self.ejecutar_matching()
+
+        # 8. Registrar estadísticas
         self.registrar_estadisticas()
 
-        # 8. Información del ciclo
+        # 9. Información del ciclo
         if ciclo % 5 == 0:  # Cada 5 ciclos mostrar resumen
             self.imprimir_resumen_economico()
 
@@ -615,6 +703,8 @@ class Mercado:
             'ciclo': ciclo
         }
         self.transacciones.append(transaccion)
+        # Evento centralizado
+        self.event_bus.publish('transaccion', **transaccion)
 
         # Registrar para PIB del ciclo actual
         if not hasattr(self, 'transacciones_ciclo_actual'):
