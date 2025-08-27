@@ -79,12 +79,22 @@ else
 fi
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
+echo ""
+print_status "Test 3: Sistemas Hiperrealistas"
+if python3 -m pytest tests/unit/test_sistemas_hiperrealistas.py -v --tb=short; then
+    print_success "Tests de sistemas hiperrealistas: PASADOS"
+else
+    print_error "Tests de sistemas hiperrealistas: FALLARON"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+fi
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
 # === TESTS DE INTEGRACIÓN ===
 echo ""
 print_status "🔧 EJECUTANDO TESTS DE INTEGRACIÓN"
 echo "===================================="
 
-print_status "Test 3: Simulación Completa"
+print_status "Test 4: Simulación Completa"
 if timeout 300 python3 -m pytest tests/integration/test_simulacion_completa.py::TestIntegracionCompleta::test_simulacion_estabilidad_30_ciclos -v --tb=short; then
     print_success "Test de simulación completa (30 ciclos): PASADO"
 else
@@ -93,7 +103,16 @@ else
 fi
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
-print_status "Test 4: Banco Central Avanzado"
+print_status "Test 5: Integración Sistemas Hiperrealistas"
+if timeout 180 python3 -m pytest tests/integration/test_sistemas_hiperrealistas_integracion.py -v --tb=short; then
+    print_success "Test de integración hiperrealista: PASADO"
+else
+    print_error "Test de integración hiperrealista: FALLÓ"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+fi
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+print_status "Test 6: Banco Central Avanzado"
 if timeout 180 python3 -m pytest tests/integration/test_simulacion_completa.py::TestIntegracionCompleta::test_banco_central_avanzado_funcionamiento -v --tb=short; then
     print_success "Test de Banco Central Avanzado: PASADO"
 else
@@ -102,7 +121,7 @@ else
 fi
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
-print_status "Test 5: Resistencia a Shocks"
+print_status "Test 7: Resistencia a Shocks"
 if timeout 180 python3 -m pytest tests/integration/test_simulacion_completa.py::TestIntegracionCompleta::test_resistencia_a_shocks -v --tb=short; then
     print_success "Test de resistencia a shocks: PASADO"
 else
@@ -116,7 +135,7 @@ echo ""
 print_status "⚡ EJECUTANDO TESTS DE PERFORMANCE"
 echo "==================================="
 
-print_status "Test 6: Performance 100 Ciclos"
+print_status "Test 8: Performance 100 Ciclos"
 if timeout 180 python3 -m pytest tests/integration/test_simulacion_completa.py::TestBenchmarkPerformance::test_performance_simulacion_100_ciclos -v --tb=short; then
     print_success "Test de performance (100 ciclos): PASADO"
 else
@@ -130,7 +149,7 @@ echo ""
 print_status "🚀 EJECUTANDO TEST DEL SIMULADOR PRINCIPAL"
 echo "==========================================="
 
-print_status "Test 7: Simulador Principal (10 ciclos)"
+print_status "Test 9: Simulador Principal (10 ciclos)"
 if timeout 120 python3 main.py > test_reports/main_execution.log 2>&1; then
     print_success "Simulador principal: EJECUTADO CORRECTAMENTE"
     
