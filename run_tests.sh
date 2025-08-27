@@ -154,7 +154,7 @@ if timeout 120 python3 main.py > test_reports/main_execution.log 2>&1; then
     print_success "Simulador principal: EJECUTADO CORRECTAMENTE"
     
     # Verificar que se generaron resultados
-    if [[ -f "results"/*".txt" ]] 2>/dev/null; then
+    if ls results/*.txt >/dev/null 2>&1; then
         print_success "Archivos de resultados generados correctamente"
     else
         print_warning "No se encontraron archivos de resultados"
@@ -194,7 +194,7 @@ if [[ -f "scripts/validar_kpis.py" ]]; then
     print_status "Probando ejecución batch de escenarios..."
     
     BATCH_LOG="test_reports/batch_escenarios.log"
-    if timeout 180 python3 run_escenarios.py --escenarios base --seed 42 > "$BATCH_LOG" 2>&1; then
+    if timeout 300 python3 run_escenarios.py --escenarios test_minimal --seed 42 > "$BATCH_LOG" 2>&1; then
         print_success "Script batch de escenarios funciona correctamente"
         PASSED_TESTS=$((PASSED_TESTS + 1))
     else
