@@ -182,7 +182,7 @@ class BolsaValores:
         self._crear_fondos_inversion()
         
         self.logger.log_configuracion(f"   Empresas listadas: {empresas_listadas}")
-        self.logger.log_configuración(f"   Fondos creados: {len(self.fondos_inversion)}")
+        self.logger.log_configuracion(f"   Fondos creados: {len(self.fondos_inversion)}")
         
     def _asignar_a_indice(self, accion: Accion):
         """Asigna acción a índices apropiados"""
@@ -516,14 +516,14 @@ class BolsaValores:
                 
         elif self.sentimiento_mercado < 0.3 and random.random() < 0.6:  # Vender en pánico
             # Simular venta durante pánico del mercado
-            acciones_para_vender = [a for a in self.acciones.values() if a.precio > a.precio_inicial * 0.5]
+            acciones_para_vender = [a for a in self.acciones.values() if a.precio_actual > a.precio_inicial * 0.5]
             if acciones_para_vender:
                 accion_venta = random.choice(acciones_para_vender)
                 cantidad_venta = random.randint(1, 20)
                 
                 # Reducir precio por presión de venta
                 factor_venta = 0.98  # 2% reducción por venta
-                accion_venta.precio *= factor_venta
+                accion_venta.precio_actual *= factor_venta
                 accion_venta.volumen_diario += cantidad_venta
     
     def _actualizar_metricas_mercado(self):

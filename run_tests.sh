@@ -89,6 +89,27 @@ else
 fi
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
+# NUEVOS TESTS UNITARIOS (Cadena y Bolsa)
+echo ""
+print_status "Test 3.1: Cadena de Suministro B2B (básico)"
+if python3 -m pytest tests/unit/test_cadena_suministro_basico.py -v --tb=short; then
+    print_success "Cadena de suministro (básico): PASADO"
+else
+    print_error "Cadena de suministro (básico): FALLÓ"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+fi
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+echo ""
+print_status "Test 3.2: Mercado de Capitales (smoke)"
+if python3 -m pytest tests/unit/test_bolsa_valores_smoke.py -v --tb=short; then
+    print_success "Mercado de capitales (smoke): PASADO"
+else
+    print_error "Mercado de capitales (smoke): FALLÓ"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+fi
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
 # === TESTS DE INTEGRACIÓN ===
 echo ""
 print_status "🔧 EJECUTANDO TESTS DE INTEGRACIÓN"

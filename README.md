@@ -284,6 +284,25 @@ mercado/
 
 ````
 
+## 🆕 Sistemas añadidos: Cadena de Suministro B2B y Mercado de Capitales
+
+- Cadena de Suministro (B2B): nuevo módulo `src/systems/CadenaSuministro.py` con `GestorCadenaSuministro`.
+  - Inicializa `inventario_insumos` e `insumos_requeridos` en empresas.
+  - Detecta faltantes y realiza compras B2B entre empresas con stock y mejor precio.
+  - Publica eventos `b2b` y registra transacciones para estadísticas.
+  - Métricas: `pedidos_realizados`, `unidades_abastecidas`, `valor_transado` accesibles vía `Mercado.obtener_estadisticas_completas()['cadena_suministro']`.
+  - Producción: las `EmpresaProductora` consumen insumos si están disponibles, limitando la producción a inventario.
+
+- Mercado de Capitales: clase `BolsaValores` en `src/systems/MercadoCapitales.py`.
+  - Se instancia automáticamente en la integración avanzada y lista todas las empresas con acciones (índices GENERAL/TECH/BANKING/INDUSTRIAL).
+  - Simula sentimiento, burbujas/crashes, trading institucional y retail, y devuelve reporte por ciclo.
+  - Estadísticas accesibles con `mercado.bolsa_valores.obtener_estadisticas_mercado()`.
+
+### Cómo usar
+- Al ejecutar `main.py`, la integración avanzada activa ambos sistemas automáticamente; no requiere configuración adicional.
+- Para pruebas unitarias rápidas: `./run_tests.sh` incluye checks de Cadena B2B y Bolsa.
+
+
 ## 🚀 Uso Rápido
 
 ### 1. Instalación

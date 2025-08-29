@@ -3,6 +3,7 @@ from ..config.ConfigEconomica import ConfigEconomica
 from .InventarioBien import InventarioBien
 import random
 import logging
+import math
 
 
 class EmpresaProductora(Empresa):
@@ -307,6 +308,13 @@ class EmpresaProductora(Empresa):
                     ConfigEconomica, 'FACTOR_ECONOMIA_ESCALA', 1.1)
                 cantidad_efectiva = int(cantidad_efectiva * factor_escala)
 
+            # NUEVO: Limitar por disponibilidad de INSUMOS (si existe cadena de suministro)
+            try:
+                cantidad_efectiva = self._aplicar_consumo_insumos(cantidad_efectiva)
+            except Exception as _:
+                # Si hay cualquier problema, continuar sin consumo de insumos
+                pass
+
             # CORRECCIÓN: Limitar por disponibilidad de dinero de forma segura
             dinero_disponible = max(0, self.dinero)
             if dinero_disponible < costo_unitario:
@@ -358,6 +366,49 @@ class EmpresaProductora(Empresa):
             logging.error(
                 f"Error inesperado produciendo {bien} en {self.nombre}: {e}")
             return 0
+
+    # --- Cadena de suministro: consumo de insumos ---
+    def _aplicar_consumo_insumos(self, cantidad_deseada: int) -> int:
+        """Reduce inventario de insumos en proporción a la producción deseada.
+        Devuelve la cantidad efectiva que se puede producir dados los insumos.
+        Si no existen estructuras de insumos, retorna cantidad_deseada sin cambios.
+        """
+        if cantidad_deseada <= 0:
+            return 0
+        # Si la empresa no está integrada con el sistema de insumos, no limitar
+        if not hasattr(self, 'insumos_requeridos') or not isinstance(getattr(self, 'insumos_requeridos'), dict):
+            return cantidad_deseada
+        if not hasattr(self, 'inventario_insumos') or not isinstance(getattr(self, 'inventario_insumos'), dict):
+            return cantidad_deseada
+
+        # Calcular máximo producible por cada insumo
+        max_por_insumo = []
+        for insumo, meta in self.insumos_requeridos.items():
+            consumo_u = float(meta.get('consumo_por_unidad', 0))
+            if consumo_u <= 0:
+                continue
+            stock = int(self.inventario_insumos.get(insumo, 0))
+            producible = int(stock // consumo_u) if consumo_u > 0 else cantidad_deseada
+            max_por_insumo.append(producible)
+
+        if max_por_insumo:
+            cantidad_posible = max(0, min(min(max_por_insumo), int(cantidad_deseada)))
+        else:
+            cantidad_posible = int(cantidad_deseada)
+
+        if cantidad_posible <= 0:
+            return 0
+
+        # Consumir insumos requeridos para la cantidad posible
+        for insumo, meta in self.insumos_requeridos.items():
+            consumo_u = float(meta.get('consumo_por_unidad', 0))
+            if consumo_u <= 0:
+                continue
+            requerido = int(math.ceil(consumo_u * cantidad_posible))
+            stock = int(self.inventario_insumos.get(insumo, 0))
+            self.inventario_insumos[insumo] = max(0, stock - requerido)
+
+        return cantidad_posible
 
     def ajustar_precios_dinamico(self, mercado, bien):
         """Ajusta precios basado en múltiples factores económicos mejorados"""

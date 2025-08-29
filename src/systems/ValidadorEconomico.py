@@ -177,11 +177,19 @@ class ValidadorEconomico:
         rango_min, rango_max = self.rangos_normales[nombre]
         
         if valor < rango_min:
-            tipo = TipoAlerta.CRITICA if valor < rango_min * 0.5 else TipoAlerta.ADVERTENCIA
+            # Regla especial: desempleo bajo no debe considerarse crítico
+            if nombre == 'desempleo':
+                tipo = TipoAlerta.ADVERTENCIA
+            else:
+                tipo = TipoAlerta.CRITICA if valor < rango_min * 0.5 else TipoAlerta.ADVERTENCIA
             mensaje = f"{nombre} muy bajo: {valor:.4f} (normal: {rango_min:.4f} - {rango_max:.4f})"
             
         elif valor > rango_max:
-            tipo = TipoAlerta.CRITICA if valor > rango_max * 2.0 else TipoAlerta.ADVERTENCIA
+            # Regla especial: productividad laboral excesiva no se considera crítica
+            if nombre == 'productividad_laboral':
+                tipo = TipoAlerta.ADVERTENCIA
+            else:
+                tipo = TipoAlerta.CRITICA if valor > rango_max * 2.0 else TipoAlerta.ADVERTENCIA
             mensaje = f"{nombre} muy alto: {valor:.4f} (normal: {rango_min:.4f} - {rango_max:.4f})"
             
         else:

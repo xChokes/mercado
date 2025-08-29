@@ -25,6 +25,7 @@ from ..systems.OrderBook import OrderBookManager
 from ..utils.EventBus import EventBus
 from ..utils.SimulacionReport import SimulacionReport
 from ..systems.IntegradorEmpresasHiperrealistas import GestorEmpresasHiperrealistas
+from ..systems.CadenaSuministro import GestorCadenaSuministro
 
 
 class Mercado:
@@ -49,9 +50,14 @@ class Mercado:
         self.mercado_laboral = MercadoLaboral(self)
         self.sistema_psicologia = None  # Se inicializa después
         self.sistema_analytics = SistemaAnalyticsML(self)
-        
+
         # NUEVO: Sistema de empresas hiperrealistas
         self.gestor_empresas_hiperrealistas = GestorEmpresasHiperrealistas(self)
+        # NUEVO: Cadena de suministro B2B
+        self.cadena_suministro = GestorCadenaSuministro(self)
+
+        # Flag de inicialización de sistemas (para primer ciclo)
+        self.sistemas_inicializados = False
 
         # Comercio internacional
         self.paises = {}
@@ -244,12 +250,12 @@ class Mercado:
                 
                 # NUEVO: Suavizar el índice para evitar cambios extremos
                 if hasattr(self, 'indice_anterior') and self.indice_anterior > 0:
-                    # Limitar variación del índice de precios a máximo 10% por ciclo
+                    # Limitar variación del índice de precios a máximo 8% por ciclo
                     ratio_cambio = indice / self.indice_anterior
-                    if ratio_cambio > 1.10:  # Subida > 10%
-                        indice = self.indice_anterior * 1.10
-                    elif ratio_cambio < 0.90:  # Bajada > 10%
-                        indice = self.indice_anterior * 0.90
+                    if ratio_cambio > 1.08:  # Subida > 8%
+                        indice = self.indice_anterior * 1.08
+                    elif ratio_cambio < 0.92:  # Bajada > 8%
+                        indice = self.indice_anterior * 0.92
                 
                 self.indice_anterior = indice
             else:
@@ -490,17 +496,17 @@ class Mercado:
             indice_anterior = indices_precios[-2]
             if indice_anterior > 1:
                 inflacion_bruta = (indice_actual / indice_anterior - 1)
-                
                 # NUEVO: Suavizar la inflación calculada para evitar extremos
-                # Limitar inflación a ±15% por ciclo como máximo absoluto
-                inflacion = max(-0.15, min(0.15, inflacion_bruta))
-                
-                # Si la inflación es muy alta, aplicar suavizado adicional
-                if abs(inflacion) > 0.08:  # Si inflación > 8%
+                # Limitar inflación a ±8% por ciclo como máximo absoluto
+                inflacion = max(-0.08, min(0.08, inflacion_bruta))
+
+                # Si la inflación es alta, aplicar suavizado adicional
+                if abs(inflacion) > 0.06:  # Si inflación > 6%
                     # Promediar con inflación anterior para suavizar
                     if len(self.inflacion_historica) > 0:
                         inflacion_anterior = self.inflacion_historica[-1]
-                        inflacion = (inflacion * 0.7 + inflacion_anterior * 0.3)
+                        inflacion = (inflacion * 0.6 + inflacion_anterior 
+                                     * 0.4)
             else:
                 inflacion = 0
         else:
@@ -562,13 +568,19 @@ class Mercado:
         self.aplicar_efectos_ciclo_economico()
         self.simular_shock_economico()
 
-        # 2. Inicializar sistemas avanzados si es el primer ciclo
-        if ciclo == 0:
+        # 2. Inicializar sistemas avanzados una sola vez al primer ciclo
+        if not getattr(self, 'sistemas_inicializados', False):
             self.sistema_psicologia = inicializar_perfiles_psicologicos(self)
             self.economia_sectorial.asignar_empresas_a_sectores()
             
             # NUEVO: Inicializar sistema hiperrealista
             self.gestor_empresas_hiperrealistas.inicializar_sistema()
+            # NUEVO: Inicializar cadena de suministro B2B
+            try:
+                self.cadena_suministro.inicializar_red()
+            except Exception as e:
+                print(f"Advertencia: no se pudo inicializar cadena de suministro: {e}")
+            self.sistemas_inicializados = True
 
         # 3. Ciclos de sistemas avanzados
         self.sistema_bancario.ciclo_bancario()
@@ -580,6 +592,11 @@ class Mercado:
             
         # NUEVO: Ciclo del sistema hiperrealista
         self.gestor_empresas_hiperrealistas.ciclo_empresas_hiperrealistas()
+        # NUEVO: Ciclo Cadena de Suministro B2B
+        try:
+            self.cadena_suministro.ciclo_cadena()
+        except Exception as e:
+            print(f"Advertencia: error en cadena de suministro: {e}")
 
         # 4. Ciclo del gobierno (políticas, impuestos, regulación)
         indicadores_gobierno = self.gobierno.ciclo_gobierno(ciclo)
@@ -692,6 +709,11 @@ class Mercado:
         
         # NUEVO: Estadísticas del sistema hiperrealista
         stats_base['empresas_hiperrealistas'] = self.gestor_empresas_hiperrealistas.obtener_estadisticas_sistema()
+        # NUEVO: Estadísticas cadena de suministro
+        try:
+            stats_base['cadena_suministro'] = self.cadena_suministro.obtener_estadisticas()
+        except Exception:
+            stats_base['cadena_suministro'] = {}
 
         if self.sistema_psicologia:
             stats_base['psicologia_economica'] = self.sistema_psicologia.obtener_estadisticas_psicologicas()

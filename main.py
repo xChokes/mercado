@@ -420,6 +420,16 @@ def integrar_sistemas_avanzados(mercado, config):
 
     logger.log_configuracion("Todos los sistemas avanzados integrados")
 
+    # === MERCADO DE CAPITALES ===
+    # Instanciar bolsa y listar empresas una vez creadas
+    try:
+        logger.log_configuracion("📈 Configurando Mercado de Capitales...")
+        mercado.bolsa_valores = BolsaValores(mercado)
+        mercado.bolsa_valores.listar_empresas()
+        logger.log_configuracion("   Bolsa de Valores activa y empresas listadas")
+    except Exception as e:
+        logger.log_error(f"   ❌ No se pudo activar la Bolsa de Valores: {e}")
+
 
 def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
     """Ejecuta la simulación completa con todas las mejoras hiperrealistas v3.0"""
