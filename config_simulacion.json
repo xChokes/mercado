@@ -6,7 +6,8 @@
     "num_empresas_comerciales": 8,
     "frecuencia_reportes": 5,
     "activar_crisis": true,
-    "tiempo_maximo_crisis": 15
+    "tiempo_maximo_crisis": 15,
+    "usar_empresas_hiperrealistas": true
   },
   "economia": {
     "pib_inicial": 100000,
@@ -63,5 +64,16 @@
     "coaliciones": true,
     "logs_detallados": true,
     "duracion_minutos": 3
+  },
+  "empresas_hiperrealistas": {
+    "activar": true,
+    "probabilidad_crisis_empresa": 0.02,
+    "factor_competencia_intensidad": 1.0,
+    "habilitado_ia_empresarial": true,
+    "sistemas_gestion_avanzada": true,
+    "innovacion_continua": true,
+    "sostenibilidad_corporativa": true,
+    "fusion_adquisiciones": true,
+    "rescate_empresarial_avanzado": true
   }
 }

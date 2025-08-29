@@ -24,6 +24,7 @@ from ..systems.EstimuloEconomico import ciclo_estimulo_economico
 from ..systems.OrderBook import OrderBookManager
 from ..utils.EventBus import EventBus
 from ..utils.SimulacionReport import SimulacionReport
+from ..systems.IntegradorEmpresasHiperrealistas import GestorEmpresasHiperrealistas
 
 
 class Mercado:
@@ -48,6 +49,9 @@ class Mercado:
         self.mercado_laboral = MercadoLaboral(self)
         self.sistema_psicologia = None  # Se inicializa después
         self.sistema_analytics = SistemaAnalyticsML(self)
+        
+        # NUEVO: Sistema de empresas hiperrealistas
+        self.gestor_empresas_hiperrealistas = GestorEmpresasHiperrealistas(self)
 
         # Comercio internacional
         self.paises = {}
@@ -562,6 +566,9 @@ class Mercado:
         if ciclo == 0:
             self.sistema_psicologia = inicializar_perfiles_psicologicos(self)
             self.economia_sectorial.asignar_empresas_a_sectores()
+            
+            # NUEVO: Inicializar sistema hiperrealista
+            self.gestor_empresas_hiperrealistas.inicializar_sistema()
 
         # 3. Ciclos de sistemas avanzados
         self.sistema_bancario.ciclo_bancario()
@@ -570,6 +577,9 @@ class Mercado:
         self.sistema_analytics.ciclo_analytics()
         if self.sistema_psicologia:
             self.sistema_psicologia.ciclo_psicologia_economica()
+            
+        # NUEVO: Ciclo del sistema hiperrealista
+        self.gestor_empresas_hiperrealistas.ciclo_empresas_hiperrealistas()
 
         # 4. Ciclo del gobierno (políticas, impuestos, regulación)
         indicadores_gobierno = self.gobierno.ciclo_gobierno(ciclo)
@@ -679,6 +689,9 @@ class Mercado:
         stats_base['estructura_economica'] = self.economia_sectorial.obtener_resumen_estructural()
         stats_base['innovacion'] = self.sistema_innovacion.obtener_estadisticas_innovacion()
         stats_base['analytics_ml'] = self.sistema_analytics.obtener_estadisticas_analytics()
+        
+        # NUEVO: Estadísticas del sistema hiperrealista
+        stats_base['empresas_hiperrealistas'] = self.gestor_empresas_hiperrealistas.obtener_estadisticas_sistema()
 
         if self.sistema_psicologia:
             stats_base['psicologia_economica'] = self.sistema_psicologia.obtener_estadisticas_psicologicas()

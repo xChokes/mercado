@@ -365,6 +365,12 @@ class EmpresaProductora(Empresa):
             logging.debug(
                 f"{self.nombre}: INICIO ajuste de precio para {bien}")
 
+            # NUEVA VALIDACIÓN: Verificar que el bien existe en el mercado
+            if not hasattr(mercado, 'bienes') or bien not in mercado.bienes:
+                logging.debug(
+                    f"{self.nombre}: Bien {bien} no existe en el mercado, omitiendo ajuste de precio")
+                return
+
             # Validaciones de seguridad más robustas
             if not hasattr(self, 'precios') or bien not in self.precios:
                 logging.debug(
@@ -606,8 +612,8 @@ class EmpresaProductora(Empresa):
             
             # NIVEL 3: Despidos graduales (reducir costos 40%)
             if self.ciclos_crisis_financiera <= 4:
-                if self.empleados > 1:
-                    empleados_despedir = min(2, self.empleados // 3)
+                if len(self.empleados) > 1:  # CORREGIDO: usar len() para obtener el número de empleados
+                    empleados_despedir = min(2, len(self.empleados) // 3)  # CORREGIDO: usar len()
                     self._despedir_empleados(empleados_despedir)
                     costo_total = self._calcular_costos_operativos()  # Recalcular
                     
@@ -832,7 +838,12 @@ class EmpresaProductora(Empresa):
 
             # Ajustar precios dinámicamente solo si tiene inventario o puede producir
             logging.debug(f"{self.nombre}: Ajustando precios dinámicamente...")
-            for bien in list(self.precios.keys()):  # Crear copia de las llaves
+            
+            # MEJORADO: Filtrar solo bienes válidos que existen en el mercado
+            bienes_validos = [bien for bien in self.precios.keys() 
+                             if hasattr(mercado, 'bienes') and bien in mercado.bienes]
+            
+            for bien in bienes_validos:
                 try:
                     precio_anterior = self.precios.get(bien, 0)
                     logging.debug(

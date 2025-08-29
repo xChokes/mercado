@@ -344,3 +344,155 @@ class MercadoLaboral:
                             # Renunciar a empresa anterior
                             empleado.empleador.despedir(empleado)
                             empleado.empleador = nueva_empresa
+
+    def priorizar_empresa_contratacion(self, empresa_nombre: str, prioridad: float = 1.5):
+        """
+        Prioriza una empresa para contrataciones en el mercado laboral
+        
+        Args:
+            empresa_nombre: Nombre de la empresa a priorizar
+            prioridad: Multiplicador de prioridad (1.5 = 50% más probabilidad)
+        """
+        if not hasattr(self, 'prioridades_contratacion'):
+            self.prioridades_contratacion = {}
+        
+        self.prioridades_contratacion[empresa_nombre] = prioridad
+        
+        # Facilitar contrataciones para esta empresa específica
+        empresa_objetivo = None
+        for empresa in self.mercado.getEmpresas():
+            if hasattr(empresa, 'nombre') and empresa.nombre == empresa_nombre:
+                empresa_objetivo = empresa
+                break
+        
+        if empresa_objetivo and hasattr(empresa_objetivo, 'dinero'):
+            desempleados = [c for c in self.mercado.getConsumidores() if not c.empleado]
+            
+            # Intentar contratar hasta 3 empleados adicionales
+            max_contrataciones = min(3, len(desempleados), int(empresa_objetivo.dinero / 25000))
+            contrataciones_realizadas = 0
+            
+            # Seleccionar candidatos con mejor compatibilidad
+            candidatos_ordenados = desempleados.copy()
+            random.shuffle(candidatos_ordenados)  # Aleatorizar para diversidad
+            
+            for candidato in candidatos_ordenados[:max_contrataciones]:
+                if contrataciones_realizadas >= max_contrataciones:
+                    break
+                    
+                # Aumentar probabilidad de contratación por prioridad
+                probabilidad_base = 0.6  # 60% base
+                probabilidad_ajustada = min(0.95, probabilidad_base * prioridad)
+                
+                if random.random() < probabilidad_ajustada:
+                    if empresa_objetivo.contratar(candidato):
+                        contrataciones_realizadas += 1
+                        print(f"📋 {empresa_nombre} contrató a {candidato.nombre} (prioridad activada)")
+            
+            if contrataciones_realizadas > 0:
+                print(f"✅ Empresa {empresa_nombre} completó {contrataciones_realizadas} contrataciones prioritarias")
+
+    def obtener_empresas_mejor_reputacion(self, limite: int = 5) -> List[str]:
+        """
+        Obtiene las empresas con mejor reputación para contratación
+        
+        Args:
+            limite: Número máximo de empresas a retornar
+            
+        Returns:
+            Lista de nombres de empresas ordenadas por reputación
+        """
+        empresas_con_reputacion = []
+        
+        for empresa in self.mercado.getEmpresas():
+            if hasattr(empresa, 'nombre'):
+                # Calcular score de reputación basado en múltiples factores
+                score_reputacion = 0.5  # Base
+                
+                # Factor financiero
+                if hasattr(empresa, 'dinero'):
+                    if empresa.dinero > 100000:
+                        score_reputacion += 0.2
+                    elif empresa.dinero > 50000:
+                        score_reputacion += 0.1
+                
+                # Factor de empleados (estabilidad)
+                if hasattr(empresa, 'empleados'):
+                    if len(empresa.empleados) > 10:
+                        score_reputacion += 0.2
+                    elif len(empresa.empleados) > 5:
+                        score_reputacion += 0.1
+                
+                # Factor reputación específica (si existe)
+                if hasattr(empresa, 'reputacion_mercado'):
+                    score_reputacion += empresa.reputacion_mercado * 0.3
+                
+                # Factor de innovación
+                if hasattr(empresa, 'nivel_tecnologico'):
+                    score_reputacion += empresa.nivel_tecnologico * 0.1
+                
+                empresas_con_reputacion.append((empresa.nombre, score_reputacion))
+        
+        # Ordenar por reputación descendente
+        empresas_con_reputacion.sort(key=lambda x: x[1], reverse=True)
+        
+        # Retornar solo los nombres de las mejores empresas
+        return [nombre for nombre, _ in empresas_con_reputacion[:limite]]
+
+    def aplicar_incentivos_contratacion(self, sector: str = None, multiplicador: float = 1.3):
+        """
+        Aplica incentivos temporales para contratación en un sector específico
+        
+        Args:
+            sector: Sector económico a incentivar (None para todos)
+            multiplicador: Multiplicador de incentivo de contratación
+        """
+        if not hasattr(self, 'incentivos_activos'):
+            self.incentivos_activos = {}
+        
+        if sector:
+            self.incentivos_activos[sector] = multiplicador
+        else:
+            self.incentivos_activos['general'] = multiplicador
+        
+        print(f"💰 Incentivos de contratación aplicados - Sector: {sector or 'General'}, Multiplicador: {multiplicador}x")
+        
+        # Procesar contrataciones con incentivos
+        desempleados = [c for c in self.mercado.getConsumidores() if not c.empleado]
+        empresas_elegibles = []
+        
+        for empresa in self.mercado.getEmpresas():
+            if hasattr(empresa, 'dinero') and empresa.dinero > 30000:
+                # Verificar si empresa es elegible según sector
+                elegible = True
+                if sector and hasattr(empresa, 'sector_principal'):
+                    elegible = empresa.sector_principal == sector
+                
+                if elegible:
+                    empresas_elegibles.append(empresa)
+        
+        # Facilitar contrataciones con incentivos
+        contrataciones_incentivadas = 0
+        objetivo_contrataciones = min(len(desempleados), len(empresas_elegibles) * 2)
+        
+        for empresa in empresas_elegibles:
+            if contrataciones_incentivadas >= objetivo_contrataciones:
+                break
+            
+            candidatos_disponibles = [d for d in desempleados if not d.empleado]
+            max_contrataciones_empresa = min(2, int(empresa.dinero / 20000))
+            
+            for _ in range(max_contrataciones_empresa):
+                if candidatos_disponibles and contrataciones_incentivadas < objetivo_contrataciones:
+                    candidato = random.choice(candidatos_disponibles)
+                    
+                    # Aplicar incentivo gubernamental
+                    salario_incentivado = getattr(candidato, 'ingreso_mensual', 2000) * 0.3
+                    empresa.dinero += salario_incentivado  # Subsidio gubernamental
+                    
+                    if empresa.contratar(candidato):
+                        candidatos_disponibles.remove(candidato)
+                        contrataciones_incentivadas += 1
+        
+        if contrataciones_incentivadas > 0:
+            print(f"✅ {contrataciones_incentivadas} contrataciones incentivadas realizadas")

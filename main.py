@@ -58,6 +58,7 @@ except ImportError:
 from src.ai.IntegradorAgentesIA import IntegradorAgentesIA, ConfiguracionSistemaIA
 from src.models.Gobierno import Gobierno
 from src.models.EmpresaProductora import EmpresaProductora
+from src.models.EmpresaProductoraHiperrealista import EmpresaProductoraHiperrealista
 from src.models.Empresa import Empresa
 from src.models.Consumidor import Consumidor
 from src.models.Bien import Bien
@@ -179,16 +180,21 @@ def configurar_economia_avanzada(mercado, config):
         consumidor.ingreso_mensual = random.uniform(2000, 8000)
         mercado.agregar_persona(consumidor)
 
-    # === EMPRESAS PRODUCTORAS ===
+    # === EMPRESAS PRODUCTORAS HIPERREALISTAS ===
     num_empresas_prod = sim_config.get('num_empresas_productoras', 5)
     capital_config = eco_config.get('capital_inicial_empresas', {
                                     'min': 100000, 'max': 1500000})
 
     logger.log_configuracion(
-        f"Creando {num_empresas_prod} empresas productoras...")
+        f"Creando {num_empresas_prod} empresas productoras hiperrealistas...")
     empresas = []
     for i in range(num_empresas_prod):
-        empresa = EmpresaProductora(f'Productora_{i+1}', mercado)
+        # Usar empresas hiperrealistas por defecto
+        if sim_config.get('usar_empresas_hiperrealistas', True):
+            empresa = EmpresaProductoraHiperrealista(f'Productora_Hiperrealista_{i+1}', mercado)
+        else:
+            empresa = EmpresaProductora(f'Productora_{i+1}', mercado)
+            
         empresa.dinero = random.uniform(
             capital_config['min'], capital_config['max'])
         mercado.agregar_persona(empresa)
