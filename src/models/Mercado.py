@@ -26,6 +26,7 @@ from ..utils.EventBus import EventBus
 from ..utils.SimulacionReport import SimulacionReport
 from ..systems.IntegradorEmpresasHiperrealistas import GestorEmpresasHiperrealistas
 from ..systems.CadenaSuministro import GestorCadenaSuministro
+from ..systems.government import Government
 
 
 class Mercado:
@@ -36,6 +37,8 @@ class Mercado:
         self.mercado_financiero = MercadoFinanciero()
         self.transacciones = []
         self.gobierno = Gobierno(self)
+        # NUEVO: Sistema gubernamental mejorado para análisis fiscal
+        self.government = Government(self)
 
         # Sistema de eventos, reporte y order book
         self.event_bus = EventBus()
@@ -433,56 +436,67 @@ class Mercado:
         self.retirar_consumidores()
 
     def registrar_estadisticas(self):
-        """Registra estadísticas del ciclo actual con cálculo de PIB mejorado"""
-        # PIB - Método mejorado que incluye toda la actividad económica
-        pib_consumo = 0
-        pib_inversion = 0
-        pib_gasto_gobierno = 0
-
-        # 1. CONSUMO: Transacciones del ciclo actual
-        if hasattr(self, 'transacciones_ciclo_actual'):
-            pib_consumo = sum([t.get('costo_total', 0)
-                              for t in self.transacciones_ciclo_actual])
-            self.transacciones_ciclo_actual = []  # Resetear para próximo ciclo
+        """Registra estadísticas del ciclo actual con cálculo de PIB usando fórmula C+I+G+(NX)"""
+        
+        # NUEVO: Usar el sistema government para calcular PIB con componentes explícitos
+        if hasattr(self, 'government'):
+            # Ejecutar ciclo fiscal que calcula PIB = C + I + G + (NX)
+            resultados_fiscales = self.government.ejecutar_ciclo_fiscal(self.ciclo_actual)
+            pib_ciclo = resultados_fiscales['pib_total']
+            
+            # Registrar componentes del PIB para análisis
+            self.componentes_pib_actual = resultados_fiscales['componentes_pib']
+            
         else:
-            transacciones_ciclo = [t for t in self.transacciones if t.get(
-                'ciclo') == self.ciclo_actual]
-            pib_consumo = sum([t.get('costo_total', 0)
-                              for t in transacciones_ciclo])
+            # Fallback: Método anterior para compatibilidad
+            pib_consumo = 0
+            pib_inversion = 0
+            pib_gasto_gobierno = 0
 
-        # 2. INVERSIÓN: Actividad empresarial y producción
-        for empresa in self.getEmpresas():
-            if hasattr(empresa, 'dinero') and empresa.dinero > 0:
-                # Aproximar inversión como % del capital empresarial
-                pib_inversion += empresa.dinero * 0.05  # 5% de inversión
+            # 1. CONSUMO: Transacciones del ciclo actual
+            if hasattr(self, 'transacciones_ciclo_actual'):
+                pib_consumo = sum([t.get('costo_total', 0)
+                                  for t in self.transacciones_ciclo_actual])
+                self.transacciones_ciclo_actual = []  # Resetear para próximo ciclo
+            else:
+                transacciones_ciclo = [t for t in self.transacciones if t.get(
+                    'ciclo') == self.ciclo_actual]
+                pib_consumo = sum([t.get('costo_total', 0)
+                                  for t in transacciones_ciclo])
 
-            # Agregar valor de inventario como producción
-            if hasattr(empresa, 'bienes'):
-                for bien, lista_bien in empresa.bienes.items():
-                    precio_bien = empresa.precios.get(bien, 10)
-                    # 10% del valor de inventario
-                    pib_inversion += len(lista_bien) * precio_bien * 0.1
+            # 2. INVERSIÓN: Actividad empresarial y producción
+            for empresa in self.getEmpresas():
+                if hasattr(empresa, 'dinero') and empresa.dinero > 0:
+                    # Aproximar inversión como % del capital empresarial
+                    pib_inversion += empresa.dinero * 0.05  # 5% de inversión
 
-        # 3. GASTO GUBERNAMENTAL: Presupuesto del gobierno
-        if hasattr(self, 'gobierno') and self.gobierno:
-            pib_gasto_gobierno = getattr(
-                self.gobierno, 'gasto_ciclo_actual', 0)
-            if pib_gasto_gobierno == 0:
-                # Aproximar gasto gubernamental
+                # Agregar valor de inventario como producción
+                if hasattr(empresa, 'bienes'):
+                    for bien, lista_bien in empresa.bienes.items():
+                        precio_bien = empresa.precios.get(bien, 10)
+                        # 10% del valor de inventario
+                        pib_inversion += len(lista_bien) * precio_bien * 0.1
+
+            # 3. GASTO GUBERNAMENTAL: Presupuesto del gobierno
+            if hasattr(self, 'gobierno') and self.gobierno:
                 pib_gasto_gobierno = getattr(
-                    self.gobierno, 'presupuesto', 0) * 0.1  # 10% del presupuesto
+                    self.gobierno, 'gasto_ciclo_actual', 0)
+                if pib_gasto_gobierno == 0:
+                    # Aproximar gasto gubernamental
+                    pib_gasto_gobierno = getattr(
+                        self.gobierno, 'presupuesto', 0) * 0.1  # 10% del presupuesto
 
-        # 4. PIB TOTAL con factor de escala realista
-        pib_base = pib_consumo + pib_inversion + pib_gasto_gobierno
+            # 4. PIB TOTAL con factor de escala realista
+            pib_base = pib_consumo + pib_inversion + pib_gasto_gobierno
 
-        # Factor de multiplicador económico (aproximadamente 1.5-2.0)
-        multiplicador = 1.8
-        pib_ciclo = pib_base * multiplicador
+            # Factor de multiplicador económico (aproximadamente 1.5-2.0)
+            multiplicador = 1.8
+            pib_ciclo = pib_base * multiplicador
 
-        # Asegurar PIB mínimo realista
-        num_agentes = len(self.personas)
-        pib_minimo = num_agentes * 50  # $50 por agente como mínimo
-        pib_ciclo = max(pib_ciclo, pib_minimo)
+            # Asegurar PIB mínimo realista
+            num_agentes = len(self.personas)
+            pib_minimo = num_agentes * 50  # $50 por agente como mínimo
+            pib_ciclo = max(pib_ciclo, pib_minimo)
 
         self.pib_historico.append(pib_ciclo)
 
@@ -759,3 +773,22 @@ class Mercado:
 
     def getRegistroTransacciones(self):
         return self.transacciones
+    
+    def obtener_estadisticas_fiscales(self):
+        """Obtiene estadísticas fiscales del sistema gubernamental"""
+        if hasattr(self, 'government'):
+            return {
+                'balance_fiscal': self.government.obtener_balance_fiscal(),
+                'deuda_pib_ratio': self.government.obtener_deuda_pib_ratio(),
+                'componentes_pib': self.government.obtener_componentes_pib(),
+                'deuda_publica': self.government.deuda_publica,
+                'politica_fiscal': self.government.politica_fiscal.value,
+                'reporte_fiscal': self.government.generar_reporte_fiscal()
+            }
+        return {}
+    
+    def obtener_pib_descompuesto(self):
+        """Obtiene el PIB descompuesto en sus componentes C+I+G+(NX)"""
+        if hasattr(self, 'government') and hasattr(self, 'componentes_pib_actual'):
+            return self.componentes_pib_actual
+        return {}
