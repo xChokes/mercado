@@ -1,0 +1,27 @@
+{
+    "simulacion": {
+        "num_ciclos": 15,
+        "num_consumidores": 100,
+        "num_empresas_productoras": 5,
+        "num_empresas_comerciales": 3,
+        "frecuencia_reportes": 5,
+        "activar_crisis": true,
+        "usar_empresas_hiperrealistas": true
+    },
+    "economia": {
+        "pib_inicial": 100000,
+        "tasa_desempleo_inicial": 0.15,
+        "capital_inicial_empresas": {"min": 50000, "max": 150000}
+    },
+    "empresas_hiperrealistas": {
+        "activar": true,
+        "probabilidad_crisis_empresa": 0.05
+    },
+    "precios": {
+        "ajuste_maximo_por_ciclo": 0.10,
+        "sensibilidad_stock": 0.15
+    },
+    "sistema_bancario": {"activar": true, "num_bancos": 2},
+    "machine_learning": {"activar": false},
+    "agentes_ia": {"activar": false}
+}
