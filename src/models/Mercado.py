@@ -43,6 +43,9 @@ class Mercado:
             self.government = Government(self)
         else:
             self.government = None
+      
+        # Configuración de heterogeneidad de consumidores
+        self.config_hetero = {}
 
         # Sistema de eventos, reporte y order book
         self.event_bus = EventBus()
@@ -415,7 +418,7 @@ class Mercado:
         for _ in range(cantidad):
             self.contador_consumidores += 1
             nombre = f"Consumidor{self.contador_consumidores:03d}"
-            nuevo = Consumidor(nombre, self)
+            nuevo = Consumidor(nombre, self, config_hetero=self.config_hetero)
             self.agregar_persona(nuevo)
 
     def retirar_consumidores(self):

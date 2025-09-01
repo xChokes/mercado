@@ -34,6 +34,7 @@ from src.systems.VisualizacionAvanzada import DashboardEconomico, VisualizadorTi
 from src.systems.EstimuloEconomico import detectar_estancamiento_economico, aplicar_estimulo_emergencia
 from src.systems.CrisisFinanciera import evaluar_recuperacion_crisis, aplicar_medidas_recuperacion, evaluar_riesgo_sistemico
 from src.systems.MercadoLaboral import MercadoLaboral
+from src.systems.labor_market import EnhancedLaborMarket
 from src.systems.AnalyticsML import SistemaAnalyticsML
 from src.systems.SistemaBancario import SistemaBancario, Banco
 # NUEVOS SISTEMAS HIPERREALISTAS v3.0
@@ -170,14 +171,16 @@ def configurar_economia_avanzada(mercado, config):
     num_consumidores = sim_config.get('num_consumidores', 250)
     dinero_config = eco_config.get('dinero_inicial_consumidores', {
                                    'min': 5000, 'max': 15000})
+    hetero_config = config.obtener_seccion('heterogeneidad_consumidores')
 
     logger.log_configuracion(f"Creando {num_consumidores} consumidores...")
     for i in range(num_consumidores):
-        consumidor = Consumidor(f'Consumidor_{i+1}', mercado)
-        # Dinero inicial aleatorio en el rango configurado
-        consumidor.dinero = random.uniform(
-            dinero_config['min'], dinero_config['max'])
-        consumidor.ingreso_mensual = random.uniform(2000, 8000)
+        consumidor = Consumidor(f'Consumidor_{i+1}', mercado, config_hetero=hetero_config)
+        # Si no usa distribución lognormal, aplicar dinero inicial del config tradicional
+        if not hetero_config.get('activar', False) or hetero_config.get('distribucion_ingresos') != 'lognormal':
+            consumidor.dinero = random.uniform(
+                dinero_config['min'], dinero_config['max'])
+            consumidor.ingreso_mensual = random.uniform(2000, 8000)
         mercado.agregar_persona(consumidor)
 
     # === EMPRESAS PRODUCTORAS HIPERREALISTAS ===
@@ -330,6 +333,10 @@ def integrar_sistemas_avanzados(mercado, config):
     logger.log_configuracion("Activando mercado laboral avanzado...")
     mercado.mercado_laboral = MercadoLaboral(mercado)
 
+    # === ENHANCED LABOR MARKET with DMP-style matching ===
+    logger.log_configuracion("Activando sistema de mercado laboral mejorado con emparejamiento DMP...")
+    mercado.enhanced_labor_market = EnhancedLaborMarket(mercado)
+
     # Asignar perfiles de habilidades a consumidores
     for consumidor in mercado.getConsumidores():
         if not hasattr(consumidor, 'perfil_habilidades'):
@@ -365,8 +372,19 @@ def integrar_sistemas_avanzados(mercado, config):
     
     # 1. BANCO CENTRAL - Política monetaria automática
     logger.log_configuracion("🏦 Configurando Banco Central...")
-    mercado.banco_central = BancoCentral(mercado)
-    logger.log_configuracion(f"   Banco Central creado - Tasa inicial: {mercado.banco_central.tasa_interes_base:.2%}")
+    
+    # Verificar si política monetaria nueva está activada
+    politica_monetaria_config = config.obtener_parametro('politica_monetaria', 'activar', False)
+    if politica_monetaria_config:
+        # Usar nuevo CentralBank con Taylor Rule
+        from src.systems.central_bank import CentralBank
+        taylor_config = config.obtener_seccion('politica_monetaria')
+        mercado.banco_central_taylor = CentralBank(mercado, taylor_config)
+        logger.log_configuracion(f"   ✅ Banco Central Taylor Rule - Meta inflación: {mercado.banco_central_taylor.params.meta_inflacion:.1%}")
+    else:
+        # Usar sistema existente
+        mercado.banco_central = BancoCentral(mercado)
+        logger.log_configuracion(f"   Banco Central creado - Tasa inicial: {mercado.banco_central.tasa_interes_base:.2%}")
     
     # 2. CONTROLADOR DE PRECIOS REALISTA - Inercia y límites
     logger.log_configuracion("💰 Configurando Control de Precios Realista...")
@@ -448,6 +466,9 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
 
     # Crear mercado con bienes
     mercado = Mercado(bienes)
+    
+    # Configurar heterogeneidad de consumidores
+    mercado.config_hetero = config.obtener_seccion('heterogeneidad_consumidores')
 
     # Configurar economía
     empresas = configurar_economia_avanzada(mercado, config)
@@ -488,7 +509,14 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
         # === SISTEMAS HIPERREALISTAS v3.0 (EJECUTAR PRIMERO) ===
         
         # 1. BANCO CENTRAL - Política monetaria automática cada ciclo
-        if hasattr(mercado, 'banco_central'):
+        if hasattr(mercado, 'banco_central_taylor'):
+            # Usar nuevo sistema Taylor Rule
+            decision_bc = mercado.banco_central_taylor.ejecutar_politica_monetaria(ciclo)
+            if decision_bc['accion_tomada']:
+                local_logger.log_sistema(f"🏦 Banco Central Taylor - Ciclo {ciclo}: {decision_bc['descripcion']}")
+                local_logger.log_sistema(f"   Nueva tasa: {decision_bc['nueva_tasa']:.2f}%, Justificación: {decision_bc['justificacion']}")
+        elif hasattr(mercado, 'banco_central'):
+            # Usar sistema existente como fallback
             decision_bc = mercado.banco_central.ejecutar_politica_monetaria(ciclo)
             if decision_bc['accion_tomada']:
                 local_logger.log_sistema(f"🏦 Banco Central - Ciclo {ciclo}: {decision_bc['descripcion']}")
@@ -671,6 +699,16 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
             local_logger.log_sistema(
                 f"Ciclo {ciclo}: Proceso de contrataciones masivas ejecutado")
 
+        # 3.1. Enhanced Labor Market - DMP-style matching and wage formation
+        if hasattr(mercado, 'enhanced_labor_market'):
+            labor_stats = mercado.enhanced_labor_market.labor_market_cycle()
+            local_logger.log_sistema(
+                f"Ciclo {ciclo}: Enhanced Labor Market - "
+                f"Desempleo: {labor_stats['unemployment_rate']:.1%}, "
+                f"Salario promedio: ${labor_stats['average_wage']:,.0f}, "
+                f"Vacantes: {labor_stats['total_vacancies']}, "
+                f"Emparejamientos: {labor_stats['matches_made']}")
+
         # 4. Analytics ML cada 5 ciclos
         if hasattr(mercado, 'analytics_ml') and ciclo % 5 == 0:
             local_logger.log_ml(
@@ -803,6 +841,13 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
             tasa_desempleo = (
                 desempleados / max(1, consumidores_totales)) * 100
 
+            # Enhanced Labor Market metrics
+            enhanced_metrics = {}
+            if hasattr(mercado, 'enhanced_labor_market'):
+                enhanced_metrics = mercado.enhanced_labor_market.metrics
+                # Use enhanced metrics if available
+                tasa_desempleo = enhanced_metrics.get('unemployment_rate', tasa_desempleo / 100) * 100
+
             pib_actual = mercado.pib_historico[-1] if mercado.pib_historico else 0
             inflacion_actual = mercado.inflacion_historica[-1] if mercado.inflacion_historica else 0
 
@@ -829,7 +874,10 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
             # Banco Central
             tasa_bc = 0.0
             politica_bc = "N/A"
-            if hasattr(mercado, 'banco_central'):
+            if hasattr(mercado, 'banco_central_taylor'):
+                tasa_bc = mercado.banco_central_taylor.tasa_actual
+                politica_bc = mercado.banco_central_taylor.historial_decisiones[-1].accion if mercado.banco_central_taylor.historial_decisiones else "Inicial"
+            elif hasattr(mercado, 'banco_central'):
                 tasa_bc = mercado.banco_central.tasa_interes_base
                 politica_bc = mercado.banco_central.historial_decisiones[-1]['decision'] if mercado.banco_central.historial_decisiones else "Inicial"
             
@@ -862,6 +910,12 @@ REPORTE HIPERREALISTA v3.0 - CICLO {ciclo}/{num_ciclos}:
    Fase Económica: {fase_economica}
    Rescates: {empresas_rescatadas} | Fusiones: {fusiones} | Liquidaciones: {liquidaciones}
    Crisis: {'🔴 Activa' if mercado.crisis_financiera_activa else '🟢 Inactiva'}
+
+👔 MERCADO LABORAL MEJORADO:
+   Salario Promedio: ${enhanced_metrics.get('average_wage', 0):,.0f}
+   Vacantes Activas: {enhanced_metrics.get('total_vacancies', 0)}
+   Tasa de Emparejamiento: {enhanced_metrics.get('match_rate', 0):.1%}
+   Crecimiento Salarial: {enhanced_metrics.get('wage_growth', 0):+.1%}
 ═══════════════════════════════════════════════════════════""")
 
             # Log reporte detallado (mantener formato original para compatibilidad)
@@ -945,7 +999,13 @@ def generar_resultados_finales(mercado, tiempo_total, num_ciclos, prefijo_result
     logger.log_sistema("ESTADÍSTICAS HIPERREALISTAS:")
     
     # Banco Central
-    if hasattr(mercado, 'banco_central'):
+    if hasattr(mercado, 'banco_central_taylor'):
+        decisiones_bc = len(mercado.banco_central_taylor.historial_decisiones)
+        tasa_final = mercado.banco_central_taylor.tasa_actual
+        stats = mercado.banco_central_taylor.obtener_estadisticas()
+        logger.log_sistema(f"   🏦 Banco Central Taylor - Decisiones: {decisiones_bc}, Tasa final: {tasa_final:.2%}")
+        logger.log_sistema(f"       Convergencia inflación: {stats['convergencia_inflacion']:.1%}")
+    elif hasattr(mercado, 'banco_central'):
         decisiones_bc = len(mercado.banco_central.historial_decisiones)
         tasa_final = mercado.banco_central.tasa_interes_base
         logger.log_sistema(f"   🏦 Banco Central - Decisiones: {decisiones_bc}, Tasa final: {tasa_final:.2%}")

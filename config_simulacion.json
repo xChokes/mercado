@@ -1,13 +1,13 @@
 {
   "simulacion": {
-    "num_ciclos": 20, 
-    "num_consumidores": 250,
-    "num_empresas_productoras": 5,
-    "num_empresas_comerciales": 8,
+    "num_ciclos": 10, 
+    "num_consumidores": 100,
+    "num_empresas_productoras": 3,
+    "num_empresas_comerciales": 5,
     "frecuencia_reportes": 5,
-    "activar_crisis": true,
+    "activar_crisis": false,
     "tiempo_maximo_crisis": 15,
-    "usar_empresas_hiperrealistas": true
+    "usar_empresas_hiperrealistas": false
   },
   "economia": {
     "pib_inicial": 100000,
@@ -56,14 +56,37 @@
     "variabilidad_perfiles": 0.5
   },
   "agentes_ia": {
+    "activar": false,
+    "num_consumidores": 5,
+    "num_empresas": 2,
+    "deep_learning": false,
+    "redes_sociales": false,
+    "coaliciones": false,
+    "logs_detallados": false,
+    "duracion_minutos": 1
+  },
+  "heterogeneidad_consumidores": {
     "activar": true,
-    "num_consumidores": 15,
-    "num_empresas": 6,
-    "deep_learning": true,
-    "redes_sociales": true,
-    "coaliciones": true,
-    "logs_detallados": true,
-    "duracion_minutos": 3
+    "distribucion_ingresos": "lognormal",
+    "ingreso_lognormal_mu": 8.5,
+    "ingreso_lognormal_sigma": 0.8,
+    "ingreso_min_garantizado": 1500,
+    "tipo_preferencias": "cobb_douglas",
+    "ces_elasticity_substitution": 1.5,
+    "tasa_descuento_temporal": 0.05,
+    "factor_paciencia_min": 0.7,
+    "factor_paciencia_max": 0.98,
+    "gini_objetivo": 0.45
+  },
+  "politica_monetaria": {
+    "activar": true,
+    "taylor_params": {
+      "tasa_neutral": 0.025,
+      "meta_inflacion": 0.025,
+      "peso_inflacion": 1.5,
+      "peso_producto": 0.5,
+      "suavizamiento": 0.8
+    }
   },
   "empresas_hiperrealistas": {
     "activar": true,

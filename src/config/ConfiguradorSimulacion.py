@@ -95,6 +95,16 @@ class ConfiguradorSimulacion:
                 "coaliciones": True,
                 "logs_detallados": True,
                 "duracion_minutos": 3
+            },
+            "politica_monetaria": {
+                "activar": True,
+                "taylor_params": {
+                    "tasa_neutral": 0.025,
+                    "meta_inflacion": 0.025,
+                    "peso_inflacion": 1.5,
+                    "peso_producto": 0.5,
+                    "suavizamiento": 0.8
+                }
             }
         }
 
@@ -169,6 +179,7 @@ class ConfiguradorSimulacion:
         cfg.setdefault('machine_learning', {})
         cfg.setdefault('precios', {})
         cfg.setdefault('agentes_ia', {})
+        cfg.setdefault('politica_monetaria', {})
 
         # Completar con defaults si faltan claves esenciales
         defaults = self.configuracion_por_defecto()
