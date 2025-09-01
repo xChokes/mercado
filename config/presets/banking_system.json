@@ -1,0 +1,33 @@
+{
+  "parameters": {
+    "tasa_interes_base": [
+      0.02,
+      0.07
+    ],
+    "ratio_prestamo_ingreso": [
+      3.0,
+      6.0
+    ],
+    "probabilidad_contratacion_base": [
+      0.3,
+      0.7
+    ]
+  },
+  "optimization_method": "bayesian",
+  "n_trials": 75,
+  "timeout_seconds": null,
+  "simulation_cycles": 20,
+  "base_config_file": "config_simulacion.json",
+  "target_metrics": {
+    "desempleo_promedio": [
+      0.06,
+      2.0
+    ],
+    "transacciones_totales": [
+      200.0,
+      1.0
+    ]
+  },
+  "results_dir": "results/calibrations",
+  "save_intermediate": true
+}

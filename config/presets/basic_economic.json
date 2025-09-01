@@ -1,0 +1,41 @@
+{
+  "parameters": {
+    "pib_inicial": [
+      80000,
+      150000
+    ],
+    "tasa_inflacion_objetivo": [
+      0.015,
+      0.035
+    ],
+    "tasa_desempleo_inicial": [
+      0.08,
+      0.15
+    ],
+    "ajuste_maximo_por_ciclo": [
+      0.1,
+      0.25
+    ]
+  },
+  "optimization_method": "bayesian",
+  "n_trials": 50,
+  "timeout_seconds": null,
+  "simulation_cycles": 15,
+  "base_config_file": "config_simulacion.json",
+  "target_metrics": {
+    "pib_final": [
+      100000.0,
+      1.0
+    ],
+    "inflacion_promedio": [
+      0.02,
+      2.0
+    ],
+    "desempleo_promedio": [
+      0.06,
+      1.5
+    ]
+  },
+  "results_dir": "results/calibrations",
+  "save_intermediate": true
+}

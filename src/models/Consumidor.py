@@ -2,17 +2,22 @@ from .Empresa import Empresa
 from .Persona import Persona
 from ..config.ConfigEconomica import ConfigEconomica
 import random
+import numpy as np
+import math
 
 
 class Consumidor(Persona):
-    def __init__(self, nombre, mercado, bienes={}):
+    def __init__(self, nombre, mercado, bienes={}, config_hetero=None):
         super().__init__(mercado)
         self.nombre = nombre
         self.mercado = mercado  # Referencia al mercado
         self.bienes = bienes if bienes else {}
-        self.dinero = random.randint(
-            ConfigEconomica.DINERO_INICIAL_CONSUMIDOR_MIN,
-            ConfigEconomica.DINERO_INICIAL_CONSUMIDOR_MAX)
+        
+        # Cargar configuración de heterogeneidad
+        self.config_hetero = config_hetero or {}
+        
+        # Distribución heterogénea de ingresos iniciales
+        self.dinero = self._generar_dinero_inicial()
         self.historial_compras = {}
 
         # Características demográficas
@@ -25,9 +30,8 @@ class Consumidor(Persona):
         if random.random() > 0.1:
             self.empleado = True
 
-        self.ingreso_mensual = random.randint(
-            ConfigEconomica.SALARIO_BASE_MIN,
-            ConfigEconomica.SALARIO_BASE_MAX) if self.empleado else 0
+        # Ingreso heterogéneo usando distribución lognormal
+        self.ingreso_mensual = self._generar_ingreso_inicial() if self.empleado else 0
         self.empleador = None
 
         # Multiplicador de productividad
@@ -44,7 +48,7 @@ class Consumidor(Persona):
             self.sindicato = self.mercado.mercado_laboral.asignar_sindicato(
                 self)
 
-        # Características económicas
+        # Características económicas heterogéneas
         self.propension_consumo_base = random.uniform(0.70, 0.95)
         self.propension_consumo = self.propension_consumo_base  # Entre 70% y 95%
         self.propension_ahorro = 1 - self.propension_consumo
@@ -52,6 +56,18 @@ class Consumidor(Persona):
             random.uniform(0.1, 0.3)  # 10-30% en ahorros
         self.deuda = random.uniform(
             0, self.ingreso_mensual * 2) if self.empleado else 0
+
+        # Factor de paciencia para restricción intertemporal
+        paciencia_min = self.config_hetero.get('factor_paciencia_min', ConfigEconomica.FACTOR_PACIENCIA_MIN)
+        paciencia_max = self.config_hetero.get('factor_paciencia_max', ConfigEconomica.FACTOR_PACIENCIA_MAX)
+        self.factor_paciencia = random.uniform(paciencia_min, paciencia_max)
+        
+        # Tipo de preferencias (Cobb-Douglas o CES)
+        self.tipo_preferencias = self.config_hetero.get('tipo_preferencias', ConfigEconomica.TIPO_PREFERENCIAS)
+        self.ces_elasticity = self.config_hetero.get('ces_elasticity_substitution', ConfigEconomica.CES_ELASTICITY_SUBSTITUTION)
+        
+        # Coeficientes de preferencias para Cobb-Douglas
+        self.preferencias_cobb_douglas = {}
 
         # Ajustes por demografía
         self.ajustar_por_demografia()
@@ -63,6 +79,9 @@ class Consumidor(Persona):
 
         # Manejar bienes como diccionario o lista
         bienes_lista = mercado.bienes if isinstance(mercado.bienes, list) else list(mercado.bienes.keys())
+        
+        # Inicializar preferencias de Cobb-Douglas
+        self._inicializar_preferencias_cobb_douglas(bienes_lista)
         
         for bien in bienes_lista:
             self.cantidad_consumida[bien] = 0
@@ -80,6 +99,58 @@ class Consumidor(Persona):
         self.aversion_riesgo = random.uniform(0.3, 0.9)
         self.factor_imitacion = random.uniform(0.1, 0.4)  # Influencia social
         self.fidelidad_marca = random.uniform(0.2, 0.8)
+
+    def _generar_dinero_inicial(self):
+        """Genera dinero inicial usando distribución lognormal o uniforme"""
+        distribucion = self.config_hetero.get('distribucion_ingresos', ConfigEconomica.DISTRIBUCION_INGRESOS)
+        
+        if distribucion == 'lognormal':
+            mu = self.config_hetero.get('ingreso_lognormal_mu', ConfigEconomica.INGRESO_LOGNORMAL_MU)
+            sigma = self.config_hetero.get('ingreso_lognormal_sigma', ConfigEconomica.INGRESO_LOGNORMAL_SIGMA)
+            min_garantizado = self.config_hetero.get('ingreso_min_garantizado', ConfigEconomica.INGRESO_MIN_GARANTIZADO)
+            
+            # Generar usando distribución lognormal
+            dinero = np.random.lognormal(mu, sigma)
+            # Aplicar mínimo garantizado y escalar a rango apropiado
+            dinero = max(min_garantizado, dinero)
+            return int(min(dinero, ConfigEconomica.DINERO_INICIAL_CONSUMIDOR_MAX))
+        else:
+            # Distribución uniforme tradicional
+            return random.randint(
+                ConfigEconomica.DINERO_INICIAL_CONSUMIDOR_MIN,
+                ConfigEconomica.DINERO_INICIAL_CONSUMIDOR_MAX)
+    
+    def _generar_ingreso_inicial(self):
+        """Genera ingreso inicial usando distribución lognormal o uniforme"""
+        distribucion = self.config_hetero.get('distribucion_ingresos', ConfigEconomica.DISTRIBUCION_INGRESOS)
+        
+        if distribucion == 'lognormal':
+            mu = self.config_hetero.get('ingreso_lognormal_mu', ConfigEconomica.INGRESO_LOGNORMAL_MU)
+            sigma = self.config_hetero.get('ingreso_lognormal_sigma', ConfigEconomica.INGRESO_LOGNORMAL_SIGMA)
+            min_garantizado = self.config_hetero.get('ingreso_min_garantizado', ConfigEconomica.INGRESO_MIN_GARANTIZADO)
+            
+            # Generar usando distribución lognormal, escalado para ingresos
+            ingreso = np.random.lognormal(mu - 1.0, sigma * 0.8)  # Ajustar para ingresos mensuales
+            ingreso = max(min_garantizado, ingreso)
+            return int(min(ingreso, ConfigEconomica.SALARIO_BASE_MAX))
+        else:
+            # Distribución uniforme tradicional
+            return random.randint(
+                ConfigEconomica.SALARIO_BASE_MIN,
+                ConfigEconomica.SALARIO_BASE_MAX)
+
+    def _inicializar_preferencias_cobb_douglas(self, bienes_lista):
+        """Inicializa coeficientes de preferencias Cobb-Douglas que suman 1"""
+        if not bienes_lista:
+            return
+        
+        # Generar coeficientes aleatorios
+        coefs_raw = [random.uniform(0.1, 2.0) for _ in bienes_lista]
+        suma_coefs = sum(coefs_raw)
+        
+        # Normalizar para que sumen 1
+        for i, bien in enumerate(bienes_lista):
+            self.preferencias_cobb_douglas[bien] = coefs_raw[i] / suma_coefs
 
     def _determinar_estado_demografico(self):
         if self.edad < 25:
@@ -103,6 +174,106 @@ class Consumidor(Persona):
             self.empleado = False
             self.ingreso_mensual = 0
         self.propension_ahorro = 1 - self.propension_consumo
+
+    def calcular_utilidad_cobb_douglas(self, cantidades):
+        """Calcula utilidad usando función Cobb-Douglas: U = ∏(x_i^α_i)"""
+        if not cantidades:
+            return 0.0
+        
+        utilidad = 1.0
+        for bien, cantidad in cantidades.items():
+            if bien in self.preferencias_cobb_douglas and cantidad > 0:
+                alpha = self.preferencias_cobb_douglas[bien]
+                utilidad *= (cantidad ** alpha)
+        
+        return utilidad
+    
+    def calcular_utilidad_ces(self, cantidades):
+        """Calcula utilidad usando función CES: U = (∑(α_i * x_i^ρ))^(1/ρ)"""
+        if not cantidades:
+            return 0.0
+        
+        rho = (self.ces_elasticity - 1) / self.ces_elasticity
+        suma_ces = 0.0
+        
+        for bien, cantidad in cantidades.items():
+            if bien in self.preferencias_cobb_douglas and cantidad >= 0:
+                alpha = self.preferencias_cobb_douglas[bien]
+                suma_ces += alpha * (cantidad ** rho)
+        
+        if suma_ces <= 0:
+            return 0.0
+        
+        return suma_ces ** (1 / rho)
+    
+    def calcular_utilidad_total(self, cantidades):
+        """Calcula utilidad total según el tipo de preferencias configurado"""
+        if self.tipo_preferencias == 'ces':
+            return self.calcular_utilidad_ces(cantidades)
+        else:  # Default: cobb_douglas
+            return self.calcular_utilidad_cobb_douglas(cantidades)
+    
+    def calcular_demanda_optima(self, presupuesto, precios):
+        """Calcula demanda óptima dada restricción presupuestaria"""
+        if not precios or presupuesto <= 0:
+            return {}
+        
+        if self.tipo_preferencias == 'cobb_douglas':
+            return self._demanda_cobb_douglas(presupuesto, precios)
+        else:  # CES
+            return self._demanda_ces(presupuesto, precios)
+    
+    def _demanda_cobb_douglas(self, presupuesto, precios):
+        """Calcula demanda óptima para preferencias Cobb-Douglas"""
+        demanda = {}
+        
+        for bien, precio in precios.items():
+            if bien in self.preferencias_cobb_douglas and precio > 0:
+                alpha = self.preferencias_cobb_douglas[bien]
+                # Demanda marshalliana: x_i = (α_i * M) / p_i
+                demanda[bien] = max(0, (alpha * presupuesto) / precio)
+            else:
+                demanda[bien] = 0
+        
+        return demanda
+    
+    def _demanda_ces(self, presupuesto, precios):
+        """Calcula demanda óptima para preferencias CES (aproximación)"""
+        demanda = {}
+        elasticidad = self.ces_elasticity
+        
+        # Para CES, usamos aproximación basada en elasticidad de sustitución
+        total_ponderado = sum(
+            self.preferencias_cobb_douglas.get(bien, 0) * (precio ** (1 - elasticidad))
+            for bien, precio in precios.items()
+        )
+        
+        if total_ponderado <= 0:
+            return {bien: 0 for bien in precios}
+        
+        for bien, precio in precios.items():
+            if bien in self.preferencias_cobb_douglas and precio > 0:
+                alpha = self.preferencias_cobb_douglas[bien]
+                peso_relativo = alpha * (precio ** (1 - elasticidad)) / total_ponderado
+                demanda[bien] = max(0, (peso_relativo * presupuesto) / precio)
+            else:
+                demanda[bien] = 0
+        
+        return demanda
+    
+    def aplicar_restriccion_intertemporal(self, consumo_actual, tasa_interes):
+        """Ajusta el consumo considerando restricción intertemporal"""
+        # Factor de descuento basado en paciencia y tasa de interés
+        factor_descuento = self.factor_paciencia / (1 + tasa_interes)
+        
+        # Ajustar propensión al consumo basado en la paciencia
+        propension_ajustada = self.propension_consumo * factor_descuento
+        
+        # Los más pacientes tienden a ahorrar más cuando las tasas son altas
+        if tasa_interes > 0.05:  # Tasa alta
+            propension_ajustada *= (1 - (tasa_interes - 0.05) * self.factor_paciencia)
+        
+        return max(0.1, min(0.95, propension_ajustada))
 
     def envejecer(self, anos=1/12):
         self.edad += anos
