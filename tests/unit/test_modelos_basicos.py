@@ -48,7 +48,12 @@ class TestConsumidor(unittest.TestCase):
     def setUp(self):
         bienes = {"pan": Bien("pan", "alimentos_basicos")}
         self.mercado = Mercado(bienes)
-        self.consumidor = Consumidor("TestConsumidor", self.mercado)
+        # Configuración tradicional para mantener compatibilidad con tests existentes
+        config_tradicional = {
+            'activar': False,  # Desactivar heterogeneidad para tests tradicionales
+            'distribucion_ingresos': 'uniforme'
+        }
+        self.consumidor = Consumidor("TestConsumidor", self.mercado, config_hetero=config_tradicional)
     
     def test_creacion_consumidor(self):
         """Test creación básica de consumidor"""
