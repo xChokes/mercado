@@ -732,6 +732,128 @@ class Mercado:
     def getEmpresas(self):
         return [e for e in self.personas if isinstance(e, (Empresa, EmpresaProductora))]
 
+    def gestionar_rotacion_empresas(self, ciclo):
+        """Gestiona entrada y salida de empresas usando proceso Poisson"""
+        import logging
+        
+        empresas_activas = self.getEmpresas()
+        empresas_en_quiebra = [e for e in empresas_activas if getattr(e, 'en_quiebra', False)]
+        
+        # Remover empresas en quiebra
+        for empresa in empresas_en_quiebra:
+            self.personas.remove(empresa)
+            logging.info(f"Empresa {empresa.nombre} removida del mercado por quiebra")
+        
+        # Entrada de nuevas empresas (proceso Poisson)
+        # Probabilidad base de entrada: 0.1% por ciclo por empresa existente
+        num_empresas_actuales = len([e for e in self.getEmpresas() if not getattr(e, 'en_quiebra', False)])
+        probabilidad_entrada = 0.001 * max(1, num_empresas_actuales)
+        
+        # Factores que afectan entrada de empresas
+        if hasattr(self, 'crecimiento_pib') and self.crecimiento_pib > 0.02:
+            probabilidad_entrada *= 1.5  # Mayor entrada en crecimiento
+        if hasattr(self, 'crisis_financiera_activa') and self.crisis_financiera_activa:
+            probabilidad_entrada *= 0.3  # Menor entrada en crisis
+        
+        # Decidir si entra nueva empresa
+        if random.random() < probabilidad_entrada:
+            self.crear_nueva_empresa(ciclo)
+        
+        # Ajustar políticas S,s dinámicamente basado en condiciones de mercado
+        for empresa in self.getEmpresas():
+            if hasattr(empresa, 'ajustar_politica_inventarios'):
+                empresa.ajustar_politica_inventarios(self)
+
+    def crear_nueva_empresa(self, ciclo):
+        """Crea una nueva empresa entrante al mercado"""
+        import logging
+        from .EmpresaProductora import EmpresaProductora
+        
+        # Generar nombre único
+        empresas_existentes = len(self.getEmpresas())
+        nuevo_nombre = f"Entrante_{empresas_existentes + 1}_C{ciclo}"
+        
+        # Crear empresa con capital inicial moderado
+        nueva_empresa = EmpresaProductora(nuevo_nombre, self)
+        nueva_empresa.dinero = random.uniform(80000, 150000)  # Capital inicial entrante
+        
+        # Marcar como empresa nueva para análisis
+        nueva_empresa.es_entrante = True
+        nueva_empresa.ciclo_entrada = ciclo
+        
+        self.personas.append(nueva_empresa)
+        logging.info(f"Nueva empresa {nuevo_nombre} entra al mercado con capital ${nueva_empresa.dinero:.2f}")
+
+    def calcular_kpis_empresariales(self, ciclo):
+        """Calcula KPIs relacionados con dinámicas empresariales"""
+        empresas = self.getEmpresas()
+        
+        if not empresas:
+            return {
+                'tasa_quiebra': 0.0,
+                'rotacion_empresas': 0.0,
+                'rigidez_precios': 0.0,
+                'empresas_activas': 0,
+                'empresas_entrantes': 0,
+                'inventario_ratio_promedio': 0.0,
+                'costos_ajuste_precio_totales': 0.0
+            }
+        
+        # Calcular tasa de quiebra
+        empresas_en_quiebra = len([e for e in empresas if getattr(e, 'en_quiebra', False)])
+        tasa_quiebra = empresas_en_quiebra / len(empresas) if empresas else 0.0
+        
+        # Calcular empresas entrantes en este ciclo
+        empresas_entrantes = len([e for e in empresas if 
+                                getattr(e, 'es_entrante', False) and 
+                                getattr(e, 'ciclo_entrada', 0) == ciclo])
+        
+        # Calcular rotación (entrada + salida)
+        rotacion_empresas = (empresas_entrantes + empresas_en_quiebra) / len(empresas) if empresas else 0.0
+        
+        # Calcular rigidez de precios
+        total_bienes_precio = 0
+        precios_sin_cambio = 0
+        for empresa in empresas:
+            if hasattr(empresa, 'ciclos_sin_cambio_precio'):
+                for bien, ciclos_sin_cambio in empresa.ciclos_sin_cambio_precio.items():
+                    total_bienes_precio += 1
+                    if ciclos_sin_cambio >= 3:  # Precio rígido si no cambió en 3+ ciclos
+                        precios_sin_cambio += 1
+        
+        rigidez_precios = precios_sin_cambio / total_bienes_precio if total_bienes_precio > 0 else 0.0
+        
+        # Calcular ratio inventario promedio
+        ratios_inventario = []
+        costos_ajuste_totales = 0.0
+        
+        for empresa in empresas:
+            if hasattr(empresa, 'inventario_objetivo') and hasattr(empresa, 'bienes'):
+                for bien in empresa.inventario_objetivo:
+                    stock_actual = len(empresa.bienes.get(bien, []))
+                    objetivo = empresa.inventario_objetivo.get(bien, 1)
+                    if objetivo > 0:
+                        ratios_inventario.append(stock_actual / objetivo)
+            
+            # Sumar costos de ajuste de precio
+            if hasattr(empresa, 'historial_cambios_precio'):
+                for bien, cambios in empresa.historial_cambios_precio.items():
+                    for cambio in cambios:
+                        if cambio.get('ciclo', 0) == ciclo:
+                            costos_ajuste_totales += cambio.get('costo_ajuste', 0)
+        
+        inventario_ratio_promedio = sum(ratios_inventario) / len(ratios_inventario) if ratios_inventario else 0.0
+        
+        return {
+            'tasa_quiebra': tasa_quiebra,
+            'rotacion_empresas': rotacion_empresas,
+            'rigidez_precios': rigidez_precios,
+            'empresas_activas': len(empresas),
+            'empresas_entrantes': empresas_entrantes,
+            'inventario_ratio_promedio': inventario_ratio_promedio,
+            'costos_ajuste_precio_totales': costos_ajuste_totales
+        }
+
     def getPersonas(self):
         return self.personas
 

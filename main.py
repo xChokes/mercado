@@ -583,6 +583,16 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
                                        f"Fusiones={stats_rescate['fusiones_totales']}, "
                                        f"Liquidaciones={stats_rescate['liquidaciones_totales']}")
 
+        # NUEVO: GESTIÓN DE ROTACIÓN EMPRESARIAL - Entrada y salida de empresas
+        try:
+            mercado.gestionar_rotacion_empresas(ciclo)
+            empresas_activas = len(mercado.getEmpresas())
+            if ciclo % 10 == 0:  # Log cada 10 ciclos
+                local_logger.log_sistema(f"🏢 Rotación Empresarial - Ciclo {ciclo}: "
+                                       f"Empresas activas={empresas_activas}")
+        except Exception as e:
+            local_logger.log_error(f"Error en rotación empresarial: {e}")
+
         # 5. SISTEMA FISCAL AVANZADO - Recaudación, gasto y política fiscal
         if hasattr(mercado, 'sistema_fiscal'):
             reporte_fiscal = mercado.sistema_fiscal.ejecutar_ciclo_fiscal(ciclo)
@@ -817,6 +827,18 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
                 stats_ml = mercado.analytics_ml.obtener_estadisticas_analytics()
                 modelos_entrenados = stats_ml.get('modelos_entrenados', 0)
 
+            # NUEVO: Calcular KPIs empresariales
+            kpis_empresariales = mercado.calcular_kpis_empresariales(ciclo)
+            
+            # Actualizar reporte con nuevos KPIs
+            mercado.reporte.tasa_quiebra.append(kpis_empresariales['tasa_quiebra'])
+            mercado.reporte.rotacion_empresas.append(kpis_empresariales['rotacion_empresas'])
+            mercado.reporte.rigidez_precios.append(kpis_empresariales['rigidez_precios'])
+            mercado.reporte.empresas_activas.append(kpis_empresariales['empresas_activas'])
+            mercado.reporte.empresas_entrantes.append(kpis_empresariales['empresas_entrantes'])
+            mercado.reporte.inventario_promedio_ratio.append(kpis_empresariales['inventario_ratio_promedio'])
+            mercado.reporte.costos_ajuste_precio_totales.append(kpis_empresariales['costos_ajuste_precio_totales'])
+
             # Métricas bancarias
             depositos_totales = prestamos_totales = 0
             if hasattr(mercado, 'sistema_bancario') and mercado.sistema_bancario.bancos:
@@ -853,6 +875,11 @@ REPORTE HIPERREALISTA v3.0 - CICLO {ciclo}/{num_ciclos}:
    PIB: ${pib_actual:,.2f} | Inflación: {inflacion_actual*100:.2f}%
    Desempleo: {tasa_desempleo:.1f}% | Empresas Activas: {empresas_activas}
    Transacciones: {transacciones_ciclo} | Modelos ML: {modelos_entrenados}
+
+🏢 DINÁMICAS EMPRESARIALES:
+   Tasa Quiebra: {kpis_empresariales['tasa_quiebra']:.1%} | Rotación: {kpis_empresariales['rotacion_empresas']:.1%}
+   Rigidez Precios: {kpis_empresariales['rigidez_precios']:.1%} | Empresas Nuevas: {kpis_empresariales['empresas_entrantes']}
+   Ratio Inventario: {kpis_empresariales['inventario_ratio_promedio']:.2f} | Costos Ajuste: ${kpis_empresariales['costos_ajuste_precio_totales']:,.0f}
 
 🏦 SISTEMA BANCARIO:
    Depósitos: ${depositos_totales:,.0f} | Préstamos: ${prestamos_totales:,.0f}

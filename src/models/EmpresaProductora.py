@@ -57,6 +57,18 @@ class EmpresaProductora(Empresa):
         self.aversion_riesgo_empresa = random.uniform(0.4, 0.7)  # Riesgo más balanceado
         self.factor_expansion = random.uniform(0.03, 0.15)  # Expansión más conservadora
 
+        # NUEVO: Sistema de inventarios S,s (reorder point, target stock)
+        self.inventario_objetivo = {}  # S: nivel objetivo de inventario
+        self.punto_reorden = {}       # s: punto de reorden
+        self.costo_almacenamiento = random.uniform(0.01, 0.03)  # % del valor por ciclo
+        self.costo_faltante = random.uniform(0.05, 0.10)  # Costo por unidad faltante
+        
+        # NUEVO: Costos de ajuste de precios para rigidez realista
+        self.costo_ajuste_precio = random.uniform(100, 500)  # Costo fijo por cambio de precio
+        self.historial_cambios_precio = {}  # Seguimiento de cambios de precio
+        self.ciclos_sin_cambio_precio = {}  # Contadores para cada bien
+        self.umbral_cambio_precio = random.uniform(0.03, 0.08)  # Cambio mínimo para justificar costo
+
         # Inicializar capacidades para todos los bienes del mercado
         for bien in mercado.bienes.keys():
             base_capacity = random.randint(ConfigEconomica.PRODUCCION_BASE_MIN,
@@ -81,11 +93,44 @@ class EmpresaProductora(Empresa):
             self.costos_variables[bien] = costo_base * \
                 random.uniform(0.3, 0.7)  # Costos variables
 
+            # NUEVO: Inicializar política S,s para cada bien
+            # S (objetivo): 2-4 veces la capacidad base de producción
+            self.inventario_objetivo[bien] = int(base_capacity * random.uniform(2.0, 4.0))
+            # s (reorden): 20-40% del objetivo
+            self.punto_reorden[bien] = int(self.inventario_objetivo[bien] * random.uniform(0.2, 0.4))
+            
+            # Inicializar historial de precios y contadores
+            self.historial_cambios_precio[bien] = []
+            self.ciclos_sin_cambio_precio[bien] = 0
+
             # Inicializar inventario vacío
             self.bienes[bien] = []
 
         # Precios iniciales con márgenes realistas
         self.establecer_precios_iniciales()
+
+    def ajustar_politica_inventarios(self, mercado):
+        """Ajusta dinámicamente la política S,s basado en condiciones de mercado"""
+        for bien in self.bienes.keys():
+            if bien in self.inventario_objetivo and bien in self.punto_reorden:
+                # Factores de ajuste basados en volatilidad de demanda
+                demanda_reciente = self.obtener_ventas_recientes(bien, mercado, 5)
+                stock_actual = len(self.bienes.get(bien, []))
+                
+                # Ajustar objetivo de inventario basado en volatilidad
+                if demanda_reciente > self.inventario_objetivo[bien] * 0.8:
+                    # Alta demanda - aumentar objetivos
+                    self.inventario_objetivo[bien] = int(self.inventario_objetivo[bien] * 1.1)
+                    self.punto_reorden[bien] = int(self.punto_reorden[bien] * 1.1)
+                elif demanda_reciente < self.inventario_objetivo[bien] * 0.3:
+                    # Baja demanda - reducir objetivos
+                    self.inventario_objetivo[bien] = int(self.inventario_objetivo[bien] * 0.95)
+                    self.punto_reorden[bien] = int(self.punto_reorden[bien] * 0.95)
+                
+                # Límites mínimos y máximos
+                capacidad_base = self.capacidad_produccion.get(bien, 100)
+                self.inventario_objetivo[bien] = max(capacidad_base, min(capacidad_base * 6, self.inventario_objetivo[bien]))
+                self.punto_reorden[bien] = max(int(capacidad_base * 0.2), min(int(capacidad_base * 2), self.punto_reorden[bien]))
 
     def establecer_precios_iniciales(self):
         """Establece precios iniciales basados en costos y estrategia"""
@@ -233,46 +278,47 @@ class EmpresaProductora(Empresa):
             return 1
 
     def planificar_produccion(self, mercado):
-        """Planifica la producción basada en demanda estimada y capacidad"""
+        """Planifica la producción usando política S,s (reorder point, target stock)"""
         plan_produccion = {}
 
         try:
             for bien in self.capacidad_produccion:
                 try:
-                    demanda_estimada = self.calcular_demanda_estimada(
-                        bien, mercado)
                     stock_actual = len(self.bienes.get(bien, []))
-
-                    # Nivel de stock objetivo (1.5x la demanda estimada)
-                    stock_objetivo = int(max(1, demanda_estimada) * 1.5)
-                    necesidad_produccion = max(
-                        0, stock_objetivo - stock_actual)
-
-                    # Limitar por capacidad de producción
-                    capacidad_disponible = max(0, self.capacidad_produccion.get(bien, 0) -
-                                               self.produccion_actual.get(bien, 0))
-                    produccion_planificada = min(
-                        necesidad_produccion, capacidad_disponible)
-
-                    # Considerar restricciones financieras
-                    costo_unitario = max(
-                        0.01, self.costos_unitarios.get(bien, 1))
-                    costo_produccion = produccion_planificada * costo_unitario
-
-                    if costo_produccion > self.dinero * 0.7:  # No usar más del 70% del capital
-                        produccion_planificada = int(
-                            # Evitar división por cero
-                            self.dinero * 0.7 / costo_unitario)
-
-                    plan_produccion[bien] = max(0, produccion_planificada)
+                    punto_reorden = self.punto_reorden.get(bien, 0)
+                    inventario_objetivo = self.inventario_objetivo.get(bien, 0)
+                    
+                    # Política S,s: Producir solo si stock <= punto de reorden
+                    if stock_actual <= punto_reorden:
+                        # Producir hasta alcanzar el inventario objetivo (S)
+                        necesidad_produccion = max(0, inventario_objetivo - stock_actual)
+                        
+                        # Limitar por capacidad de producción
+                        capacidad_disponible = max(0, self.capacidad_produccion.get(bien, 0) -
+                                                  self.produccion_actual.get(bien, 0))
+                        produccion_planificada = min(necesidad_produccion, capacidad_disponible)
+                        
+                        # Considerar restricciones financieras
+                        costo_unitario = max(0.01, self.costos_unitarios.get(bien, 1))
+                        costo_produccion = produccion_planificada * costo_unitario
+                        
+                        if costo_produccion > self.dinero * 0.7:  # No usar más del 70% del capital
+                            produccion_planificada = int(self.dinero * 0.7 / costo_unitario)
+                        
+                        plan_produccion[bien] = max(0, produccion_planificada)
+                        
+                        logging.debug(f"{self.nombre}: S,s política activada para {bien} - "
+                                    f"Stock: {stock_actual}, Reorden: {punto_reorden}, "
+                                    f"Objetivo: {inventario_objetivo}, Producir: {plan_produccion[bien]}")
+                    else:
+                        # No producir - stock por encima del punto de reorden
+                        plan_produccion[bien] = 0
 
                 except (ZeroDivisionError, ValueError, TypeError, KeyError) as e:
-                    logging.error(
-                        f"Error planificando producción de {bien} en {self.nombre}: {e}")
+                    logging.error(f"Error planificando producción S,s de {bien} en {self.nombre}: {e}")
                     plan_produccion[bien] = 0
                 except Exception as e:
-                    logging.error(
-                        f"Error inesperado planificando producción de {bien} en {self.nombre}: {e}")
+                    logging.error(f"Error inesperado planificando producción S,s de {bien} en {self.nombre}: {e}")
                     plan_produccion[bien] = 0
 
         except Exception as e:
@@ -565,11 +611,44 @@ class EmpresaProductora(Empresa):
                 else:
                     precio_nuevo = precio_actual - cambio_maximo
 
-            # Asegurar que el precio final nunca sea cero o negativo
-            precio_final = round(max(precio_nuevo, 1.0), 2)
-
-            logging.debug(
-                f"{self.nombre}: Precio de {bien} cambiado de ${precio_actual:.2f} a ${precio_final:.2f}")
+            # NUEVO: Evaluar si el cambio de precio justifica el costo de ajuste
+            cambio_propuesto = abs(precio_nuevo - precio_actual) / precio_actual
+            precio_final = precio_actual  # Por defecto, no cambiar
+            
+            # Solo cambiar precio si:
+            # 1. El cambio es significativo (> umbral)
+            # 2. El beneficio esperado supera el costo de ajuste
+            if cambio_propuesto > self.umbral_cambio_precio:
+                # Estimar beneficio del cambio de precio
+                stock_actual = len(self.bienes.get(bien, []))
+                beneficio_estimado = stock_actual * abs(precio_nuevo - precio_actual) * 0.5
+                
+                # Considerar costo de ajuste de precio
+                if beneficio_estimado > self.costo_ajuste_precio or self.ciclos_sin_cambio_precio.get(bien, 0) > 10:
+                    # Cambio justificado
+                    precio_final = round(max(precio_nuevo, 1.0), 2)
+                    self.dinero -= self.costo_ajuste_precio  # Pagar costo del ajuste
+                    
+                    # Registrar cambio en historial
+                    self.historial_cambios_precio.setdefault(bien, []).append({
+                        'precio_anterior': precio_actual,
+                        'precio_nuevo': precio_final,
+                        'costo_ajuste': self.costo_ajuste_precio,
+                        'ciclo': getattr(mercado, 'ciclo_actual', 0)
+                    })
+                    self.ciclos_sin_cambio_precio[bien] = 0
+                    
+                    logging.debug(f"{self.nombre}: Precio de {bien} cambiado de ${precio_actual:.2f} a ${precio_final:.2f} "
+                                f"(costo ajuste: ${self.costo_ajuste_precio:.2f})")
+                else:
+                    # Cambio no justificado por el costo
+                    logging.debug(f"{self.nombre}: Cambio de precio para {bien} no justificado "
+                                f"(beneficio: ${beneficio_estimado:.2f} vs costo: ${self.costo_ajuste_precio:.2f})")
+            else:
+                logging.debug(f"{self.nombre}: Cambio de precio para {bien} muy pequeño ({cambio_propuesto:.3f} < {self.umbral_cambio_precio:.3f})")
+            
+            # Incrementar contador de ciclos sin cambio
+            self.ciclos_sin_cambio_precio[bien] = self.ciclos_sin_cambio_precio.get(bien, 0) + 1
             self.precios[bien] = precio_final
 
         except Exception as e:
@@ -712,14 +791,27 @@ class EmpresaProductora(Empresa):
                 capacidad_total = sum(self.capacidad_produccion.values())
                 mantenimiento = max(50, min(capacidad_total * 0.05, 2000))  # Entre 50-2K
             
-            # Costos de inventario (2% del valor del inventario)
+            # MEJORADO: Costos de inventario usando política S,s
             costo_inventario = 0
             if hasattr(self, 'bienes'):
                 for bien, items in self.bienes.items():
                     if items:
-                        costo_promedio = self.costos_unitarios.get(bien, 10)
-                        costo_inventario += len(items) * costo_promedio * 0.02
-                costo_inventario = min(costo_inventario, 5000)  # Máximo 5K
+                        stock_actual = len(items)
+                        valor_unitario = self.costos_unitarios.get(bien, 10)
+                        
+                        # Costo de almacenamiento (% del valor por ciclo)
+                        costo_almacen = stock_actual * valor_unitario * self.costo_almacenamiento
+                        
+                        # Costo de faltante si estamos por debajo del punto de reorden
+                        punto_reorden = self.punto_reorden.get(bien, 0)
+                        if stock_actual < punto_reorden:
+                            faltante = punto_reorden - stock_actual
+                            costo_faltante = faltante * valor_unitario * self.costo_faltante
+                            costo_inventario += costo_faltante
+                        
+                        costo_inventario += costo_almacen
+                        
+                costo_inventario = min(costo_inventario, 8000)  # Máximo 8K (aumentado)
             
             # Sumar todos los costos con límites de seguridad
             total = costos_fijos + costo_salarios + mantenimiento + costo_inventario
@@ -754,7 +846,10 @@ class EmpresaProductora(Empresa):
             
             elif self.ciclos_sin_actividad == 2:
                 # Segundo ciclo: Buscar financiamiento de emergencia
-                if hasattr(self.mercado, 'sistema_bancario') and self.mercado.sistema_bancario.bancos:
+                if (hasattr(self.mercado, 'sistema_bancario') and 
+                    self.mercado.sistema_bancario is not None and 
+                    hasattr(self.mercado.sistema_bancario, 'bancos') and 
+                    self.mercado.sistema_bancario.bancos):
                     banco = self.mercado.sistema_bancario.bancos[0]
                     prestamo_emergencia = costos_totales * 3  # 3 meses de supervivencia
                     
@@ -771,7 +866,8 @@ class EmpresaProductora(Empresa):
             
             elif self.ciclos_sin_actividad >= 5:  # Aumentado de 3 a 5 ciclos
                 # Última oportunidad: Rescate gubernamental o fusión
-                if hasattr(self.mercado, 'rescate_empresarial'):
+                if (hasattr(self.mercado, 'rescate_empresarial') and 
+                    self.mercado.rescate_empresarial is not None):
                     rescate_exitoso = self.mercado.rescate_empresarial.evaluar_rescate(self)
                     if rescate_exitoso:
                         self.ciclos_sin_actividad = 0
