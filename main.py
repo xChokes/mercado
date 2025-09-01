@@ -1039,10 +1039,92 @@ def generar_resultados_finales(mercado, tiempo_total, num_ciclos, prefijo_result
             logger.log_sistema(
                 f"   Dispersión precios: ${stats_precios['dispersion_precios']:.2f}")
 
+    # === VALIDACIÓN ECONÓMICA FORMAL ===
+    logger.log_sistema("GENERANDO REPORTE DE VALIDACIÓN ECONÓMICA...")
+    
+    try:
+        from src.utils.validators import ValidadorEconomicoFormal
+        
+        # Preparar datos para validación
+        datos_validacion = {
+            'pib': mercado.pib_historico[-1] if mercado.pib_historico else 0,
+            'inflacion': mercado.inflacion_historica[-1] if mercado.inflacion_historica else 0,
+            'desempleo': getattr(mercado, 'tasa_desempleo', 0) * 100,  # Convertir a porcentaje
+            'empresas_activas': len([e for e in mercado.empresas_productoras if e.activo]) if hasattr(mercado, 'empresas_productoras') else 0,
+            'transacciones': len(mercado.transacciones),
+            'duracion_s': tiempo_total
+        }
+        
+        # Agregar datos bancarios si están disponibles
+        depositos_total = 0
+        prestamos_total = 0
+        capital_total = 0
+        
+        # Método más simple y robusto para obtener datos bancarios
+        try:
+            if hasattr(mercado, 'sistema_bancario') and hasattr(mercado.sistema_bancario, 'bancos'):
+                for banco in mercado.sistema_bancario.bancos:
+                    # Usar float() para manejar valores mixtos
+                    depositos_val = getattr(banco, 'depositos', 0)
+                    prestamos_val = getattr(banco, 'prestamos_otorgados', 0)
+                    capital_val = getattr(banco, 'capital', 0)
+                    
+                    depositos_total += float(depositos_val) if depositos_val is not None else 0
+                    prestamos_total += float(prestamos_val) if prestamos_val is not None else 0  
+                    capital_total += float(capital_val) if capital_val is not None else 0
+        except Exception as e:
+            logger.log_error(f"Advertencia obteniendo datos bancarios: {e}")
+        
+        datos_validacion.update({
+            'depositos_bancarios': depositos_total,
+            'prestamos_totales': prestamos_total,
+            'capital_bancario': capital_total
+        })
+        
+        # Ejecutar validación
+        import logging
+        validator_logger = logging.getLogger('ValidadorEconomico')
+        validador = ValidadorEconomicoFormal(logger=validator_logger)
+        reporte_validacion = validador.ejecutar_validacion_completa(datos_validacion, "main_simulation")
+        
+        # Guardar reporte JSON
+        timestamp = int(time.time())
+        validation_file = f"results/validation_report_{timestamp}.json"
+        ruta_guardada = validador.guardar_reporte_json(validation_file)
+        
+        # Log resumen de validación
+        resumen = reporte_validacion['resumen']
+        estado = reporte_validacion['estado_general']
+        
+        logger.log_sistema("📋 RESUMEN DE VALIDACIÓN ECONÓMICA:")
+        logger.log_sistema(f"   Estado General: {estado}")
+        logger.log_sistema(f"   Validaciones Exitosas: {resumen['validaciones_exitosas']}")
+        logger.log_sistema(f"   Advertencias: {resumen['advertencias']}")
+        logger.log_sistema(f"   Errores: {resumen['errores']}")
+        logger.log_sistema(f"   Reporte JSON: {validation_file}")
+        
+        # Log alertas importantes
+        alertas_criticas = [v for v in reporte_validacion['validaciones'] if v['tipo'] == 'CRITICA']
+        if alertas_criticas:
+            logger.log_sistema("   🚨 ALERTAS CRÍTICAS DETECTADAS:")
+            for alerta in alertas_criticas:
+                logger.log_sistema(f"      • {alerta['mensaje']}")
+        
+        advertencias = [v for v in reporte_validacion['validaciones'] if v['tipo'] == 'ADVERTENCIA']
+        if advertencias:
+            logger.log_sistema("   ⚠️  ADVERTENCIAS:")
+            for advertencia in advertencias[:3]:  # Solo mostrar las primeras 3
+                logger.log_sistema(f"      • {advertencia['mensaje']}")
+                
+    except Exception as e:
+        logger.log_error(f"Error generando reporte de validación: {e}")
+        validation_file = "No generado (error)"
+
     logger.log_sistema("Archivos generados:")
     logger.log_sistema(f"   Datos CSV: {csv_file}")
     logger.log_sistema(f"   Configuración JSON: {json_file}")
     logger.log_sistema(f"   Reporte: {reporte_file}")
+    logger.log_sistema(f"   Validación JSON: {validation_file}")
 
     # --- Persistencia ML: guardar modelos y registrar experimento ---
     try:
