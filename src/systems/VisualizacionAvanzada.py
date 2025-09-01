@@ -26,7 +26,8 @@ class DashboardEconomico:
             'empresas_activas': [],
             'modelos_ml_entrenados': [],
             'depositos_bancarios': [],
-            'prestamos_totales': []
+            'prestamos_totales': [],
+            'indice_gini': []
         }
 
     def actualizar_metricas(self, ciclo):
@@ -95,6 +96,40 @@ class DashboardEconomico:
         self.metricas_historicas['depositos_bancarios'].append(
             depositos_totales)
         self.metricas_historicas['prestamos_totales'].append(prestamos_totales)
+        
+        # Índice de Gini - Calcular desigualdad de ingresos
+        gini_actual = 0.0
+        if hasattr(self.mercado, 'validador_economico'):
+            try:
+                metricas_avanzadas = self.mercado.validador_economico.calcular_metricas_avanzadas(self.mercado)
+                gini_actual = metricas_avanzadas.get('indice_gini', 0.0)
+            except Exception as e:
+                # Calcular Gini directamente si falla el validador
+                consumidores = self.mercado.getConsumidores()
+                if consumidores:
+                    ingresos = [getattr(c, 'dinero', 0) for c in consumidores]
+                    gini_actual = self._calcular_gini_simple(ingresos)
+        
+        self.metricas_historicas['indice_gini'].append(gini_actual)
+
+    def _calcular_gini_simple(self, ingresos):
+        """Calcula coeficiente de Gini simple para backup"""
+        if not ingresos or len(ingresos) < 2:
+            return 0.0
+        
+        ingresos_ordenados = sorted([max(0, ing) for ing in ingresos])
+        n = len(ingresos_ordenados)
+        
+        suma_diferencias = 0
+        for i in range(n):
+            for j in range(n):
+                suma_diferencias += abs(ingresos_ordenados[i] - ingresos_ordenados[j])
+        
+        media_ingresos = sum(ingresos_ordenados) / n
+        if media_ingresos == 0:
+            return 0.0
+        
+        return suma_diferencias / (2 * n * n * media_ingresos)
 
     def crear_dashboard_completo(self, ciclo_actual, guardar_archivo=True, prefijo=None):
         """Crea un dashboard completo con múltiples gráficos"""
