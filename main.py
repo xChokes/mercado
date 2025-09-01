@@ -34,6 +34,7 @@ from src.systems.VisualizacionAvanzada import DashboardEconomico, VisualizadorTi
 from src.systems.EstimuloEconomico import detectar_estancamiento_economico, aplicar_estimulo_emergencia
 from src.systems.CrisisFinanciera import evaluar_recuperacion_crisis, aplicar_medidas_recuperacion, evaluar_riesgo_sistemico
 from src.systems.MercadoLaboral import MercadoLaboral
+from src.systems.labor_market import EnhancedLaborMarket
 from src.systems.AnalyticsML import SistemaAnalyticsML
 from src.systems.SistemaBancario import SistemaBancario, Banco
 # NUEVOS SISTEMAS HIPERREALISTAS v3.0
@@ -329,6 +330,10 @@ def integrar_sistemas_avanzados(mercado, config):
     # === MERCADO LABORAL ===
     logger.log_configuracion("Activando mercado laboral avanzado...")
     mercado.mercado_laboral = MercadoLaboral(mercado)
+
+    # === ENHANCED LABOR MARKET with DMP-style matching ===
+    logger.log_configuracion("Activando sistema de mercado laboral mejorado con emparejamiento DMP...")
+    mercado.enhanced_labor_market = EnhancedLaborMarket(mercado)
 
     # Asignar perfiles de habilidades a consumidores
     for consumidor in mercado.getConsumidores():
@@ -671,6 +676,16 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
             local_logger.log_sistema(
                 f"Ciclo {ciclo}: Proceso de contrataciones masivas ejecutado")
 
+        # 3.1. Enhanced Labor Market - DMP-style matching and wage formation
+        if hasattr(mercado, 'enhanced_labor_market'):
+            labor_stats = mercado.enhanced_labor_market.labor_market_cycle()
+            local_logger.log_sistema(
+                f"Ciclo {ciclo}: Enhanced Labor Market - "
+                f"Desempleo: {labor_stats['unemployment_rate']:.1%}, "
+                f"Salario promedio: ${labor_stats['average_wage']:,.0f}, "
+                f"Vacantes: {labor_stats['total_vacancies']}, "
+                f"Emparejamientos: {labor_stats['matches_made']}")
+
         # 4. Analytics ML cada 5 ciclos
         if hasattr(mercado, 'analytics_ml') and ciclo % 5 == 0:
             local_logger.log_ml(
@@ -803,6 +818,13 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
             tasa_desempleo = (
                 desempleados / max(1, consumidores_totales)) * 100
 
+            # Enhanced Labor Market metrics
+            enhanced_metrics = {}
+            if hasattr(mercado, 'enhanced_labor_market'):
+                enhanced_metrics = mercado.enhanced_labor_market.metrics
+                # Use enhanced metrics if available
+                tasa_desempleo = enhanced_metrics.get('unemployment_rate', tasa_desempleo / 100) * 100
+
             pib_actual = mercado.pib_historico[-1] if mercado.pib_historico else 0
             inflacion_actual = mercado.inflacion_historica[-1] if mercado.inflacion_historica else 0
 
@@ -862,6 +884,12 @@ REPORTE HIPERREALISTA v3.0 - CICLO {ciclo}/{num_ciclos}:
    Fase Económica: {fase_economica}
    Rescates: {empresas_rescatadas} | Fusiones: {fusiones} | Liquidaciones: {liquidaciones}
    Crisis: {'🔴 Activa' if mercado.crisis_financiera_activa else '🟢 Inactiva'}
+
+👔 MERCADO LABORAL MEJORADO:
+   Salario Promedio: ${enhanced_metrics.get('average_wage', 0):,.0f}
+   Vacantes Activas: {enhanced_metrics.get('total_vacancies', 0)}
+   Tasa de Emparejamiento: {enhanced_metrics.get('match_rate', 0):.1%}
+   Crecimiento Salarial: {enhanced_metrics.get('wage_growth', 0):+.1%}
 ═══════════════════════════════════════════════════════════""")
 
             # Log reporte detallado (mantener formato original para compatibilidad)
