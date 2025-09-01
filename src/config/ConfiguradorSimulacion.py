@@ -131,6 +131,16 @@ class ConfiguradorSimulacion:
         except Exception:
             return default
 
+    def establecer_parametro(self, seccion, clave, valor):
+        """Establece un parámetro específico dentro de una sección."""
+        try:
+            if seccion not in self.config:
+                self.config[seccion] = {}
+            self.config[seccion][clave] = valor
+            return True
+        except Exception:
+            return False
+
     # Validación simple opcional (usada condicionalmente en tests)
     def validar(self):
         cfg = self.config or {}
