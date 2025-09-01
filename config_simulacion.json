@@ -78,6 +78,16 @@
     "factor_paciencia_max": 0.98,
     "gini_objetivo": 0.45
   },
+  "politica_monetaria": {
+    "activar": true,
+    "taylor_params": {
+      "tasa_neutral": 0.025,
+      "meta_inflacion": 0.025,
+      "peso_inflacion": 1.5,
+      "peso_producto": 0.5,
+      "suavizamiento": 0.8
+    }
+  },
   "empresas_hiperrealistas": {
     "activar": true,
     "probabilidad_crisis_empresa": 0.02,

@@ -372,8 +372,19 @@ def integrar_sistemas_avanzados(mercado, config):
     
     # 1. BANCO CENTRAL - Política monetaria automática
     logger.log_configuracion("🏦 Configurando Banco Central...")
-    mercado.banco_central = BancoCentral(mercado)
-    logger.log_configuracion(f"   Banco Central creado - Tasa inicial: {mercado.banco_central.tasa_interes_base:.2%}")
+    
+    # Verificar si política monetaria nueva está activada
+    politica_monetaria_config = config.obtener_parametro('politica_monetaria', 'activar', False)
+    if politica_monetaria_config:
+        # Usar nuevo CentralBank con Taylor Rule
+        from src.systems.central_bank import CentralBank
+        taylor_config = config.obtener_seccion('politica_monetaria')
+        mercado.banco_central_taylor = CentralBank(mercado, taylor_config)
+        logger.log_configuracion(f"   ✅ Banco Central Taylor Rule - Meta inflación: {mercado.banco_central_taylor.params.meta_inflacion:.1%}")
+    else:
+        # Usar sistema existente
+        mercado.banco_central = BancoCentral(mercado)
+        logger.log_configuracion(f"   Banco Central creado - Tasa inicial: {mercado.banco_central.tasa_interes_base:.2%}")
     
     # 2. CONTROLADOR DE PRECIOS REALISTA - Inercia y límites
     logger.log_configuracion("💰 Configurando Control de Precios Realista...")
@@ -498,7 +509,14 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
         # === SISTEMAS HIPERREALISTAS v3.0 (EJECUTAR PRIMERO) ===
         
         # 1. BANCO CENTRAL - Política monetaria automática cada ciclo
-        if hasattr(mercado, 'banco_central'):
+        if hasattr(mercado, 'banco_central_taylor'):
+            # Usar nuevo sistema Taylor Rule
+            decision_bc = mercado.banco_central_taylor.ejecutar_politica_monetaria(ciclo)
+            if decision_bc['accion_tomada']:
+                local_logger.log_sistema(f"🏦 Banco Central Taylor - Ciclo {ciclo}: {decision_bc['descripcion']}")
+                local_logger.log_sistema(f"   Nueva tasa: {decision_bc['nueva_tasa']:.2f}%, Justificación: {decision_bc['justificacion']}")
+        elif hasattr(mercado, 'banco_central'):
+            # Usar sistema existente como fallback
             decision_bc = mercado.banco_central.ejecutar_politica_monetaria(ciclo)
             if decision_bc['accion_tomada']:
                 local_logger.log_sistema(f"🏦 Banco Central - Ciclo {ciclo}: {decision_bc['descripcion']}")
@@ -856,7 +874,10 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
             # Banco Central
             tasa_bc = 0.0
             politica_bc = "N/A"
-            if hasattr(mercado, 'banco_central'):
+            if hasattr(mercado, 'banco_central_taylor'):
+                tasa_bc = mercado.banco_central_taylor.tasa_actual
+                politica_bc = mercado.banco_central_taylor.historial_decisiones[-1].accion if mercado.banco_central_taylor.historial_decisiones else "Inicial"
+            elif hasattr(mercado, 'banco_central'):
                 tasa_bc = mercado.banco_central.tasa_interes_base
                 politica_bc = mercado.banco_central.historial_decisiones[-1]['decision'] if mercado.banco_central.historial_decisiones else "Inicial"
             
@@ -978,7 +999,13 @@ def generar_resultados_finales(mercado, tiempo_total, num_ciclos, prefijo_result
     logger.log_sistema("ESTADÍSTICAS HIPERREALISTAS:")
     
     # Banco Central
-    if hasattr(mercado, 'banco_central'):
+    if hasattr(mercado, 'banco_central_taylor'):
+        decisiones_bc = len(mercado.banco_central_taylor.historial_decisiones)
+        tasa_final = mercado.banco_central_taylor.tasa_actual
+        stats = mercado.banco_central_taylor.obtener_estadisticas()
+        logger.log_sistema(f"   🏦 Banco Central Taylor - Decisiones: {decisiones_bc}, Tasa final: {tasa_final:.2%}")
+        logger.log_sistema(f"       Convergencia inflación: {stats['convergencia_inflacion']:.1%}")
+    elif hasattr(mercado, 'banco_central'):
         decisiones_bc = len(mercado.banco_central.historial_decisiones)
         tasa_final = mercado.banco_central.tasa_interes_base
         logger.log_sistema(f"   🏦 Banco Central - Decisiones: {decisiones_bc}, Tasa final: {tasa_final:.2%}")
