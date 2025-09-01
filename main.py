@@ -170,14 +170,16 @@ def configurar_economia_avanzada(mercado, config):
     num_consumidores = sim_config.get('num_consumidores', 250)
     dinero_config = eco_config.get('dinero_inicial_consumidores', {
                                    'min': 5000, 'max': 15000})
+    hetero_config = config.obtener_seccion('heterogeneidad_consumidores')
 
     logger.log_configuracion(f"Creando {num_consumidores} consumidores...")
     for i in range(num_consumidores):
-        consumidor = Consumidor(f'Consumidor_{i+1}', mercado)
-        # Dinero inicial aleatorio en el rango configurado
-        consumidor.dinero = random.uniform(
-            dinero_config['min'], dinero_config['max'])
-        consumidor.ingreso_mensual = random.uniform(2000, 8000)
+        consumidor = Consumidor(f'Consumidor_{i+1}', mercado, config_hetero=hetero_config)
+        # Si no usa distribución lognormal, aplicar dinero inicial del config tradicional
+        if not hetero_config.get('activar', False) or hetero_config.get('distribucion_ingresos') != 'lognormal':
+            consumidor.dinero = random.uniform(
+                dinero_config['min'], dinero_config['max'])
+            consumidor.ingreso_mensual = random.uniform(2000, 8000)
         mercado.agregar_persona(consumidor)
 
     # === EMPRESAS PRODUCTORAS HIPERREALISTAS ===
@@ -448,6 +450,9 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
 
     # Crear mercado con bienes
     mercado = Mercado(bienes)
+    
+    # Configurar heterogeneidad de consumidores
+    mercado.config_hetero = config.obtener_seccion('heterogeneidad_consumidores')
 
     # Configurar economía
     empresas = configurar_economia_avanzada(mercado, config)

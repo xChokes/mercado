@@ -107,6 +107,26 @@ class ConfigEconomica:
     FACTOR_SACIEDAD = 0.90
     PREFERENCIA_VARIEDAD = 0.15  # Tendencia a diversificar compras
     
+    # Distribución de ingresos heterogénea
+    DISTRIBUCION_INGRESOS = 'lognormal'  # 'lognormal' o 'uniforme'
+    INGRESO_LOGNORMAL_MU = 8.5  # Media del log (corresponde aprox a $5000)
+    INGRESO_LOGNORMAL_SIGMA = 0.8  # Desviación estándar del log
+    INGRESO_MIN_GARANTIZADO = 1500  # Ingreso mínimo garantizado
+    
+    # Tipos de preferencias de consumo
+    TIPO_PREFERENCIAS = 'cobb_douglas'  # 'cobb_douglas' o 'ces'
+    CES_ELASTICITY_SUBSTITUTION = 1.5  # Para preferencias CES
+    
+    # Restricción intertemporal
+    TASA_DESCUENTO_TEMPORAL = 0.05  # 5% anual
+    FACTOR_PACIENCIA_MIN = 0.7  # Mínima paciencia (más impulsivos)
+    FACTOR_PACIENCIA_MAX = 0.98  # Máxima paciencia (más planificadores)
+    
+    # Índice de Gini objetivo
+    GINI_OBJETIVO_MIN = 0.3
+    GINI_OBJETIVO_MAX = 0.6
+    GINI_OBJETIVO_DEFAULT = 0.45
+    
     # Comportamiento empresarial
     FACTOR_REINVERSION = 0.30    # 30% de ganancias se reinvierten
     UMBRAL_EXPANSION = 0.80      # Expande si utiliza >80% de capacidad
