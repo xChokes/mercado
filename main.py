@@ -367,11 +367,11 @@ def integrar_sistemas_avanzados(mercado, config):
     logger.log_configuracion("🏦 Configurando Banco Central...")
     
     # Verificar si política monetaria nueva está activada
-    politica_monetaria_config = configurador.obtener_parametro('politica_monetaria', 'activar', False)
+    politica_monetaria_config = config.obtener_parametro('politica_monetaria', 'activar', False)
     if politica_monetaria_config:
         # Usar nuevo CentralBank con Taylor Rule
         from src.systems.central_bank import CentralBank
-        taylor_config = configurador.obtener_seccion('politica_monetaria')
+        taylor_config = config.obtener_seccion('politica_monetaria')
         mercado.banco_central_taylor = CentralBank(mercado, taylor_config)
         logger.log_configuracion(f"   ✅ Banco Central Taylor Rule - Meta inflación: {mercado.banco_central_taylor.params.meta_inflacion:.1%}")
     else:
