@@ -335,7 +335,10 @@ class Government:
         self.historial_fiscal.append(estadisticas)
         
         self.logger.log_sistema(f"Fiscal - PIB: ${pib_actual:,.0f} = C${self.componentes_pib[ComponentePIB.CONSUMO]:,.0f} + I${self.componentes_pib[ComponentePIB.INVERSION]:,.0f} + G${self.componentes_pib[ComponentePIB.GASTO_GOBIERNO]:,.0f}")
-        self.logger.log_sistema(f"Fiscal - Balance: ${balance:,.0f}, Deuda: ${self.deuda_publica:,.0f} ({self.deuda_publica/pib_actual*100:.1f}% PIB)")
+        
+        # Evitar división por zero
+        ratio_deuda_pib = (self.deuda_publica/pib_actual*100) if pib_actual > 0 else 0
+        self.logger.log_sistema(f"Fiscal - Balance: ${balance:,.0f}, Deuda: ${self.deuda_publica:,.0f} ({ratio_deuda_pib:.1f}% PIB)")
     
     def obtener_balance_fiscal(self):
         """Obtiene el balance fiscal actual"""
