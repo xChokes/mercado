@@ -139,9 +139,23 @@ class EnhancedLaborMarket:
                 else:
                     skill_dict = {'general': random.uniform(0.2, 0.8)}
             
-            base_wage = getattr(consumer, 'ingreso_mensual', 0)
-            if base_wage <= 0:
+            # Use more realistic base wage calculation to avoid extreme reservation wages
+            consumer_income = getattr(consumer, 'ingreso_mensual', 0)
+            
+            # For consistency with the labor market system, limit base wages to reasonable multiples
+            # of the labor market base wage to avoid unrealistic reservation wages
+            max_reasonable_income = self.wage_curve_params['base_wage'] * 2  # Max 2x base wage
+            
+            if consumer_income > max_reasonable_income:
+                # If consumer has unrealistically high income relative to market base, 
+                # use a more reasonable wage for reservation calculation
+                base_wage = self.wage_curve_params['base_wage'] * random.uniform(1.0, 1.5)
+            elif consumer_income <= 0:
                 base_wage = self.wage_curve_params['base_wage']
+            else:
+                base_wage = consumer_income
+            
+            # Reservation wage should be reasonable relative to base wage
             reservation_wage = base_wage * random.uniform(0.7, 0.9)
             
             self.worker_profiles[consumer.nombre] = WorkerProfile(
