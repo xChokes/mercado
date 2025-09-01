@@ -30,15 +30,19 @@ from ..systems.government import Government
 
 
 class Mercado:
-    def __init__(self, bienes):
+    def __init__(self, bienes, usar_sistema_gobierno=True):
         self.bienes = bienes if bienes else {}
         self.personas = []
         self.contador_consumidores = 0
         self.mercado_financiero = MercadoFinanciero()
         self.transacciones = []
         self.gobierno = Gobierno(self)
-        # NUEVO: Sistema gubernamental mejorado para análisis fiscal
-        self.government = Government(self)
+        # NUEVO: Sistema gubernamental mejorado para análisis fiscal (configurable)
+        self.usar_sistema_gobierno = usar_sistema_gobierno
+        if usar_sistema_gobierno:
+            self.government = Government(self)
+        else:
+            self.government = None
 
         # Sistema de eventos, reporte y order book
         self.event_bus = EventBus()
@@ -439,7 +443,7 @@ class Mercado:
         """Registra estadísticas del ciclo actual con cálculo de PIB usando fórmula C+I+G+(NX)"""
         
         # NUEVO: Usar el sistema government para calcular PIB con componentes explícitos
-        if hasattr(self, 'government'):
+        if hasattr(self, 'government') and self.government is not None:
             # Ejecutar ciclo fiscal que calcula PIB = C + I + G + (NX)
             resultados_fiscales = self.government.ejecutar_ciclo_fiscal(self.ciclo_actual)
             pib_ciclo = resultados_fiscales['pib_total']

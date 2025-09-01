@@ -196,12 +196,12 @@ class TestIntegracionSistemasCompletos(unittest.TestCase):
         config = ConfiguradorSimulacion()
         self.assertTrue(config.validar())
         
-        # Crear mercado basado en configuración
+        # Crear mercado basado en configuración (sin sistema gobierno para test básico)
         bienes = {}
         for i in range(5):
             bien = Bien(f"producto_{i}", "categoria_test")
             bienes[f"producto_{i}"] = bien
-        mercado = Mercado(bienes)
+        mercado = Mercado(bienes, usar_sistema_gobierno=False)
         
         # Aplicar configuración al mercado
         num_consumidores = config.obtener("simulacion", "num_consumidores", 50)
