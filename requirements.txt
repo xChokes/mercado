@@ -21,3 +21,6 @@ psycopg2-binary>=2.9.0
 # Análisis económico avanzado
 scipy>=1.7.0
 statsmodels>=0.13.0
+
+# Optimización y calibración
+optuna>=3.0.0
