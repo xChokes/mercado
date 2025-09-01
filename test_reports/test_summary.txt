@@ -1,12 +1,12 @@
 REPORTE DE TESTS - SIMULADOR DE MERCADO HIPERREALISTA
 =====================================================
-Fecha: Mon Sep  1 13:28:38 UTC 2025
+Fecha: Mon Sep  1 11:45:08 UTC 2025
 Tests ejecutados: 13
-Tests pasados: 13  
-Tests fallidos: 0
-Tasa de éxito: 100%
+Tests pasados: 3  
+Tests fallidos: 10
+Tasa de éxito: 23%
 
-Estado del sistema: ESTABLE
+Estado del sistema: INESTABLE
 
 Detalles:
 - Modelos básicos: VERIFICADO
@@ -16,5 +16,5 @@ Detalles:
 - Simulador principal: EJECUTADO
 
 Recomendaciones:
-- Sistema listo para uso en producción
-- Considerar añadir más tests de casos extremos
+- CRÍTICO: Revisar y corregir fallos fundamentales
+- No recomendado para uso hasta resolver problemas
