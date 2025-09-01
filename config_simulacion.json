@@ -1,10 +1,10 @@
 {
   "simulacion": {
-    "num_ciclos": 5, 
-    "num_consumidores": 50,
-    "num_empresas_productoras": 2,
-    "num_empresas_comerciales": 3,
-    "frecuencia_reportes": 2,
+    "num_ciclos": 10, 
+    "num_consumidores": 100,
+    "num_empresas_productoras": 3,
+    "num_empresas_comerciales": 5,
+    "frecuencia_reportes": 5,
     "activar_crisis": false,
     "tiempo_maximo_crisis": 15,
     "usar_empresas_hiperrealistas": false
