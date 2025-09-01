@@ -420,6 +420,25 @@ def integrar_sistemas_avanzados(mercado, config):
 
     logger.log_configuracion("Todos los sistemas avanzados integrados")
 
+    # === SISTEMA DE OPTIMIZACIÓN DE RENDIMIENTO ===
+    logger.log_configuracion("🚀 Configurando Sistema de Optimización de Rendimiento...")
+    
+    try:
+        # Obtener configuración de rendimiento
+        perf_config = config.obtener_seccion('performance')
+        
+        # Inicializar sistema de rendimiento en el mercado
+        if mercado.inicializar_sistema_rendimiento(perf_config):
+            logger.log_configuracion("   ✅ Sistema de vectorización activado")
+            if perf_config.get('activar_paralelismo', False):
+                logger.log_configuracion(f"   ✅ Paralelismo activado con {perf_config.get('num_workers_paralelos', 'auto')} workers")
+            if perf_config.get('activar_reportes_rendimiento', True):
+                logger.log_configuracion("   ✅ Reportes de rendimiento activados")
+        else:
+            logger.log_configuracion("   ⚠️  Sistema de rendimiento no pudo inicializarse")
+    except Exception as e:
+        logger.log_configuracion(f"   ❌ Error configurando sistema de rendimiento: {e}")
+
     # === MERCADO DE CAPITALES ===
     # Instanciar bolsa y listar empresas una vez creadas
     try:
@@ -477,6 +496,11 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
         f"Consumidores creados: {len(mercado.getConsumidores())}")
     local_logger.log_configuracion(
         f"Bienes disponibles: {len(mercado.bienes)}")
+
+    # === INICIALIZAR SEGUIMIENTO DE RENDIMIENTO ===
+    if hasattr(mercado, 'reporter_rendimiento') and mercado.reporter_rendimiento:
+        mercado.reporter_rendimiento.iniciar_seguimiento(f"simulacion_{num_ciclos}ciclos")
+        local_logger.log_configuracion("📊 Seguimiento de rendimiento activado")
 
     # === EJECUCIÓN PRINCIPAL ===
     for ciclo in range(1, num_ciclos + 1):
@@ -707,7 +731,22 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
         # === CICLO ECONÓMICO PRINCIPAL ===
         local_logger.log_ciclo(
             f"Ciclo {ciclo}: Ejecutando ciclo económico principal")
+        
+        # Medición de rendimiento del ciclo
+        inicio_ciclo = time.time()
         mercado.ejecutar_ciclo(ciclo)
+        tiempo_ciclo = time.time() - inicio_ciclo
+        
+        # Registrar métricas de rendimiento si está habilitado
+        if hasattr(mercado, 'reporter_rendimiento') and mercado.reporter_rendimiento:
+            mercado.reporter_rendimiento.registrar_tiempo_ciclo(
+                ciclo, tiempo_ciclo, 
+                {
+                    'num_empresas': len(mercado.getEmpresas()),
+                    'num_consumidores': len(mercado.getConsumidores()),
+                    'pib_actual': mercado.pib_historico[-1] if mercado.pib_historico else 0
+                }
+            )
 
         # === NUEVO: VALIDACIÓN ECONÓMICA POST-CICLO ===
         if hasattr(mercado, 'validador_economico'):
@@ -901,6 +940,21 @@ REPORTE HIPERREALISTA v3.0 - CICLO {ciclo}/{num_ciclos}:
             local_logger.log_sistema("   ✅ Sistema IA finalizado correctamente")
         except Exception as e:
             local_logger.log_error(f"   ❌ Error finalizando sistema IA: {e}")
+
+    # === GENERAR REPORTE DE RENDIMIENTO ===
+    if hasattr(mercado, 'reporter_rendimiento') and mercado.reporter_rendimiento:
+        try:
+            local_logger.log_sistema("📊 Generando reporte de rendimiento...")
+            resumen_rendimiento = mercado.reporter_rendimiento.finalizar_seguimiento()
+            reporte_path = mercado.reporter_rendimiento.generar_reporte_completo(resumen_rendimiento)
+            local_logger.log_sistema(f"   ✅ Reporte de rendimiento guardado: {reporte_path}")
+            
+            # Log métricas clave
+            local_logger.log_sistema(f"   ⏱️  Tiempo promedio por ciclo: {resumen_rendimiento['tiempo_promedio_ciclo']:.3f}s")
+            local_logger.log_sistema(f"   🚀 Velocidad: {resumen_rendimiento['ciclos_por_segundo']:.2f} ciclos/segundo")
+            
+        except Exception as e:
+            local_logger.log_error(f"   ❌ Error generando reporte de rendimiento: {e}")
 
     # === RESULTADOS FINALES ===
     local_logger.log_sistema("Generando resultados finales de la simulación")
