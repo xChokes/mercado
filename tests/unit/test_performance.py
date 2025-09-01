@@ -23,6 +23,166 @@ from src.models.Bien import Bien
 from src.config.ConfiguradorSimulacion import ConfiguradorSimulacion
 
 
+class TestPerformanceVectorizacion(unittest.TestCase):
+    """Tests de performance con vectorización"""
+    
+    def setUp(self):
+        """Configurar mercado para tests de vectorización"""
+        bienes = {}
+        for i in range(10):
+            bien = Bien(f"producto_{i}", "categoria_test")
+            bienes[f"producto_{i}"] = bien
+        
+        self.mercado = Mercado(bienes)
+        
+        # Agregar empresas y consumidores para tests
+        for i in range(20):
+            empresa = Empresa(f"Empresa_{i}", self.mercado)
+            empresa.dinero = 10000 + i * 1000
+            # Establecer precios
+            for j in range(5):
+                producto = f"producto_{j}"
+                if producto in bienes:
+                    empresa.precios[producto] = 10 + j * 2
+            self.mercado.agregar_persona(empresa)
+        
+        for i in range(50):
+            consumidor = Consumidor(f"Consumidor_{i}", self.mercado)
+            self.mercado.agregar_persona(consumidor)
+    
+    def test_calculo_pib_vectorizado_vs_tradicional(self):
+        """Compara rendimiento del cálculo PIB vectorizado vs tradicional"""
+        # Configurar sistema de vectorización
+        config_perf = {'optimizar_calculos_pib': True}
+        self.mercado.inicializar_sistema_rendimiento(config_perf)
+        
+        # Preparar transacciones de prueba
+        transacciones = []
+        for i in range(100):
+            transacciones.append({
+                'costo_total': 100 + i * 10,
+                'ciclo': 1,
+                'bien': f'producto_{i % 5}',
+                'cantidad': 1 + i % 3
+            })
+        
+        self.mercado.transacciones_ciclo_actual = transacciones
+        
+        # Medir tiempo vectorizado
+        inicio_vectorizado = time.time()
+        for _ in range(10):  # Múltiples iteraciones para mejor medición
+            self.mercado.registrar_estadisticas()
+        tiempo_vectorizado = time.time() - inicio_vectorizado
+        
+        # Deshabilitar vectorización para comparar
+        self.mercado.config_performance = {'optimizar_calculos_pib': False}
+        self.mercado.transacciones_ciclo_actual = transacciones
+        
+        # Medir tiempo tradicional
+        inicio_tradicional = time.time()
+        for _ in range(10):
+            self.mercado._registrar_estadisticas_tradicional()
+        tiempo_tradicional = time.time() - inicio_tradicional
+        
+        print(f"\n📊 Benchmark PIB:")
+        print(f"   Vectorizado: {tiempo_vectorizado:.3f}s")
+        print(f"   Tradicional: {tiempo_tradicional:.3f}s")
+        
+        if tiempo_tradicional > 0:
+            mejora = ((tiempo_tradicional - tiempo_vectorizado) / tiempo_tradicional) * 100
+            print(f"   Mejora: {mejora:.1f}%")
+        
+        # El método vectorizado debería ser al menos igual de rápido
+        self.assertLessEqual(tiempo_vectorizado, tiempo_tradicional * 1.1)  # 10% tolerancia
+    
+    def test_indice_precios_vectorizado_vs_tradicional(self):
+        """Compara rendimiento del cálculo de índice de precios"""
+        # Habilitar vectorización
+        config_perf = {'optimizar_indices_precios': True}
+        self.mercado.inicializar_sistema_rendimiento(config_perf)
+        
+        # Agregar más empresas para mejor benchmark
+        for i in range(20, 100):
+            empresa = Empresa(f"EmpresaExtra_{i}", self.mercado)
+            for j in range(10):
+                producto = f"producto_{j}"
+                empresa.precios[producto] = 10 + j * 2 + (i % 5)
+            self.mercado.agregar_persona(empresa)
+        
+        # Medir tiempo vectorizado
+        inicio_vectorizado = time.time()
+        for _ in range(50):  # Múltiples iteraciones
+            indice_vectorizado = self.mercado.calcular_indice_precios()
+        tiempo_vectorizado = time.time() - inicio_vectorizado
+        
+        # Deshabilitar vectorización para comparar
+        self.mercado.config_performance = {'optimizar_indices_precios': False}
+        
+        # Medir tiempo tradicional
+        inicio_tradicional = time.time()
+        for _ in range(50):
+            indice_tradicional = self.mercado.calcular_indice_precios()
+        tiempo_tradicional = time.time() - inicio_tradicional
+        
+        print(f"\n📊 Benchmark Índice Precios:")
+        print(f"   Vectorizado: {tiempo_vectorizado:.3f}s")
+        print(f"   Tradicional: {tiempo_tradicional:.3f}s")
+        
+        if tiempo_tradicional > 0:
+            mejora = ((tiempo_tradicional - tiempo_vectorizado) / tiempo_tradicional) * 100
+            print(f"   Mejora: {mejora:.1f}%")
+        
+        # Verificar que los resultados son similares
+        self.assertAlmostEqual(indice_vectorizado, indice_tradicional, delta=0.1)
+        
+        # El método vectorizado debería ser al menos igual de rápido
+        self.assertLessEqual(tiempo_vectorizado, tiempo_tradicional * 1.1)
+    
+    def test_sistema_completo_performance(self):
+        """Test de performance del sistema completo con/sin optimizaciones"""
+        config = ConfiguradorSimulacion()
+        
+        # Test sin optimizaciones
+        config_dict = config.config
+        config_dict['simulacion']['num_ciclos'] = 3
+        config_dict['simulacion']['num_consumidores'] = 50
+        config_dict['performance'] = {
+            'activar_vectorizacion': False,
+            'optimizar_calculos_pib': False,
+            'optimizar_indices_precios': False
+        }
+        
+        inicio_sin_opt = time.time()
+        from main import ejecutar_simulacion_completa
+        mercado_sin_opt = ejecutar_simulacion_completa(config)
+        tiempo_sin_opt = time.time() - inicio_sin_opt
+        
+        # Test con optimizaciones
+        config_dict['performance'] = {
+            'activar_vectorizacion': True,
+            'optimizar_calculos_pib': True,
+            'optimizar_indices_precios': True
+        }
+        
+        inicio_con_opt = time.time()
+        mercado_con_opt = ejecutar_simulacion_completa(config)
+        tiempo_con_opt = time.time() - inicio_con_opt
+        
+        print(f"\n📊 Benchmark Sistema Completo:")
+        print(f"   Sin optimizaciones: {tiempo_sin_opt:.2f}s")
+        print(f"   Con optimizaciones: {tiempo_con_opt:.2f}s")
+        
+        if tiempo_sin_opt > 0:
+            mejora = ((tiempo_sin_opt - tiempo_con_opt) / tiempo_sin_opt) * 100
+            print(f"   Mejora: {mejora:.1f}%")
+            
+            # Las optimizaciones deberían proporcionar alguna mejora o al menos no empeorar
+            self.assertLessEqual(tiempo_con_opt, tiempo_sin_opt * 1.05)  # 5% tolerancia
+        
+        # Verificar que los resultados son consistentes
+        self.assertEqual(len(mercado_sin_opt.pib_historico), len(mercado_con_opt.pib_historico))
+
+
 class TestPerformanceBasico(unittest.TestCase):
     """Tests básicos de performance"""
     

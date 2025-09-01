@@ -88,6 +88,17 @@
       "suavizamiento": 0.8
     }
   },
+  "performance": {
+    "activar_vectorizacion": true,
+    "activar_paralelismo": false,
+    "num_workers_paralelos": null,
+    "activar_profiling": false,
+    "activar_reportes_rendimiento": true,
+    "limpiar_cache_cada_ciclos": 50,
+    "optimizar_calculos_pib": true,
+    "optimizar_indices_precios": true,
+    "usar_numpy_agregados": true
+  },
   "empresas_hiperrealistas": {
     "activar": true,
     "probabilidad_crisis_empresa": 0.02,

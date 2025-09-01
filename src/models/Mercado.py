@@ -1,5 +1,6 @@
 import random
 import math
+import time
 from .EmpresaProductora import EmpresaProductora
 from .MercadoFinanciero import MercadoFinanciero
 from .Consumidor import Consumidor
@@ -58,6 +59,12 @@ class Mercado:
         self.gestor_empresas_hiperrealistas = GestorEmpresasHiperrealistas(self)
         # NUEVO: Cadena de suministro B2B
         self.cadena_suministro = GestorCadenaSuministro(self)
+
+        # NUEVO: Sistema de optimización de rendimiento
+        self.config_performance = None  # Se inicializa en configuración
+        self.vectorizador = None
+        self.reporter_rendimiento = None
+        self.tiempos_ciclo = []
 
         # Flag de inicialización de sistemas (para primer ciclo)
         self.sistemas_inicializados = False
@@ -170,6 +177,38 @@ class Mercado:
         if isinstance(persona, Consumidor):
             self.contador_consumidores += 1
 
+    def inicializar_sistema_rendimiento(self, config_performance=None):
+        """Inicializa el sistema de optimización de rendimiento"""
+        try:
+            # Importar módulos de rendimiento dinámicamente para evitar dependencias circulares
+            from ..utils.VectorizacionOptimizada import get_vectorizador
+            from ..utils.ReporterRendimiento import ReporterRendimiento, set_reporter_global
+            
+            self.config_performance = config_performance or {}
+            
+            # Configurar vectorizador
+            usar_paralelismo = self.config_performance.get('activar_paralelismo', False)
+            num_workers = self.config_performance.get('num_workers_paralelos', None)
+            
+            if self.config_performance.get('activar_vectorizacion', True):
+                self.vectorizador = get_vectorizador(usar_paralelismo, num_workers)
+                print("✅ Sistema de vectorización iniciado")
+            
+            # Configurar reporter de rendimiento
+            if self.config_performance.get('activar_reportes_rendimiento', True):
+                self.reporter_rendimiento = ReporterRendimiento()
+                set_reporter_global(self.reporter_rendimiento)
+                print("✅ Sistema de reportes de rendimiento iniciado")
+            
+            return True
+            
+        except ImportError as e:
+            print(f"⚠️  No se pudo inicializar sistema de rendimiento: {e}")
+            return False
+        except Exception as e:
+            print(f"❌ Error inicializando sistema de rendimiento: {e}")
+            return False
+
     def agregar_pais(self, pais, mercado_nacional=None):
         """Registra un país y opcionalmente su mercado nacional"""
         self.paises[pais.nombre] = pais
@@ -219,6 +258,28 @@ class Mercado:
 
     def calcular_indice_precios(self):
         """Calcula un índice de precios ponderado con controles anti-volatilidad"""
+        # Usar versión optimizada si está disponible
+        if (self.vectorizador and 
+            hasattr(self.config_performance, 'optimizar_indices_precios') and
+            self.config_performance.get('optimizar_indices_precios', True)):
+            try:
+                indice = self.vectorizador.calcular_indice_precios_vectorizado(self.getEmpresas())
+                
+                # NUEVO: Suavizar el índice para evitar cambios extremos
+                if hasattr(self, 'indice_anterior') and self.indice_anterior > 0:
+                    ratio_cambio = indice / self.indice_anterior
+                    if ratio_cambio > 1.08:  # Subida > 8%
+                        indice = self.indice_anterior * 1.08
+                    elif ratio_cambio < 0.92:  # Bajada > 8%
+                        indice = self.indice_anterior * 0.92
+                
+                self.indice_anterior = indice
+                return indice
+            except Exception as e:
+                print(f"⚠️  Error en cálculo optimizado de índice precios: {e}")
+                # Continuar con método tradicional
+        
+        # Método tradicional (fallback)
         precios_actuales = []
         pesos = []
 
@@ -437,6 +498,58 @@ class Mercado:
 
     def registrar_estadisticas(self):
         """Registra estadísticas del ciclo actual con cálculo de PIB mejorado"""
+        # Usar cálculo optimizado de PIB si está disponible
+        if (self.vectorizador and 
+            hasattr(self.config_performance, 'optimizar_calculos_pib') and
+            self.config_performance.get('optimizar_calculos_pib', True)):
+            try:
+                # Usar método vectorizado
+                transacciones = getattr(self, 'transacciones_ciclo_actual', [])
+                pib_ciclo = self.vectorizador.calcular_pib_vectorizado(
+                    transacciones, self.getEmpresas(), self.gobierno)
+                
+                # Limpiar transacciones del ciclo
+                if hasattr(self, 'transacciones_ciclo_actual'):
+                    self.transacciones_ciclo_actual = []
+                
+                self.pib_historico.append(pib_ciclo)
+                
+            except Exception as e:
+                print(f"⚠️  Error en cálculo optimizado PIB: {e}")
+                # Continuar con método tradicional
+                self._registrar_estadisticas_tradicional()
+                return
+        else:
+            # Método tradicional
+            self._registrar_estadisticas_tradicional()
+            return
+
+        # Finalizar estadísticas (común a ambos métodos)
+        self._finalizar_estadisticas(pib_ciclo)
+        # Primero, recopilar todos los bienes que las empresas manejan actualmente
+        todos_los_bienes = set(self.bienes)
+        for empresa in self.getEmpresas():
+            todos_los_bienes.update(empresa.precios.keys())
+        
+        for bien in todos_los_bienes:
+            precios_bien = [e.precios.get(
+                bien, 0) for e in self.getEmpresas() if bien in e.precios]
+            precio_promedio = sum(precios_bien) / \
+                len(precios_bien) if len(precios_bien) > 0 else 0
+            
+            # Asegurar que el bien existe en precios_historicos
+            if bien not in self.precios_historicos:
+                self.precios_historicos[bien] = []
+            
+            self.precios_historicos[bien].append(precio_promedio)
+
+        # Volumen de transacciones
+        transacciones_ciclo = len(
+            [t for t in self.transacciones if t.get('ciclo') == self.ciclo_actual])
+        self.volumen_transacciones.append(transacciones_ciclo)
+
+    def _registrar_estadisticas_tradicional(self):
+        """Método tradicional de registro de estadísticas (fallback)"""
         # PIB - Método mejorado que incluye toda la actividad económica
         pib_consumo = 0
         pib_inversion = 0
@@ -489,6 +602,11 @@ class Mercado:
 
         self.pib_historico.append(pib_ciclo)
 
+        # Continuar con el resto del procesamiento común
+        self._finalizar_estadisticas(pib_ciclo)
+
+    def _finalizar_estadisticas(self, pib_ciclo):
+        """Finaliza el registro de estadísticas (común a ambos métodos)"""
         # Inflación con índice de precios mejorado
         indices_precios = getattr(self, 'indices_precios_historicos', [])
         indice_actual = self.calcular_indice_precios()
@@ -518,6 +636,7 @@ class Mercado:
 
         # Desempleo
         self.desempleo_historico.append(self.gobierno.tasa_desempleo)
+        
         # Actualizar reporte estructurado
         if hasattr(self, 'reporte') and self.reporte:
             self.reporte.pib.append(pib_ciclo)
