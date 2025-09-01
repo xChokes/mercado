@@ -1,6 +1,6 @@
 {
   "simulacion": {
-    "num_ciclos": 20, 
+    "num_ciclos": 5, 
     "num_consumidores": 250,
     "num_empresas_productoras": 5,
     "num_empresas_comerciales": 8,
