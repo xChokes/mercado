@@ -2,7 +2,45 @@
 
 Este proyecto implementa una simulación avanzada de mercado económico con **agentes de inteligencia artificial hiperrealistas** que aprenden, se adaptan, forman coaliciones y evolución estratégicamente.
 
-> **🎯 MVP Actual: PriceLab-Mercado** - Simulador ligero de estrategia de precios y shocks macro optimizado para análisis comercial (consulta `docs/FOCO_Y_HOJA_DE_RUTA.md`)
+> **🎯 Estado Actual: v3.1** - Simulador macroeconómico completo con sistemas hiperrealistas, agentes IA avanzados y validación formal (ver roadmap completo abajo)
+
+## 🚀 Roadmap v3.1 - Estado de Implementación
+
+### ✅ **COMPLETADO - Versión 3.1 Entregada**
+
+#### Sistemas Macroeconómicos Avanzados
+- ✅ **Banco Central Avanzado**: Política monetaria con regla de Taylor, control de inflación  
+- ✅ **Mercado Laboral Realista**: Desempleo dinámico, contrataciones masivas, productividad
+- ✅ **Sistema Bancario Completo**: Múltiples bancos, evaluación crediticia, crisis bancarias
+- ✅ **Control de Precios**: Inercia de precios, elasticidades diferenciadas por categoría
+- ✅ **Ciclos Económicos**: Fases de expansión/recesión, indicadores macroeconómicos
+
+#### Agentes IA Hiperrealistas
+- ✅ **Ecosistema IA Completo**: 21 tipos de agentes inteligentes especializados
+- ✅ **Memoria y Aprendizaje**: Sistema de memoria episódica y semántica
+- ✅ **Redes Sociales**: Formación de coaliciones, reputación, comunicación
+- ✅ **Deep Learning**: Redes neuronales para predicción y optimización
+- ✅ **Adaptación Estratégica**: Cambio de estrategias según condiciones de mercado
+
+#### Calibración y Validación  
+- ✅ **Validación Automática**: Rangos macroeconómicos realistas (PIB, inflación, desempleo)
+- ✅ **3 Escenarios Base**: Base estable, shock inflación, subsidio+restricción oferta
+- ✅ **Métricas Reproducibles**: Semillas fijas, configuraciones versionadas
+- ✅ **Analytics ML**: Modelos predictivos persistentes, tracking de experimentos
+- ✅ **Suite de Tests**: 154 tests unitarios e integración, validación continua
+
+#### Experiencia de Usuario
+- ✅ **CLI Simplificada**: Ejecución por escenarios sin editar código
+- ✅ **Resultados Automáticos**: Dashboard PNG, CSV datos, reportes ejecutivos
+- ✅ **Documentación Completa**: Guías técnicas y de usuario actualizadas
+- ✅ **Tiempos Optimizados**: Simulaciones 50 ciclos en ~30-60 segundos
+
+### 📊 **Métricas de Entrega v3.1**
+- **Tiempo de simulación**: ✅ <60s para 50 ciclos (objetivo cumplido)
+- **Estabilidad económica**: ✅ PIB 100k-1M, inflación -10% a +20% (validado)
+- **Reproducibilidad**: ✅ Semillas y configs versionadas (implementado)
+- **Escenarios predefinidos**: ✅ 3 escenarios ejecutables (base, shock, subsidio)
+- **Tests de integración**: ✅ Caminos principales cubiertos (154 tests)
 
 ## 🚀 Inicio Rápido - PriceLab
 
@@ -61,6 +99,62 @@ Cada ejecución crea automáticamente en `results/`:
 - 📋 **Reporte ejecutivo** con KPIs y insights automáticos
 - ⚙️ **Configuración** usada para reproducibilidad
 - 📊 **Reportes comparativos** entre escenarios (batch)
+
+---
+
+## 🗺️ **Hoja de Ruta y Entregas**
+
+### 🎯 **v3.1 (ACTUAL) - Sistemas Macroeconómicos Realistas**
+**Estado: ✅ COMPLETADO** | **Fecha entrega: Sept 2025**
+
+#### Funcionalidades Principales Entregadas:
+- **🏦 Banco Central Avanzado**: Política monetaria automática con regla de Taylor
+- **👷 Mercado Laboral Completo**: Desempleo dinámico, productividad variable  
+- **🏢 Gobierno Realista**: Presupuesto, política fiscal, intervenciones de mercado
+- **🤖 Agentes IA Hiperrealistas**: 21+ tipos de agentes con memoria y aprendizaje
+- **📊 Calibración Automática**: Validación de métricas macroeconómicas en tiempo real
+- **⚡ Performance Optimizado**: Simulaciones 50 ciclos en <60 segundos
+
+#### Validación Formal:
+- ✅ **3 Escenarios Macro**: Base estable, shock inflación, políticas públicas
+- ✅ **154 Tests Integración**: Cobertura completa de sistemas críticos  
+- ✅ **Métricas Reproductibles**: PIB realista, inflación controlada, desempleo dinámico
+- ✅ **Artefactos Automáticos**: Dashboard, CSV, reportes ejecutivos en `results/`
+
+### 🔮 **v3.2 (PRÓXIMO) - Comercio Internacional y Sostenibilidad**
+**Estado: 📋 PLANIFICADO** | **Fecha objetivo: Q4 2025**
+
+#### Funcionalidades Planeadas:
+- **🌍 Comercio Internacional**: Múltiples países, tipos de cambio, balanza comercial
+- **🌱 Sostenibilidad Ambiental**: Huella de carbono, recursos naturales, ESG scoring
+- **💹 Mercados Financieros**: Bolsa de valores completa, derivados, volatilidad estocástica
+- **🏭 Cadenas de Suministro**: B2B avanzado, logística, disrupciones globales
+
+### 🚀 **v4.0 (FUTURO) - Plataforma y Ecosistema**
+**Estado: 💭 CONCEPTUAL** | **Fecha objetivo: Q1 2026**
+
+#### Visión de Producto:
+- **🌐 API REST Completa**: Simulaciones como servicio, integración empresarial
+- **📱 Dashboard Interactivo**: UI web para configuración y monitoreo en tiempo real
+- **🔌 SDK Multilenguaje**: Python, R, JavaScript para desarrolladores
+- **☁️ Cloud Deploy**: Escalabilidad horizontal, simulaciones distribuidas
+
+### 📈 **Progreso de Implementación**
+
+| Sistema | v3.0 | v3.1 | v3.2 | v4.0 |
+|---------|------|------|------|------|
+| Agentes IA Básicos | ✅ | ✅ | ✅ | ✅ |
+| Banco Central | ❌ | ✅ | ✅ | ✅ |
+| Mercado Laboral | ❌ | ✅ | ✅ | ✅ |
+| Validación Formal | ❌ | ✅ | ✅ | ✅ |
+| Comercio Internacional | ❌ | ❌ | 📋 | ✅ |
+| Sostenibilidad | ❌ | ❌ | 📋 | ✅ |
+| API REST | ❌ | ❌ | ❌ | 📋 |
+| Dashboard Web | ❌ | ❌ | ❌ | 📋 |
+
+**Leyenda**: ✅ Completado | 📋 Planificado | ❌ No implementado
+
+---
 
 ### 📚 Documentación Completa
 
@@ -457,10 +551,16 @@ MIT License - Libre para uso académico y comercial
 - [ ] Dashboard interactivo
 - [ ] API REST para simulaciones
 
-## � Estado de Implementación
+## 📋 Estado de Implementación v3.1
 
-- Resumen actualizado del avance, cambios recientes y backlog: ver `docs/ESTADO_IMPLEMENTACION.md`.
-- Objetivo, KPIs y hoja de ruta: ver `docs/FOCO_Y_HOJA_DE_RUTA.md`.
+- **Versión actual**: v3.1 - Sistemas Macroeconómicos Hiperrealistas ✅ **COMPLETADO**
+- **Resumen de entregas**: Banco Central, Mercado Laboral, Agentes IA avanzados, Validación formal
+- **Próxima versión**: v3.2 - Comercio Internacional y Sostenibilidad (Q4 2025)
+
+### Documentación Técnica Actualizada:
+- **Foco y Hoja de Ruta**: `docs/FOCO_Y_HOJA_DE_RUTA.md` - Estado MVP y roadmap completo
+- **Estado Detallado**: `docs/ESTADO_IMPLEMENTACION.md` - Funcionalidades y cobertura técnica
+- **Guía de Usuario**: `docs/GUIA_USUARIO.md` - Manual completo con casos de uso
 
 ## �📚 Casos de Uso
 
