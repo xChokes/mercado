@@ -48,6 +48,13 @@ from src.systems.ClasesSociales import SistemaClasesSociales
 # NUEVOS SISTEMAS DE VALIDACIÓN Y ESTABILIZACIÓN v3.1
 from src.systems.ValidadorEconomico import ValidadorEconomico
 from src.systems.BancoCentralAvanzado import BancoCentralAvanzado
+
+# SISTEMAS DE MEJORAS INTEGRALES v3.2
+from src.systems.SistemaIntegracionMejoras import SistemaIntegracionMejoras, ConfiguracionMejoras
+from src.systems.OptimizadorProductividadLaboral import OptimizadorProductividadLaboral, ConfigProductividad
+from src.systems.ControladorConcentracionEmpresarial import ControladorConcentracionEmpresarial, ConfigCreacionEmpresas
+from src.systems.ReduccionActivaDesempleo import ReduccionActivaDesempleo, ConfigReduccionDesempleo
+from src.systems.EstabilizadorAutomaticoPIB import EstabilizadorAutomaticoPIB, ConfigEstabilizacionPIB
 # NUEVOS SISTEMAS ECONÓMICOS AVANZADOS v3.2 - FASE 2
 try:
     from src.systems.ModelosEconomicosAvanzados import IntegradorModelosEconomicos, ParametrosEconomicos
@@ -341,7 +348,70 @@ def integrar_sistemas_avanzados(mercado, config):
     for consumidor in mercado.getConsumidores():
         if not hasattr(consumidor, 'perfil_habilidades'):
             consumidor.perfil_habilidades = mercado.mercado_laboral.crear_perfil()
-            # 50% probabilidad de afiliación sindical
+
+    # === SISTEMAS DE MEJORAS INTEGRALES v3.2 ===
+    logger.log_configuracion("🚀 Activando sistemas de mejoras integrales...")
+    
+    # Configuración personalizada de mejoras
+    config_mejoras = ConfiguracionMejoras(
+        productividad_base_minima=0.80,  # Más permisivo inicialmente
+        productividad_base_maxima=1.20,
+        umbral_concentracion_empresas=2,  # Más agresivo contra monopolios
+        probabilidad_nueva_empresa=0.25,  # Mayor probabilidad de nuevas empresas
+        factor_reduccion_desempleo=0.08,  # Más agresivo contra desempleo
+        factor_amortiguacion_pib=0.20     # Mayor estabilización PIB
+    )
+    
+    # Sistema integrador principal
+    mercado.sistema_mejoras = SistemaIntegracionMejoras(config_mejoras)
+    
+    # Subsistemas especializados (también se pueden usar independientemente)
+    mercado.optimizador_productividad = OptimizadorProductividadLaboral(
+        ConfigProductividad(
+            productividad_minima_objetivo=0.85,
+            tasa_mejora_base=0.005,  # 0.5% mejora por ciclo
+            ciclos_capacitacion=12   # Capacitación cada 12 ciclos
+        )
+    )
+    
+    mercado.controlador_empresas = ControladorConcentracionEmpresarial(
+        ConfigCreacionEmpresas(
+            empresas_minimas=3,
+            empresas_optimas=8,
+            capital_inicial_minimo=30000.0,
+            capital_inicial_maximo=120000.0,
+            cooldown_creacion_ciclos=3  # Más frecuente
+        )
+    )
+    
+    mercado.reductor_desempleo = ReduccionActivaDesempleo(
+        ConfigReduccionDesempleo(
+            desempleo_objetivo=0.04,  # 4% como objetivo
+            desempleo_critico=0.12,   # 12% como crítico
+            tasa_reduccion_base=0.05,
+            inversion_obras_publicas=8000.0
+        )
+    )
+    
+    mercado.estabilizador_pib = EstabilizadorAutomaticoPIB(
+        ConfigEstabilizacionPIB(
+            umbral_volatilidad=0.18,
+            factor_amortiguacion=0.30,
+            umbral_caida_critica=0.12,
+            reserva_estabilizacion=15000.0
+        )
+    )
+    
+    logger.log_configuracion("✅ Sistemas de mejoras integrales ACTIVADOS:")
+    logger.log_configuracion("   🔧 Optimizador de productividad laboral")
+    logger.log_configuracion("   🏢 Controlador anti-monopolización") 
+    logger.log_configuracion("   👥 Reductor activo de desempleo")
+    logger.log_configuracion("   📊 Estabilizador automático de PIB")
+    logger.log_configuracion("   ⚙️ Calibrador automático de parámetros")
+
+    # === ASIGNAR SINDICATOS ===
+    for consumidor in mercado.getConsumidores():
+        if random.random() < 0.5:  # 50% probabilidad de afiliación sindical
             mercado.mercado_laboral.asignar_sindicato(consumidor)
 
     # === SISTEMA DE PRECIOS DINÁMICOS ===
@@ -776,6 +846,30 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
                                             f"Cambios aplicados={stats_precios['cambios_aplicados']}, "
                                             f"Precio promedio=${stats_precios['precio_promedio_actual']:.2f}")
 
+        # === SISTEMA DE MEJORAS INTEGRALES v3.2 ===
+        if hasattr(mercado, 'sistema_mejoras'):
+            try:
+                resultados_mejoras = mercado.sistema_mejoras.aplicar_mejoras_ciclo(mercado, ciclo)
+                
+                # Log de mejoras aplicadas
+                if resultados_mejoras['productividad_mejorada']:
+                    local_logger.log_sistema(f"🔧 Productividad laboral mejorada - Ciclo {ciclo}")
+                
+                if resultados_mejoras['empresas_creadas'] > 0:
+                    local_logger.log_sistema(f"🏢 {resultados_mejoras['empresas_creadas']} empresas anti-monopolio creadas")
+                
+                if resultados_mejoras['desempleo_reducido'] > 0:
+                    local_logger.log_sistema(f"👥 Desempleo reducido en {resultados_mejoras['desempleo_reducido']*100:.1f}%")
+                
+                if resultados_mejoras['pib_estabilizado']:
+                    local_logger.log_sistema(f"📊 PIB estabilizado automáticamente")
+                
+                if resultados_mejoras['calibracion_aplicada']:
+                    local_logger.log_sistema(f"🔧 Calibración automática de parámetros aplicada")
+                    
+            except Exception as e:
+                local_logger.log_error(f"Error en sistema de mejoras: {e}")
+
         # === CICLO ECONÓMICO PRINCIPAL ===
         local_logger.log_ciclo(
             f"Ciclo {ciclo}: Ejecutando ciclo económico principal")
@@ -838,7 +932,7 @@ def ejecutar_simulacion_completa(config, prefijo_resultados: str | None = None):
                             'productividad': getattr(mercado, 'productividad_promedio', 1.0),
                             'pib': getattr(mercado, 'pib_total', 1000000),
                             'capital': sum(getattr(emp, 'capital', 0) for emp in todas_empresas),
-                            'trabajo': len([c for c in mercado.consumidores if getattr(c, 'empleado', False)])
+                            'trabajo': len([c for c in mercado.getConsumidores() if getattr(c, 'empleado', False)])
                         }
                         
                         analisis_completo = mercado.integrador_modelos.analisis_completo(estado_economico)

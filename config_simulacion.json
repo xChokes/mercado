@@ -1,64 +1,73 @@
 {
   "simulacion": {
-    "num_ciclos": 10, 
-    "num_consumidores": 100,
-    "num_empresas_productoras": 3,
-    "num_empresas_comerciales": 5,
+    "num_ciclos": 50,
+    "num_consumidores": 300,
+    "num_empresas_productoras": 12,
+    "num_empresas_comerciales": 10,
     "frecuencia_reportes": 5,
-    "activar_crisis": false,
-    "tiempo_maximo_crisis": 15,
-    "usar_empresas_hiperrealistas": false
+    "activar_crisis": true,
+    "tiempo_maximo_crisis": 8,
+    "usar_empresas_hiperrealistas": true,
+    "activar_mejoras_avanzadas": true,
+    "activar_estabilizacion_economica": true,
+    "activar_diversificacion_empresarial": true
   },
   "economia": {
-    "pib_inicial": 100000,
-    "tasa_desempleo_inicial": 0.15,
-    "tasa_inflacion_objetivo": 0.02,
-    "salario_base_minimo": 2000,
+    "pib_inicial": 750000,
+    "tasa_desempleo_inicial": 0.08,
+    "tasa_inflacion_objetivo": 0.025,
+    "salario_base_minimo": 3200,
     "capital_inicial_empresas": {
-      "min": 100000,
-      "max": 1500000
+      "min": 200000,
+      "max": 800000
     },
     "dinero_inicial_consumidores": {
-      "min": 5000,
-      "max": 15000
-    }
+      "min": 8000,
+      "max": 25000
+    },
+    "productividad_inicial": 1.08,
+    "factor_estabilidad": 0.35
   },
   "mercado_laboral": {
-    "probabilidad_contratacion_base": 0.5,
-    "habilidad_minima_base": 0.1,
-    "capacidad_empleo_factor": 1.2,
-    "subsidio_contratacion_crisis": 0.2
+    "probabilidad_contratacion_base": 0.7,
+    "habilidad_minima_base": 0.08,
+    "capacidad_empleo_factor": 2.0,
+    "subsidio_contratacion_crisis": 0.2,
+    "activar_programas_masivos": true,
+    "umbral_desempleo_critico": 0.15,
+    "eficiencia_emparejamiento": 0.8
   },
   "sistema_bancario": {
     "activar": true,
-    "num_bancos": 3,
-    "capital_inicial_bancos": 3000000,
-    "tasa_interes_base": 0.05,
-    "ratio_prestamo_ingreso": 5.0
+    "num_bancos": 4,
+    "capital_inicial_bancos": 2500000,
+    "tasa_interes_base": 0.045,
+    "ratio_prestamo_ingreso": 3.2
   },
   "machine_learning": {
     "activar": true,
     "generar_datos_sinteticos": true,
-    "num_datos_sinteticos": 20,
-    "reentrenar_cada_ciclos": 10
+    "num_datos_sinteticos": 35,
+    "reentrenar_cada_ciclos": 6
   },
   "precios": {
-    "ajuste_maximo_por_ciclo": 0.15,
+    "ajuste_maximo_por_ciclo": 0.015,
     "margen_minimo": 0.05,
-    "margen_maximo": 3.0,
-    "sensibilidad_competencia": 0.1,
-    "sensibilidad_stock": 0.15
+    "margen_maximo": 0.25,
+    "sensibilidad_competencia": 0.45,
+    "sensibilidad_stock": 0.35,
+    "rigidez_precios_factor": 0.65
   },
   "psicologia_economica": {
     "activar": true,
-    "factor_irracionalidad": 0.3,
+    "factor_irracionalidad": 0.25,
     "influencia_social": 0.2,
     "variabilidad_perfiles": 0.5
   },
   "agentes_ia": {
     "activar": false,
-    "num_consumidores": 5,
-    "num_empresas": 2,
+    "num_consumidores": 8,
+    "num_empresas": 3,
     "deep_learning": false,
     "redes_sociales": false,
     "coaliciones": false,
@@ -68,24 +77,24 @@
   "heterogeneidad_consumidores": {
     "activar": true,
     "distribucion_ingresos": "lognormal",
-    "ingreso_lognormal_mu": 8.5,
-    "ingreso_lognormal_sigma": 0.8,
-    "ingreso_min_garantizado": 1500,
+    "ingreso_lognormal_mu": 9.5,
+    "ingreso_lognormal_sigma": 0.55,
+    "ingreso_min_garantizado": 2400,
     "tipo_preferencias": "cobb_douglas",
-    "ces_elasticity_substitution": 1.5,
+    "ces_elasticity_substitution": 1.2,
     "tasa_descuento_temporal": 0.05,
-    "factor_paciencia_min": 0.7,
+    "factor_paciencia_min": 0.85,
     "factor_paciencia_max": 0.98,
-    "gini_objetivo": 0.45
+    "gini_objetivo": 0.32
   },
   "politica_monetaria": {
     "activar": true,
     "taylor_params": {
       "tasa_neutral": 0.025,
       "meta_inflacion": 0.025,
-      "peso_inflacion": 1.5,
-      "peso_producto": 0.5,
-      "suavizamiento": 0.8
+      "peso_inflacion": 2.2,
+      "peso_producto": 0.4,
+      "suavizamiento": 0.3
     }
   },
   "performance": {
@@ -101,14 +110,73 @@
   },
   "empresas_hiperrealistas": {
     "activar": true,
-    "probabilidad_crisis_empresa": 0.02,
-    "factor_competencia_intensidad": 1.0,
+    "probabilidad_crisis_empresa": 0.005,
+    "factor_competencia_intensidad": 0.9,
     "habilitado_ia_empresarial": true,
     "sistemas_gestion_avanzada": true,
     "innovacion_continua": true,
     "sostenibilidad_corporativa": true,
     "fusion_adquisiciones": true,
     "rescate_empresarial_avanzado": true
+  },
+  "estabilizacion_economica": {
+    "activar": true,
+    "volatilidad_maxima_pib": 0.1,
+    "banda_estabilidad": 0.05,
+    "crecimiento_objetivo": 0.03,
+    "aplicar_politicas_automaticas": true
+  },
+  "diversificacion_empresarial": {
+    "activar": true,
+    "min_empresas_objetivo": 10,
+    "max_empresas_objetivo": 18,
+    "concentracion_maxima": 0.4,
+    "incentivos_competencia": true
+  },
+  "validacion_economica": {
+    "rangos_productividad_laboral": [
+      0.95,
+      1.2
+    ],
+    "desempleo_maximo_aceptable": 0.15,
+    "inflacion_banda": [
+      -0.01,
+      0.04
+    ],
+    "validacion_estricta": true
+  },
+  "mejoras_integrales": {
+    "activar": true,
+    "productividad_laboral": {
+      "objetivo_minimo": 1.0,
+      "objetivo_maximo": 1.15,
+      "tasa_mejora_base": 0.012,
+      "capacitacion_cada_ciclos": 8,
+      "inversion_tecnologia": true
+    },
+    "control_concentracion": {
+      "empresas_minimas": 10,
+      "empresas_optimas": 16,
+      "umbral_hhi": 0.6,
+      "probabilidad_nueva_empresa": 0.5
+    },
+    "reduccion_desempleo": {
+      "objetivo": 0.06,
+      "nivel_critico": 0.15,
+      "subsidios_empresas": true,
+      "obras_publicas": true,
+      "programas_capacitacion": true
+    },
+    "estabilizacion_pib": {
+      "umbral_volatilidad": 0.12,
+      "factor_amortiguacion": 0.6,
+      "reserva_estabilizacion": 50000.0,
+      "intervencion_automatica": true
+    },
+    "calibracion_automatica": {
+      "frecuencia_ciclos": 5,
+      "tolerancia_desviacion": 0.15,
+      "ajuste_adaptativo": true
+    }
   }
 }
-

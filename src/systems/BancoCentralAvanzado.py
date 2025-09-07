@@ -246,9 +246,9 @@ class BancoCentralAvanzado:
     def _estimar_empleo_total(self) -> float:
         """Estima el empleo total de la economía"""
         if hasattr(self.mercado, 'consumidores'):
-            empleados = sum(1 for cons in self.mercado.consumidores 
+            empleados = sum(1 for cons in self.mercado.getConsumidores() 
                           if getattr(cons, 'empleado', False))
-            return max(empleados / len(self.mercado.consumidores), 0.01)
+            return max(empleados / len(self.mercado.getConsumidores()), 0.01)
         return 0.95  # 95% empleo default
     
     def _obtener_pib_actual(self) -> float:
@@ -593,9 +593,9 @@ class BancoCentralAvanzado:
     def _estimar_empleo_total(self) -> float:
         """Estima el empleo total de la economía"""
         if hasattr(self.mercado, 'consumidores'):
-            empleados = sum(1 for cons in self.mercado.consumidores 
+            empleados = sum(1 for cons in self.mercado.getConsumidores() 
                           if getattr(cons, 'empleado', False))
-            total_consumidores = len(self.mercado.consumidores)
+            total_consumidores = len(self.mercado.getConsumidores())
             if total_consumidores > 0:
                 return max(empleados / total_consumidores, 0.01)
         return 0.95  # 95% empleo default

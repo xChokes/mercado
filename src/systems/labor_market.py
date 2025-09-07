@@ -442,6 +442,143 @@ class EnhancedLaborMarket:
         unemployed = len([c for c in self.market.getConsumidores() if not getattr(c, 'empleado', False)])
         return unemployed / total_workers
     
+    def execute_mass_hiring_program(self):
+        """Programa de contratación masiva mejorado para reducir desempleo persistente"""
+        unemployment_rate = self.calculate_unemployment_rate()
+        
+        # Activar programa intensivo si desempleo > 12%
+        if unemployment_rate > 0.12:
+            unemployed = [c for c in self.market.getConsumidores() if not getattr(c, 'empleado', False)]
+            target_hirings = max(5, int(len(unemployed) * 0.25))  # Contratar 25% de desempleados
+            
+            # Crear vacantes de emergencia con salarios competitivos
+            self._create_emergency_vacancies(target_hirings)
+            
+            # Subsidiar contrataciones para empresas
+            self._subsidize_mass_hiring()
+            
+            # Programas de reentrenamiento
+            self._execute_retraining_program(unemployed[:target_hirings])
+        
+        # Programa regular si desempleo > 8%
+        elif unemployment_rate > 0.08:
+            self._execute_regular_employment_stimulus()
+    
+    def _create_emergency_vacancies(self, target_count: int):
+        """Crea vacantes de emergencia con incentivos especiales"""
+        companies_with_capacity = []
+        
+        for company in self.market.getEmpresas():
+            if (hasattr(company, 'dinero') and company.dinero > 30000 and 
+                not getattr(company, 'en_quiebra', False)):
+                companies_with_capacity.append(company)
+        
+        if not companies_with_capacity:
+            return
+        
+        vacancies_per_company = max(1, target_count // len(companies_with_capacity))
+        
+        for company in companies_with_capacity:
+            for i in range(vacancies_per_company):
+                # Crear vacancia con requisitos relajados
+                sector = getattr(company, 'sector_principal', 'general')
+                relaxed_requirements = {'general': 0.2}  # Requisitos muy bajos
+                
+                # Salario competitivo + subsidy
+                base_wage = self.calculate_market_wage(sector)
+                emergency_wage = base_wage * 1.2  # 20% premium para urgencia
+                
+                vacancy = JobVacancy(
+                    company_id=company.nombre if hasattr(company, 'nombre') else str(company),
+                    sector=sector,
+                    wage_offered=emergency_wage,
+                    skill_requirements=relaxed_requirements,
+                    max_posting_duration=25,  # Mayor duración
+                    is_emergency=True
+                )
+                
+                self.vacancies.append(vacancy)
+    
+    def _subsidize_mass_hiring(self):
+        """Subsidia contrataciones masivas para empresas"""
+        for company in self.market.getEmpresas():
+            if hasattr(company, 'dinero') and not getattr(company, 'en_quiebra', False):
+                # Subsidio de contratación (simulado como capital adicional)
+                hiring_subsidy = random.uniform(15000, 30000)
+                company.dinero += hiring_subsidy
+                company.hiring_subsidy_received = getattr(company, 'hiring_subsidy_received', 0) + hiring_subsidy
+    
+    def _execute_retraining_program(self, unemployed_workers: List):
+        """Ejecuta programa de reentrenamiento para desempleados"""
+        for worker in unemployed_workers:
+            if worker.nombre in self.worker_profiles:
+                profile = self.worker_profiles[worker.nombre]
+                
+                # Mejorar habilidades generales
+                for skill in profile.skills:
+                    improvement = random.uniform(0.1, 0.25)  # 10-25% mejora
+                    profile.skills[skill] = min(1.0, profile.skills[skill] + improvement)
+                
+                # Reducir salario reserva para facilitar colocación
+                profile.reservation_wage *= 0.85  # 15% reducción temporal
+                
+                # Aumentar intensidad de búsqueda
+                profile.search_intensity = min(1.0, profile.search_intensity + 0.2)
+                
+                worker.retrained = True
+    
+    def _execute_regular_employment_stimulus(self):
+        """Programa regular de estímulo al empleo"""
+        # Crear vacantes adicionales
+        unemployed_count = len([c for c in self.market.getConsumidores() if not getattr(c, 'empleado', False)])
+        additional_vacancies = max(3, unemployed_count // 8)  # 1 vacante cada 8 desempleados
+        
+        suitable_companies = [c for c in self.market.getEmpresas() 
+                            if hasattr(c, 'dinero') and c.dinero > 50000 
+                            and not getattr(c, 'en_quiebra', False)]
+        
+        if suitable_companies:
+            for _ in range(additional_vacancies):
+                company = random.choice(suitable_companies)
+                sector = getattr(company, 'sector_principal', 'general')
+                
+                # Requisitos moderados
+                requirements = {'general': random.uniform(0.3, 0.6)}
+                
+                vacancy = JobVacancy(
+                    company_id=company.nombre if hasattr(company, 'nombre') else str(company),
+                    sector=sector,
+                    wage_offered=self.calculate_market_wage(sector) * 1.1,  # 10% premium
+                    skill_requirements=requirements,
+                    max_posting_duration=20
+                )
+                
+                self.vacancies.append(vacancy)
+    
+    def improve_matching_efficiency(self):
+        """Mejora la eficiencia de emparejamiento basada en condiciones del mercado"""
+        unemployment_rate = self.calculate_unemployment_rate()
+        
+        # Ajustar eficiencia basado en desempleo
+        if unemployment_rate > 0.15:
+            # Alto desempleo mejora eficiencia (más esfuerzo en búsqueda)
+            self.matching_efficiency = min(0.85, self.matching_efficiency + 0.05)
+            # Reducir fricciones de búsqueda
+            self.search_frictions = max(0.08, self.search_frictions - 0.02)
+        elif unemployment_rate < 0.05:
+            # Bajo desempleo reduce eficiencia (mercado más apretado)
+            self.matching_efficiency = max(0.4, self.matching_efficiency - 0.02)
+            # Aumentar fricciones
+            self.search_frictions = min(0.25, self.search_frictions + 0.01)
+        
+        # Ajustar elasticidad salarial al desempleo
+        if unemployment_rate > 0.12:
+            # Salarios más sensibles al desempleo alto
+            self.wage_curve_params['unemployment_elasticity'] = -0.15
+        else:
+            # Elasticidad normal
+            self.wage_curve_params['unemployment_elasticity'] = -0.1
+    
     def calculate_average_wage(self) -> float:
         """Calculate average wage in the economy"""
         employed_workers = [c for c in self.market.getConsumidores() 
