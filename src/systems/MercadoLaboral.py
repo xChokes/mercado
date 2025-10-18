@@ -132,11 +132,11 @@ class MercadoLaboral:
                     f"✅ {contrataciones_exitosas} contrataciones de emergencia realizadas")
 
     def ciclo_mercado_laboral(self):
-        """Ciclo principal del mercado laboral con contrataciones y despidos dinámicos"""
+        """Ejecuta el ciclo completo del mercado laboral"""
         # 1. Facilitar contrataciones si hay alto desempleo
         self.facilitar_contrataciones_masivas()
 
-        # 2. Gestionar despidos por crisis económica
+        # 2. Gestionar despidos o contrataciones según el ciclo económico
         if hasattr(self.mercado, 'fase_ciclo_economico'):
             if self.mercado.fase_ciclo_economico in ['recesion', 'depresion']:
                 self._gestionar_despidos_por_crisis()
@@ -145,6 +145,24 @@ class MercadoLaboral:
 
         # 3. Movilidad laboral básica
         self._procesar_movilidad_laboral()
+
+        # 4. Crear empresas emergentes si es necesario
+        self.crear_empresas_emergentes()
+
+        # 5. Procesar aportes sindicales
+        self._procesar_aportes_sindicales()
+
+        # 6. Reasignar trabajadores con perfiles incompatibles
+        self.reasignar_trabajadores_incompatibles()
+
+    def _procesar_aportes_sindicales(self):
+        """Descuenta los aportes sindicales de los trabajadores afiliados"""
+        for sindicato in self.sindicatos:
+            for miembro in sindicato.miembros:
+                if miembro.empleado and hasattr(miembro, 'ingreso_mensual'):
+                    aporte = sindicato.calcular_aporte(miembro.ingreso_mensual)
+                    if getattr(miembro, 'dinero', 0) >= aporte:
+                        miembro.dinero -= aporte
 
     def _gestionar_despidos_por_crisis(self):
         """Gestiona despidos durante crisis económica"""
@@ -179,7 +197,10 @@ class MercadoLaboral:
 
     def _procesar_movilidad_laboral(self):
         """Procesa movilidad laboral básica entre sectores"""
-        empleados = [c for c in self.mercado.getConsumidores() if c.empleado]
+        empleados = [
+            c for c in self.mercado.getConsumidores()
+            if c.empleado and getattr(c, 'empleador', None)
+        ]
 
         # 5% de empleados pueden cambiar de trabajo cada ciclo
         empleados_moviles = random.sample(
@@ -189,21 +210,37 @@ class MercadoLaboral:
             if random.random() < 0.1:  # 10% probabilidad de cambio
                 # Buscar mejor oportunidad
                 empresas_alternativas = [e for e in self.mercado.getEmpresas()
-                                         if e != empleado.empleador and hasattr(e, 'dinero')
-                                         and e.dinero > 50000]
+                                         if e != getattr(empleado, 'empleador', None)
+                                         and hasattr(e, 'dinero') and e.dinero > 50000]
 
                 if empresas_alternativas:
                     nueva_empresa = random.choice(empresas_alternativas)
                     salario_actual = empleado.ingreso_mensual
+                    empresa_actual = getattr(empleado, 'empleador', None)
+
+                    if not empresa_actual or not hasattr(empresa_actual, 'despedir'):
+                        continue
 
                     # Intentar obtener mejor salario
                     nuevo_salario = salario_actual * \
                         random.uniform(1.05, 1.15)  # 5-15% aumento
 
                     if nueva_empresa.dinero > nuevo_salario * 12:  # Puede pagar el salario anual
-                        empleado.empleador.despedir(empleado)
+                        empresa_actual.despedir(empleado)
+                        ingreso_original = empleado.ingreso_mensual
                         empleado.ingreso_mensual = nuevo_salario
-                        nueva_empresa.contratar(empleado)
+                        if nueva_empresa.contratar(empleado):
+                            empleado.empleador = nueva_empresa
+                            empleado.empleado = True
+                        else:
+                            # Revertir si la contratación falla
+                            empleado.ingreso_mensual = ingreso_original
+                            if hasattr(empresa_actual, 'contratar'):
+                                empresa_actual.contratar(empleado)
+                                empleado.empleador = empresa_actual
+                            else:
+                                empleado.empleado = False
+                                empleado.empleador = None
 
     def crear_empresas_emergentes(self):
         """Crea nuevas empresas pequeñas para absorber desempleo"""
@@ -298,25 +335,6 @@ class MercadoLaboral:
                         candidato.empleado = True
                         if candidato in desempleados:
                             desempleados.remove(candidato)
-
-    def ciclo_mercado_laboral(self):
-        """Ejecuta el ciclo completo del mercado laboral"""
-        # 1. Facilitar contrataciones masivas si hay alto desempleo
-        self.facilitar_contrataciones_masivas()
-
-        # 2. Crear empresas emergentes si es necesario
-        self.crear_empresas_emergentes()
-
-        # 3. Procesar aportes sindicales
-        for sindicato in self.sindicatos:
-            for miembro in sindicato.miembros:
-                if miembro.empleado and hasattr(miembro, 'ingreso_mensual'):
-                    aporte = sindicato.calcular_aporte(miembro.ingreso_mensual)
-                    if miembro.dinero >= aporte:
-                        miembro.dinero -= aporte
-
-        # 4. Reasignar trabajadores con perfiles incompatibles
-        self.reasignar_trabajadores_incompatibles()
 
     def reasignar_trabajadores_incompatibles(self):
         """Reasigna trabajadores que no están en su sector óptimo"""

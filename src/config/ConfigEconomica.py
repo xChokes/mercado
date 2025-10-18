@@ -108,13 +108,13 @@ class ConfigEconomica:
     PREFERENCIA_VARIEDAD = 0.15  # Tendencia a diversificar compras
     
     # Distribución de ingresos heterogénea
-    DISTRIBUCION_INGRESOS = 'lognormal'  # 'lognormal' o 'uniforme'
+    DISTRIBUCION_INGRESOS = 0  # 0='lognormal', 1='uniforme'
     INGRESO_LOGNORMAL_MU = 8.5  # Media del log (corresponde aprox a $5000)
     INGRESO_LOGNORMAL_SIGMA = 0.8  # Desviación estándar del log
     INGRESO_MIN_GARANTIZADO = 1500  # Ingreso mínimo garantizado
     
     # Tipos de preferencias de consumo
-    TIPO_PREFERENCIAS = 'cobb_douglas'  # 'cobb_douglas' o 'ces'
+    TIPO_PREFERENCIAS = 0  # 0='cobb_douglas', 1='ces'
     CES_ELASTICITY_SUBSTITUTION = 1.5  # Para preferencias CES
     
     # Restricción intertemporal
@@ -167,3 +167,27 @@ class ConfigEconomica:
     }
     IMPUESTO_CARBONO = 5  # Unidad monetaria por unidad de emisión
     LIMITE_EXTRACCION_RECURSOS = 0.1  # 10% de recursos restantes como umbral crítico
+
+    @staticmethod
+    def obtener_distribucion_ingresos(valor):
+        """Normaliza la configuración de distribución de ingresos"""
+        if isinstance(valor, str):
+            return valor
+
+        mapping = {
+            0: 'lognormal',
+            1: 'uniforme'
+        }
+        return mapping.get(valor, 'lognormal')
+
+    @staticmethod
+    def obtener_tipo_preferencias(valor):
+        """Devuelve el identificador de preferencias de consumo"""
+        if isinstance(valor, str):
+            return valor
+
+        mapping = {
+            0: 'cobb_douglas',
+            1: 'ces'
+        }
+        return mapping.get(valor, 'cobb_douglas')
