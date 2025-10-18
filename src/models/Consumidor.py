@@ -63,7 +63,8 @@ class Consumidor(Persona):
         self.factor_paciencia = random.uniform(paciencia_min, paciencia_max)
         
         # Tipo de preferencias (Cobb-Douglas o CES)
-        self.tipo_preferencias = self.config_hetero.get('tipo_preferencias', ConfigEconomica.TIPO_PREFERENCIAS)
+        tipo_pref_config = self.config_hetero.get('tipo_preferencias', ConfigEconomica.TIPO_PREFERENCIAS)
+        self.tipo_preferencias = ConfigEconomica.obtener_tipo_preferencias(tipo_pref_config)
         self.ces_elasticity = self.config_hetero.get('ces_elasticity_substitution', ConfigEconomica.CES_ELASTICITY_SUBSTITUTION)
         
         # Coeficientes de preferencias para Cobb-Douglas
@@ -102,7 +103,8 @@ class Consumidor(Persona):
 
     def _generar_dinero_inicial(self):
         """Genera dinero inicial usando distribución lognormal o uniforme"""
-        distribucion = self.config_hetero.get('distribucion_ingresos', ConfigEconomica.DISTRIBUCION_INGRESOS)
+        distribucion_config = self.config_hetero.get('distribucion_ingresos', ConfigEconomica.DISTRIBUCION_INGRESOS)
+        distribucion = ConfigEconomica.obtener_distribucion_ingresos(distribucion_config)
         
         if distribucion == 'lognormal':
             mu = self.config_hetero.get('ingreso_lognormal_mu', ConfigEconomica.INGRESO_LOGNORMAL_MU)
@@ -122,7 +124,8 @@ class Consumidor(Persona):
     
     def _generar_ingreso_inicial(self):
         """Genera ingreso inicial usando distribución lognormal o uniforme"""
-        distribucion = self.config_hetero.get('distribucion_ingresos', ConfigEconomica.DISTRIBUCION_INGRESOS)
+        distribucion_config = self.config_hetero.get('distribucion_ingresos', ConfigEconomica.DISTRIBUCION_INGRESOS)
+        distribucion = ConfigEconomica.obtener_distribucion_ingresos(distribucion_config)
         
         if distribucion == 'lognormal':
             mu = self.config_hetero.get('ingreso_lognormal_mu', ConfigEconomica.INGRESO_LOGNORMAL_MU)
